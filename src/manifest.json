@@ -1,9 +1,9 @@
 {
-  "name": "小兔鲜儿",
+  "name": "ninetwozero",
   "appid": "",
   "description": "",
   "versionName": "1.0.0",
-  "versionCode": 1,
+  "versionCode": "1",
   "transformPx": false,
   /* 5+App特有相关 */
   "app-plus": {
@@ -50,11 +50,12 @@
   "quickapp": {},
   /* 小程序特有相关 */
   "mp-weixin": {
-    "appid": "",
+    "appid": "wx2289fc444519926c",
     "setting": {
       "urlCheck": false
     },
-    "usingComponents": true
+    "usingComponents": true,
+    "requiredPrivateInfos": ["chooseAddress"]
   },
   "mp-alipay": {
     "usingComponents": true

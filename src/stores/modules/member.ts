@@ -1,21 +1,42 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import type { UserItem } from '@/types/UserItem'
 
 // 定义 Store
 export const useMemberStore = defineStore(
-  'member',
+  'user',
   () => {
-    // 会员信息
-    const profile = ref<any>()
+    // 用户默认数据
+    const DEFAULT_INFO = ref<UserItem>({
+      _id: '',
+      inviterCode: '',
+      referralCode: '',
+      nickname: '',
+      avatarUrl: 'https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/images/defaultAvatar.png',
+      mobile: '点击登录',
+      gender: 1,
+      role: 'user',
+      registerTime: '',
+      status: '',
+      vipLevel: 0, // 1:基础会员, 2:高级会员, 3:至尊会员
+      vipStartTime: '', // 会员注册时间
+      vipEndTime: '', // 会员到期时间
+      vipGift: 0,
+      vipDiscount: 0,
+      inviterCodeUrl: '',
+      score: 0,
+    })
 
+    // 会员信息
+    const profile = ref<UserItem>({ ...DEFAULT_INFO.value })
     // 保存会员信息，登录时使用
     const setProfile = (val: any) => {
-      profile.value = val
+      profile.value = { ...profile.value, ...val }
     }
 
     // 清理会员信息，退出时使用
     const clearProfile = () => {
-      profile.value = undefined
+      profile.value = DEFAULT_INFO.value
     }
 
     // 记得 return
@@ -25,8 +46,19 @@ export const useMemberStore = defineStore(
       clearProfile,
     }
   },
-  // TODO: 持久化
   {
-    persist: true,
+    // 网页端配置
+    // persist: true,
+    // 小程序端配置
+    persist: {
+      storage: {
+        getItem(key) {
+          return uni.getStorageSync(key)
+        },
+        setItem(key, value) {
+          uni.setStorageSync(key, value)
+        },
+      },
+    },
   },
 )

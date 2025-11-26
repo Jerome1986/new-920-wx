@@ -1,10 +1,20 @@
 {
+  // 组件自动导入
+  "easycom": {
+    "autoscan": true,
+    "custom": {
+      "^uni-(.*)": "@dcloudio/uni-ui/lib/uni-$1/uni-$1.vue",
+      "^tn-(.*)-(item|group)$": "@tuniao/tnui-vue3-uniapp/components/$1/src/$1-$2.vue",
+      "^tn-(.*)": "@tuniao/tnui-vue3-uniapp/components/$1/src/$1.vue"
+    }
+  },
   "pages": [
     //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
     {
-      "path": "pages/index/index",
+      "path": "pages/home/home",
       "style": {
-        "navigationBarTitleText": "首页"
+        "navigationBarTitleText": "首页",
+        "navigationStyle": "custom"
       }
     },
     {
@@ -20,9 +30,10 @@
       }
     },
     {
-      "path": "pages/category/category",
+      "path": "pages/shop/shop",
       "style": {
-        "navigationBarTitleText": "分类"
+        "navigationBarTitleText": "商品",
+        "enablePullDownRefresh": false
       }
     },
     {
@@ -30,45 +41,113 @@
       "style": {
         "navigationBarTitleText": "登录"
       }
+    },
+    {
+      "path": "pages/hireForm/hireForm",
+      "style": {
+        "navigationBarTitleText": "员工招聘",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/cooperateForm/cooperateForm",
+      "style": {
+        "navigationBarTitleText": "合作申请",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/search/search",
+      "style": {
+        "navigationBarTitleText": "搜索",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/managerProduct/managerProduct",
+      "style": {
+        "navigationBarTitleText": "进货",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/productDetail/productDetail",
+      "style": {
+        "navigationBarTitleText": "商品详情",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/confirmOrder/confirmOrder",
+      "style": {
+        "navigationBarTitleText": "确认订单",
+        "enablePullDownRefresh": false
+      }
     }
   ],
   "globalStyle": {
-    "navigationBarTextStyle": "black",
+    "navigationBarTextStyle": "white",
     "navigationBarTitleText": "",
-    "navigationBarBackgroundColor": "#F8F8F8",
+    "navigationBarBackgroundColor": "#d62731",
     "backgroundColor": "#F8F8F8"
   },
   // 设置 TabBar
   "tabBar": {
-    "color": "#333",
-    "selectedColor": "#27ba9b",
+    "color": "#333333",
+    "selectedColor": "#D62731",
     "backgroundColor": "#fff",
     "borderStyle": "white",
     "list": [
       {
         "text": "首页",
-        "pagePath": "pages/index/index",
-        "iconPath": "static/tabs/home_default.png",
+        "pagePath": "pages/home/home",
+        "iconPath": "static/tabs/home.png",
         "selectedIconPath": "static/tabs/home_selected.png"
       },
       {
-        "text": "分类",
-        "pagePath": "pages/category/category",
-        "iconPath": "static/tabs/category_default.png",
-        "selectedIconPath": "static/tabs/category_selected.png"
+        "text": "商品",
+        "pagePath": "pages/shop/shop",
+        "iconPath": "static/tabs/shop.png",
+        "selectedIconPath": "static/tabs/shop_selected.png"
       },
       {
         "text": "购物车",
         "pagePath": "pages/cart/cart",
-        "iconPath": "static/tabs/cart_default.png",
-        "selectedIconPath": "static/tabs/cart_selected.png"
+        "iconPath": "static/tabs/warehouse.png",
+        "selectedIconPath": "static/tabs/warehouse_selected.png"
       },
       {
         "text": "我的",
         "pagePath": "pages/my/my",
-        "iconPath": "static/tabs/user_default.png",
-        "selectedIconPath": "static/tabs/user_selected.png"
+        "iconPath": "static/tabs/my.png",
+        "selectedIconPath": "static/tabs/my_selected.png"
       }
     ]
+  },
+  "subPackages": [
+    {
+      // 子包的根目录
+      "root": "pagesMember",
+      // 页面路径和窗口表现
+      "pages": [
+        {
+          "path": "setting/setting",
+          "style": {
+            "navigationBarTitleText": "设置",
+            "enablePullDownRefresh": false
+          }
+        }
+      ]
+    }
+  ],
+  // 分包预下载规则
+  "preloadRule": {
+    "pages/my/my": {
+      "network": "all",
+      // [!code ++]
+      "packages": [
+        "pagesMember"
+      ]
+    }
   }
 }
