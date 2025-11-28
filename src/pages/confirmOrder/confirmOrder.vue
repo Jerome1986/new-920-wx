@@ -98,7 +98,7 @@ const submit = async () => {
     usedScore: Number(deductAmount.value.toFixed(2)),
   }
 
-  // TODO: 调用API提交订单
+  // 调用API提交订单
   const orderRes = await proOrderPayApi(
     userInfo,
     addressInfo.value,
@@ -129,10 +129,10 @@ const submit = async () => {
     },
     async fail(err) {
       console.error('支付失败', err)
-      //todo 如果是取消支付，则将当前订单状态更新为已取消
+      // 如果是取消支付，则将当前订单状态更新为已取消
       const cannelRes = await proOrderCancelApi(orderRes.data.out_trade_no)
       if (cannelRes.code === 200) {
-        uni.showToast({ icon: 'none', title: cannelRes.message })
+        await uni.showToast({ icon: 'none', title: cannelRes.message })
       }
     },
   })

@@ -83,3 +83,33 @@ export type LookNumItem = {
   /** 更新后的阅读量 */
   lookNum: number
 }
+
+// 会员产品类型
+export interface vipProItem {
+  /** 唯一标识 */
+  _id: string
+  /** 对应的会员等级 */
+  level: number
+  /** 对应等级的会员名称 */
+  levelText: string
+  /** 办理价格 */
+  price: number
+  /** 可享受的购物折扣 */
+  discount: number
+  /** 有效期 */
+  term: string
+  /** 会员权益说明 */
+  rights: string
+  /** 启用状态 */
+  status: 'enable' | 'disable'
+  /** 创建时间 */
+  createdAt: Date
+  /** 更新时间 */
+  updatedAt: Date
+  /** 返现比例 */
+  cashbackRate: number
+  /** 可共享使用人数上限 */
+  maxUsers: number
+  /** 每月免费次数 */
+  limit: number
+}

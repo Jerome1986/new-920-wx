@@ -24,6 +24,10 @@ export type UserItem = {
   referralCode: string
   /** 上级的邀请码 */
   inviterCode: string
+  /** 上上级邀请码 */
+  inviter2Code: string
+  /** vip可绑定的人数，默认为1 */
+  vipMaxUsers: number
   /**  会员等级： 1:基础会员, 2:高级会员, 3:至尊会员 */
   vipLevel: number
   /** 会员注册时间 */
@@ -35,9 +39,11 @@ export type UserItem = {
   /** 会员折扣 */
   vipDiscount: number
   /** 邀请码图片链接 */
-  inviterCodeUrl: string
+  myCodeUrl: string
   /** 平台积分 */
   score: number
+  /** 待结算余额 */
+  balance: number
 }
 
 // 收货地址信息
@@ -50,4 +56,18 @@ export interface AddressInfo {
   detailInfo: string
   postalCode?: string
   nationalCode?: string
+}
+
+// 根据邀请码查询上上级返回类型
+export interface inviter2CodeResult {
+  /** 上级的邀请码 */
+  inviterCode: string
+  /** 上上级的邀请码 */
+  inviter2Code: string
+}
+
+// 下级用户列表类型
+export interface referralsUserList {
+  firstUsers: UserItem[]
+  secondUsers: UserItem[]
 }

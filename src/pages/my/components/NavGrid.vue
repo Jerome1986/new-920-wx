@@ -5,7 +5,7 @@ import { useMemberStore } from '@/stores'
 const userStore = useMemberStore()
 
 const data = [
-  { icon: 'icon-shouyi1', name: '我的收益' },
+  { icon: 'icon-shouyi1', name: '我的积分' },
   { icon: 'icon-shenqing1', name: '我的订单' },
   { icon: 'icon-tuijian1', name: '我的推荐' },
   { icon: 'icon-huiyuan', name: '会员权益' },
@@ -19,17 +19,23 @@ const handleGrid = (val: string) => {
 
   // 点击功能
   switch (val) {
-    case '我的订单':
+    case '我的积分':
       console.log('我的收益')
       break
-    case '我的申请':
+    case '我的订单':
       console.log('我的订单')
       break
     case '我的推荐':
       console.log('我的推荐')
+      uni.navigateTo({
+        url: '/pagesMember/myFriends/myFriends',
+      })
       break
     case '会员权益':
       console.log('会员权益')
+      uni.navigateTo({
+        url: '/pagesMember/myVip/myVip',
+      })
       break
   }
 }

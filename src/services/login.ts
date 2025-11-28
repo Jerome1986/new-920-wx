@@ -8,6 +8,7 @@ import type { UserItem } from '@/types/UserItem'
  * @param {string} encryptedData - 微信获取的用户手机号加密数据，需要结合 sessionKey 解密得到手机号
  * @param {string} iv - 加密数据的初始向量（Initialization Vector），用于解密 encryptedData
  * @param {string} inviterCode - 上级邀请码---默认为null
+ * @param {string} inviter2Code - 上上级邀请码
  */
 
 export const wxLoginApi = (
@@ -15,6 +16,7 @@ export const wxLoginApi = (
   encryptedData: string,
   iv: string,
   inviterCode?: string,
+  inviter2Code?: string,
 ) => {
   return request<UserItem>({
     method: 'POST',
@@ -24,6 +26,7 @@ export const wxLoginApi = (
       encryptedData,
       iv,
       inviterCode,
+      inviter2Code,
     },
   })
 }

@@ -1,5 +1,10 @@
 import { request } from '@/utils/http.ts'
-import type { LookNumItem, ProductItem, ProductPageResult } from '@/types/ProductItem.d.ts'
+import type {
+  LookNumItem,
+  ProductItem,
+  ProductPageResult,
+  vipProItem,
+} from '@/types/ProductItem.d.ts'
 
 /**
  * 获取热门推荐的商品
@@ -98,5 +103,15 @@ export const autoLookNumApi = (productId: string) => {
     method: 'POST',
     url: '/product/lookNum',
     data: { productId },
+  })
+}
+
+/**
+ * 获取会员产品列表
+ */
+export const vipProductGetApi = () => {
+  return request<vipProItem[]>({
+    method: 'GET',
+    url: '/product/vip',
   })
 }

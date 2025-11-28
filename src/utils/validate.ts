@@ -1,4 +1,8 @@
 import type { FormItem } from '@/types/Apply'
+import { useMemberStore } from '@/stores'
+
+const userStore = useMemberStore()
+
 // 验证手机号码函数
 export const validateForm = (form: FormItem) => {
   if (!form.userId || !form.name || !form.icCardFont || !form.icCardBack) {
@@ -44,4 +48,23 @@ export const isVipExpired = (vipEndTime: string | Date): boolean => {
   const now = new Date()
   const end = new Date(vipEndTime)
   return now > end
+}
+
+// 验证登录
+export const checkLogin = () => {
+  if (!userStore.profile._id) {
+    uni.showModal({
+      title: '提示',
+      content: '购物前请先登录',
+      showCancel: false,
+      confirmColor: '#d62731',
+      success: async (res) => {
+        if (res.confirm) {
+          await uni.navigateTo({
+            url: '/pages/login/login',
+          })
+        }
+      },
+    })
+  }
 }

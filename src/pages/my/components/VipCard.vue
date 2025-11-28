@@ -37,7 +37,7 @@ const userStore = useMemberStore()
           <!--  折扣  -->
           <view class="item">
             <text class="iconfont icon-zhekou" style="margin-right: 10rpx; font-size: 28rpx"></text>
-            <text>{{ userStore.profile.vipDiscount }}折</text>
+            <text>享受人数 {{ userStore.profile.vipMaxUsers }} 人</text>
           </view>
           <!--  赠送次数  -->
           <view class="item">
@@ -45,7 +45,7 @@ const userStore = useMemberStore()
               class="iconfont icon-zengsong"
               style="margin-right: 10rpx; font-size: 28rpx"
             ></text>
-            <text>赠送贴膜{{ userStore.profile.vipGift }}次</text>
+            <text>每月免费贴膜{{ userStore.profile.vipGift }}次</text>
           </view>
         </view>
         <!--  提升等级按钮  -->
@@ -54,9 +54,8 @@ const userStore = useMemberStore()
       <!--  下一级权益提示  -->
       <view class="nextVipTips">
         <image class="icon" src="/static/images/laba.png" mode="aspectFill"></image>
-        <view class="tips" v-if="userStore.profile.vipLevel < 3"
-          >下级权益 → {{ nextVipInfo?.levelName }} (享受{{ nextVipInfo?.discount }}折 +
-          {{ nextVipInfo?.giftCount }}次贴膜)
+        <view class="tips" v-if="userStore.profile.vipLevel < 2"
+          >下级权益 → 家庭版可3人共享会员权益
         </view>
         <view class="tips" v-else> 你已经是我们最高等级的会员啦！感谢您的支持！</view>
       </view>

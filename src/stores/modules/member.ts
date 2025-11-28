@@ -8,6 +8,9 @@ export const useMemberStore = defineStore(
   () => {
     // 用户默认数据
     const DEFAULT_INFO = ref<UserItem>({
+      balance: 0,
+      inviter2Code: '',
+      openid: '',
       _id: '',
       inviterCode: '',
       referralCode: '',
@@ -18,12 +21,13 @@ export const useMemberStore = defineStore(
       role: 'user',
       registerTime: '',
       status: '',
+      vipMaxUsers: 1, // 会员可绑定人数
       vipLevel: 0, // 1:基础会员, 2:高级会员, 3:至尊会员
       vipStartTime: '', // 会员注册时间
       vipEndTime: '', // 会员到期时间
       vipGift: 0,
       vipDiscount: 0,
-      inviterCodeUrl: '',
+      myCodeUrl: '',
       score: 0,
     })
 

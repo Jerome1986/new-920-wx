@@ -136,6 +136,20 @@
             "navigationBarTitleText": "设置",
             "enablePullDownRefresh": false
           }
+        },
+        {
+          "path": "myFriends/myFriends",
+          "style": {
+            "navigationBarTitleText": "我的推荐",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "myVip/myVip",
+          "style": {
+            "navigationBarTitleText": "办理会员",
+            "enablePullDownRefresh": false
+          }
         }
       ]
     }

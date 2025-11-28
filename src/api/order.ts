@@ -41,3 +41,61 @@ export const proOrderCancelApi = (orderId: string) => {
     data: { orderId },
   })
 }
+
+/**
+ * 办理会员支付接口
+ * @param userId
+ * @param userMobile
+ * @param vipProId
+ * @param vipLevel
+ * @param vipLevelText
+ * @param discount
+ * @param limit
+ * @param maxUsers
+ * @param term
+ * @param totalFee
+ * @param description
+ */
+export const vipPayApi = (
+  userId: string,
+  userMobile: string,
+  vipProId: string,
+  vipLevel: number,
+  vipLevelText: string,
+  discount: number,
+  limit: number,
+  maxUsers: number,
+  term: string,
+  totalFee: number,
+  description: string,
+) => {
+  return request<WechatPayParams>({
+    method: 'POST',
+    url: '/wx/vipPay',
+    data: {
+      userId,
+      userMobile,
+      vipProId,
+      vipLevel,
+      vipLevelText,
+      discount,
+      limit,
+      maxUsers,
+      term,
+      totalFee,
+      description,
+    },
+  })
+}
+
+/**
+ * 会员订单取消支付
+ * @param orderId
+ */
+export const vipOrderCancelledApi = (orderId: string) => {
+  return request<updateResult>({
+    method: 'POST',
+    url: '/order/cancelVip',
+    data: { orderId },
+  })
+}

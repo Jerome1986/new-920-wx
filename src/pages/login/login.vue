@@ -4,6 +4,7 @@ import { useMemberStore } from '@/stores'
 import { onLoad } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { isVipExpired } from '@/utils/validate.ts'
+import { userInviter2CodeGetApi } from '@/api/user.ts'
 
 // 定义store
 const userStore = useMemberStore()
@@ -43,6 +44,7 @@ const showAgreementModal = () => {
   })
 }
 
+// 获取手机号凭证返回类型
 type GetPhoneNumberEvent = {
   detail: {
     code?: string // 用于获取手机号的凭证
@@ -69,6 +71,7 @@ const handleLogin = (e: GetPhoneNumberEvent) => {
           e.detail.encryptedData!,
           e.detail.iv!,
           inviterCode.value,
+          inviter2Code.value,
         )
         console.log('wxMobileLoginApi 返回', wxRes)
 
@@ -81,7 +84,7 @@ const handleLogin = (e: GetPhoneNumberEvent) => {
             console.log('会员已过期')
           }
 
-          userStore.setProfile(userRes)
+          userStore.setProfile(userRes) // 将返回的用户信息存入store
 
           await uni.showToast({
             icon: 'success',
@@ -113,19 +116,36 @@ const handleLogin = (e: GetPhoneNumberEvent) => {
 
 // 获取参数-邀请码
 const inviterCode = ref('')
-onLoad((options: any) => {
-  // 二维码邀请
-  if (!options.inviterCode) {
+const inviter2Code = ref('')
+onLoad(async (options: any) => {
+  console.log('入参', options)
+
+  // 先判断分享链接进入
+  if (options.inviterCode) {
+    inviterCode.value = options.inviterCode
+  } else {
+    // 再判断二维码扫码进入
     const scene = decodeURIComponent(options.scene || '')
     if (scene) {
       const parts = scene.split('=')
       inviterCode.value = parts[1] || ''
-      console.log('inviterCode', inviterCode.value)
     }
   }
-  console.log(options.inviterCode)
-  // 分享邀请
-  inviterCode.value = options.inviterCode
+
+  // 如果依旧没有邀请码，说明没人邀请
+  if (!inviterCode.value) {
+    console.log('无邀请码，正常进入')
+    return
+  }
+
+  // 查询上级的上级
+  const res = await userInviter2CodeGetApi(inviterCode.value)
+  inviter2Code.value = res.data.inviter2Code
+
+  console.log('最终生效的邀请链：', {
+    inviterCode: inviterCode.value,
+    inviter2Code: inviter2Code.value,
+  })
 })
 </script>
 

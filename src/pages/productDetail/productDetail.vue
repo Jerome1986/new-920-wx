@@ -4,16 +4,16 @@ import type { ProductItem, SkuItem } from '@/types/ProductItem'
 import { productDetailGetApi } from '@/api/product.ts'
 import { onLoad } from '@dcloudio/uni-app'
 import FooterBar from './FooterBar.vue'
-import { useMemberStore, useCartStore } from '@/stores'
+import { useCartStore } from '@/stores'
 import type { CartItem } from '@/types/CartItem'
 import { generateId } from '@/utils/id.ts'
+import { checkLogin } from '@/utils/validate.ts'
 
 const { safeAreaInsets } = uni.getSystemInfoSync()
 
 const popup = ref<any>()
 
 // 定义store
-const userStore = useMemberStore()
 const cartStore = useCartStore()
 
 // 获取产品列表
@@ -62,7 +62,10 @@ const handleSkuConfrim = () => {
 // 处理添加购物车
 const isAdding = ref(false)
 
-const handleAddCart = async (val: string) => {
+const handleAddCart = (val: string) => {
+  // 检测用户是否登录
+  checkLogin()
+
   if (!productData.value?._id || isAdding.value) return
   isAdding.value = true
 
@@ -95,7 +98,7 @@ const handleAddCart = async (val: string) => {
     // 加入购物车
     cartStore.addCart(cart)
 
-    await uni.showToast({
+    uni.showToast({
       icon: 'success',
       title: val === 'nowAdd' ? '已入库，正在跳转…' : '已加入库存',
       mask: true,
@@ -146,7 +149,7 @@ const handleAddCart = async (val: string) => {
     </view>
 
     <!-- 选择规格 -->
-    <view class="spec-section" @click="popup?.open()" v-if="userStore.profile.role === 'manager'">
+    <view class="spec-section" @click="popup?.open()">
       <view class="section-title">选择规格</view>
       <view class="spec-content">
         <text>{{ selectSku?.attrs.value || '请选择规格' }}</text>
