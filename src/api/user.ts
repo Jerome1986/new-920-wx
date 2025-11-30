@@ -1,6 +1,6 @@
 import { request } from '@/utils/http.ts'
 import type { inviter2CodeResult, referralsUserList, UserItem } from '@/types/UserItem'
-import type { QrcodeItem } from '@/types/QrcodeItem.ts'
+import type { QrcodeItem } from '@/types/QrcodeItem.d.ts'
 
 /**
  * 根据邀请码获取用户的上上级

@@ -24,6 +24,9 @@ const handleGrid = (val: string) => {
       break
     case '我的订单':
       console.log('我的订单')
+      uni.navigateTo({
+        url: '/pagesMember/myOrder/myOrder',
+      })
       break
     case '我的推荐':
       console.log('我的推荐')

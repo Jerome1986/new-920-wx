@@ -1,5 +1,5 @@
 import { request } from '@/utils/http.ts'
-import type { RateRulesItem } from '@/types/rateRuleItem'
+import type { RateRulesItem } from '@/types/RateRuleItem'
 
 /**
  * 获取积分规则

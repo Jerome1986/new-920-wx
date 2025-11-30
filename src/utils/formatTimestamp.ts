@@ -34,7 +34,11 @@ export const formatOrderState = (state: string) => {
     case 'PENDING':
       return '待支付'
     case 'PAID':
-      return '已支付'
+      return '待发货'
+    case 'SHIPPED':
+      return '待收货'
+    case 'COMPLETED':
+      return '已完成'
     case 'CANCELLED':
       return '已取消'
     case 'REFUNDED':

@@ -1,8 +1,46 @@
 import { request } from '@/utils/http.ts'
-import type { OrderAmount, OrderProductItem, OrderUserInfo } from '@/types/Order'
+import type {
+  OrderAmount,
+  OrderItem,
+  OrderPageResult,
+  OrderProductItem,
+  OrderUserInfo,
+} from '@/types/Order'
 import type { AddressInfo } from '@/types/UserItem'
 import type { WechatPayParams } from '@/types/WechatPay'
 import type { updateResult } from '@/types/Gobal'
+
+/**
+ * 根据用户ID和订单状态获取当前用户订单列表
+ * @param userId - 用户ID
+ * @param status - 订单状态
+ * @param pageNum - 页码
+ * @param pageSize - 条数
+ */
+export const userOrderGetApi = (
+  userId: string,
+  status: string,
+  pageNum: number,
+  pageSize: number,
+) => {
+  return request<OrderPageResult>({
+    method: 'GET',
+    url: '/order/get',
+    data: { userId, status, pageNum, pageSize },
+  })
+}
+
+/**
+ * 根据订单号获取详细订单信息详情
+ * @param orderNo - 订单号
+ */
+export const userOrderDetailGetApi = (orderNo: string) => {
+  return request<OrderItem>({
+    method: 'GET',
+    url: '/order/detail',
+    data: { orderNo },
+  })
+}
 
 /**
  * 商品支付新增订单接口
@@ -27,6 +65,19 @@ export const proOrderPayApi = (
     method: 'POST',
     url: '/wx/proPay',
     data: { userInfo, addressInfo, products, totalCount, amount, paymentMethod, remark },
+  })
+}
+
+/**
+ * 用户确认收货更新订单
+ * @param userId - 用户ID
+ * @param orderNo - 订单ID
+ */
+export const confirmOrderLogistics = (userId: string, orderNo: string) => {
+  return request<updateResult>({
+    method: 'POST',
+    url: '/order/upLogistics',
+    data: { userId, orderNo },
   })
 }
 

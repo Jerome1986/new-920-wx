@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { RateRulesItem } from '@/types/rateRuleItem'
+import type { RateRulesItem } from '@/types/RateRuleItem'
 import { rateRuleListGet } from '@/api/rate.ts'
 
 export const useRateStore = defineStore(

@@ -150,6 +150,20 @@
             "navigationBarTitleText": "办理会员",
             "enablePullDownRefresh": false
           }
+        },
+        {
+          "path": "myOrder/myOrder",
+          "style": {
+            "navigationBarTitleText": "我的订单",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "myOrder/proOrderDetail",
+          "style": {
+            "navigationBarTitleText": "商品订单详情",
+            "enablePullDownRefresh": false
+          }
         }
       ]
     }
