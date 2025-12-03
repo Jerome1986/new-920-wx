@@ -3,12 +3,10 @@ import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { formatOrderState, formatTimestamp } from '@/utils/formatTimestamp.ts'
 import type { OrderItem } from '@/types/Order'
-import { confirmOrderLogistics, userOrderDetailGetApi } from '@/api/order.ts'
-import { useMemberStore } from '@/stores'
+import { userOrderDetailGetApi } from '@/api/order.ts'
 
 // 安全距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
-const userStore = useMemberStore()
 
 // 订单号
 const orderNo = ref('')
@@ -33,30 +31,31 @@ const getOrderDetail = async (out_trade_no: string) => {
 }
 
 // 处理确认收货
-const handleConfirm = (out_trade_no: string) => {
-  uni.showModal({
-    title: '提示',
-    content: '收到商品请点击确认完成订单',
-    confirmColor: '#d62731',
-    success: async (res) => {
-      if (res.confirm) {
-        await confirmOrderLogistics(userStore.profile._id, out_trade_no)
-        await getOrderDetail(orderNo.value)
-        await uni.showToast({
-          title: '订单已完成',
-          icon: 'success',
-          mask: true,
-        })
-
-        // 返回上一页
-        setTimeout(() => {
-          uni.redirectTo({
-            url: '/pagesMember/myOrder/myOrder',
-          })
-        }, 800)
-      }
-    },
-  })
+const handleConfirm = async (transaction_id: string) => {
+  // @ts-ignore
+  if (wx.openBusinessView) {
+    // @ts-ignore
+    wx.openBusinessView({
+      businessType: 'weappOrderConfirm',
+      extraData: {
+        merchant_id: '1724767398',
+        merchant_trade_no: orderDetail.value?.out_trade_no,
+        transaction_id: transaction_id,
+      },
+      success(res: any) {
+        console.log('确认收货成功', res)
+        getOrderDetail(orderNo.value)
+      },
+      fail(err: any) {
+        console.error('确认收货失败', err)
+      },
+    })
+  } else {
+    await uni.showToast({
+      title: '请升级微信版本',
+      icon: 'none',
+    })
+  }
 }
 
 // 处理查看物流
@@ -95,18 +94,7 @@ onLoad((options: any) => {
 
 <template>
   <view class="order-detail" v-if="orderDetail">
-    <scroll-view
-      class="content"
-      :style="{
-        paddingBottom:
-          orderDetail.status === 'SHIPPED' || orderDetail.status === 'PAID'
-            ? `calc(120rpx + ${safeAreaInsets?.bottom || 0}px)`
-            : '48rpx',
-      }"
-      :scroll-y="true"
-      :enhanced="true"
-      :show-scrollbar="false"
-    >
+    <scroll-view class="content" :scroll-y="true" :enhanced="true" :show-scrollbar="false">
       <!-- 订单状态 -->
       <view class="status-section">
         <view class="status-icon">
@@ -255,6 +243,17 @@ onLoad((options: any) => {
           </view>
         </view>
       </view>
+
+      <!-- 底部占位 -->
+      <view
+        class="bottom-placeholder"
+        :style="{ height: `calc(100rpx + ${safeAreaInsets?.bottom || 0}px)` }"
+        v-if="
+          orderDetail.status === 'SHIPPED' ||
+          orderDetail.status === 'PAID' ||
+          orderDetail.status === 'COMPLETED'
+        "
+      ></view>
     </scroll-view>
 
     <!-- 底部操作栏 -->
@@ -268,7 +267,9 @@ onLoad((options: any) => {
         <!-- 待收货 -->
         <template v-if="orderDetail.status === 'SHIPPED'">
           <view class="btn ghost" @click="handleLogistics">查看物流</view>
-          <view class="btn primary" @click="handleConfirm(orderDetail.out_trade_no)">确认收货</view>
+          <view class="btn primary" @click="handleConfirm(orderDetail.transaction_id)"
+            >确认收货</view
+          >
         </template>
       </view>
       <view class="safe-area" :style="{ height: safeAreaInsets?.bottom + 'px' }"></view>
@@ -289,7 +290,6 @@ onLoad((options: any) => {
   .content {
     height: 100%;
     padding: 24rpx;
-    box-sizing: border-box;
   }
 
   // 订单状态
@@ -540,6 +540,11 @@ onLoad((options: any) => {
         }
       }
     }
+  }
+
+  // 底部占位
+  .bottom-placeholder {
+    flex-shrink: 0;
   }
 }
 

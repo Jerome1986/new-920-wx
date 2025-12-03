@@ -27,8 +27,8 @@ const params = ref({
 // 重置函数
 const reset = () => {
   finish.value = false
+  loading.value = false
   params.value.pageNum = 1
-  orderList.value = []
 }
 
 // 默认下标
@@ -43,17 +43,30 @@ const handleTag = (text: string, index: number) => {
 
 // 订单列表
 const finish = ref(false)
+const loading = ref(false) // 防抖
 const orderList = ref<OrderItem[]>([])
 const orderListGet = async (userId: string, status: string, pageNum: number, pageSize: number) => {
-  if (finish.value) return // 通过标记退出分页加载
+  if (finish.value || loading.value) return // 通过标记退出分页加载
+  loading.value = true
+
+  // 发起请求
   const res = await userOrderGetApi(userId, status, pageNum, pageSize)
   console.log('订单', res.data)
-  orderList.value.push(...res.data.list)
+  // 首页直接赋值，分页追加
+  if (params.value.pageNum === 1) {
+    orderList.value = res.data.list
+  } else {
+    orderList.value.push(...res.data.list)
+  }
+
+  // 如果当前页小于总页数就++
   if (params.value.pageNum < res.data.totalPage) {
     params.value.pageNum++
   } else {
-    finish.value = true
+    finish.value = true // 否则退出分页
   }
+
+  loading.value = false
 }
 
 // 触底加载更多

@@ -14,6 +14,14 @@ const { safeAreaInsets } = uni.getSystemInfoSync()
 // 定义 store
 const userStore = useMemberStore()
 
+// 开通记录
+const activationRecord = () => {
+  console.log('跳转开通记录查看会员订单')
+  uni.navigateTo({
+    url: '/pagesMember/myVip/vipOrder',
+  })
+}
+
 // 默认下标
 const activeIndex = ref(0)
 
@@ -98,7 +106,10 @@ const buyNow = async () => {
 <template>
   <view class="myVip">
     <!-- 头部 -->
-    <view class="head">开通会员，畅享VIP服务特权</view>
+    <view class="head">
+      <view class="title">开通会员，畅享VIP服务特权</view>
+      <view class="btn" @click="activationRecord">开通记录</view>
+    </view>
     <!-- 用户信息 -->
     <view class="userInfo">
       <view class="avatar">
@@ -158,9 +169,24 @@ const buyNow = async () => {
 
   .head {
     margin-bottom: 12rpx;
-    font-size: 36rpx;
-    color: $jel-brandColor;
-    font-family: 'YouSheBiaoTiHei', 'Microsoft YaHei', sans-serif;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    .title {
+      font-size: 36rpx;
+      color: $jel-brandColor;
+      font-family: 'YouSheBiaoTiHei', 'Microsoft YaHei', sans-serif;
+    }
+
+    /*开通记录*/
+    .btn {
+      background-color: $jel-brandColor;
+      padding: 8rpx 16rpx;
+      border-radius: 80rpx;
+      color: #ffffff;
+      font-size: 24rpx;
+    }
   }
 
   /*用户信息*/

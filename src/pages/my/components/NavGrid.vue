@@ -20,7 +20,10 @@ const handleGrid = (val: string) => {
   // 点击功能
   switch (val) {
     case '我的积分':
-      console.log('我的收益')
+      console.log('我的积分')
+      uni.navigateTo({
+        url: '/pagesMember/myScore/myScore',
+      })
       break
     case '我的订单':
       console.log('我的订单')

@@ -118,7 +118,9 @@ const submit = async () => {
     signType: orderRes.data.signType,
     paySign: orderRes.data.paySign,
     async success(res) {
-      console.log('支付成功', res)
+      console.log('支付结果', res)
+      // 重新拉取用户信息
+      await userStore.userInfoGet(userStore.profile._id)
       await uni.showToast({ icon: 'success', title: '支付成功' })
       // 返回购物车页面
       setTimeout(() => {

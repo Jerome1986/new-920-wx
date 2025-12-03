@@ -5,6 +5,7 @@ import type {
   OrderPageResult,
   OrderProductItem,
   OrderUserInfo,
+  VipOrderItem,
 } from '@/types/Order'
 import type { AddressInfo } from '@/types/UserItem'
 import type { WechatPayParams } from '@/types/WechatPay'
@@ -148,5 +149,18 @@ export const vipOrderCancelledApi = (orderId: string) => {
     method: 'POST',
     url: '/order/cancelVip',
     data: { orderId },
+  })
+}
+
+/**
+ * 获取用户的会员订单
+ * @param userId - 用户ID
+ * @param status - 订单状态，前端只展示PAID 已开通  CANCELLED已取消
+ */
+export const vipOrderGetApi = (userId: string, status: string) => {
+  return request<VipOrderItem[]>({
+    method: 'GET',
+    url: '/order/vip',
+    data: { userId, status },
   })
 }

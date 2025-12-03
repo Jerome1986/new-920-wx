@@ -164,6 +164,20 @@
             "navigationBarTitleText": "商品订单详情",
             "enablePullDownRefresh": false
           }
+        },
+        {
+          "path": "myVip/vipOrder",
+          "style": {
+            "navigationBarTitleText": "会员订单",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "myScore/myScore",
+          "style": {
+            "navigationBarTitleText": "我的积分",
+            "enablePullDownRefresh": false
+          }
         }
       ]
     }

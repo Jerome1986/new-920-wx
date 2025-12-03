@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { UserItem } from '@/types/UserItem'
+import { userInfoGetApi } from '@/api/user.ts'
 
 // 定义 Store
 export const useMemberStore = defineStore(
@@ -43,11 +44,19 @@ export const useMemberStore = defineStore(
       profile.value = DEFAULT_INFO.value
     }
 
+    // 获取用户信息
+    const userInfoGet = async (userId: string) => {
+      const res = await userInfoGetApi(userId)
+      console.log('拉取用户信息', res.data)
+      profile.value = res.data
+    }
+
     // 记得 return
     return {
       profile,
       setProfile,
       clearProfile,
+      userInfoGet,
     }
   },
   {

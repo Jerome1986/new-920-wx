@@ -180,15 +180,39 @@ export interface OrderStatistics {
   totalAmount: number
 }
 
-// 兼容旧代码：会员订单类型
-export interface ProOrderItem {
+// 会员订单类型
+export interface VipOrderItem {
+  /** mongodb 唯一标识 */
   _id: string
+  /** 订单号*/
   out_trade_no: string
-  status: OrderStatus
+  /** 用户ID*/
+  userId: string
+  /** 用户电话*/
+  userMobile: string
+  /** 对应的产品ID*/
+  vipProId: string
+  /** 会员等级*/
+  vipLevel: number
+  /** 会员等级文本说明*/
   vipLevelText: string
-  discount: number
-  giftCount: number
-  term: string
+  /** 产品金额*/
   amount: number
-  createdAt: string
+  /** 会员可享折扣*/
+  discount: number
+  /** 每月对应的免费贴膜次数*/
+  limit: number
+  /** 可共享的家庭成员*/
+  maxUsers: number
+  /** 会员周期 */
+  term: string
+  /** 当前订单状态*/
+  status: VipOrderStatus
+  /** 订单创建时间 */
+  createdAt: Date
+  /** 订单更新时间 */
+  updatedAt: Date
 }
+
+// 会员订单状态:支付则代表完成 前端显示已开通
+export type VipOrderStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDING'
