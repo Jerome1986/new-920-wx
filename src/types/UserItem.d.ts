@@ -42,8 +42,10 @@ export type UserItem = {
   myCodeUrl: string
   /** 平台积分 */
   score: number
-  /** 待结算余额 */
-  balance: number
+  /** 店长运营资金（展示用，字段归属类型UserItem） */
+  operating_balance?: number
+  /** 店长待结算余额 （展示用，字段归属类型UserItem）*/
+  settle_balance?: number
 }
 
 // 收货地址信息

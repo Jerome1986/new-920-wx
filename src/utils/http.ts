@@ -54,7 +54,7 @@ uni.addInterceptor('uploadFile', httpInterceptor)
  *    3.2 其他错误 -> 根据后端错误信息轻提示
  *    3.3 网络错误 -> 提示用户换网络
  */
-type Data<T> = {
+export type Data<T> = {
   code: number
   message: string
   data: T

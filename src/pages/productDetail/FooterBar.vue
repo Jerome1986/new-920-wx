@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { useCartStore, useCartTobStore } from '@/stores'
 //获取安全距离
-
-import { useCartStore } from '@/stores'
-
 const { safeAreaInsets } = uni.getSystemInfoSync()
+
+defineProps({
+  model: String,
+})
 
 // 定义store
 const cartStore = useCartStore()
+const cartTobStore = useCartTobStore()
 
 const emits = defineEmits(['addCart', 'nowAdd'])
 
@@ -21,6 +24,29 @@ const buyNow = () => {
   console.log('buyNow')
   emits('nowAdd')
 }
+
+// 跳转采购车（处理页面栈溢出）
+const goToPurchaseCart = () => {
+  const pages = getCurrentPages()
+  console.log('当前页面栈层数:', pages.length)
+
+  // 页面栈接近上限时，使用 redirectTo 替换当前页
+  if (pages.length >= 9) {
+    uni.redirectTo({
+      url: '/pagesMember/purchaseCart/purchaseCart',
+    })
+  } else {
+    uni.navigateTo({
+      url: '/pagesMember/purchaseCart/purchaseCart',
+      fail: () => {
+        // 跳转失败时降级为 redirectTo
+        uni.redirectTo({
+          url: '/pagesMember/purchaseCart/purchaseCart',
+        })
+      },
+    })
+  }
+}
 </script>
 
 <template>
@@ -31,7 +57,13 @@ const buyNow = () => {
         <text style="font-size: 40rpx" class="iconfont icon-kefu"></text>
         <text class="label">客服</text>
       </button>
-      <navigator class="icons-button" url="/pages/cart/cart" open-type="switchTab">
+      <!--  toc模式跳转    -->
+      <navigator
+        class="icons-button"
+        url="/pages/cart/cart"
+        open-type="switchTab"
+        v-if="model === 'toC'"
+      >
         <text style="font-size: 40rpx" class="iconfont icon-a-ziyuan1"></text>
         <!-- 当前购物车数量 -->
         <text class="cratNum" v-if="cartStore.totalQuantity">
@@ -39,6 +71,15 @@ const buyNow = () => {
         </text>
         <text class="label">购物车</text>
       </navigator>
+      <!--  toB模式跳转（手动处理页面栈）    -->
+      <view class="icons-button" v-if="model === 'toB'" @click="goToPurchaseCart">
+        <text style="font-size: 40rpx" class="iconfont icon-a-ziyuan1"></text>
+        <!-- 当前购物车数量 -->
+        <text class="cratNum" v-if="cartTobStore.totalQuantity">
+          {{ cartTobStore.totalQuantity ?? 0 }}
+        </text>
+        <text class="label">采购车</text>
+      </view>
     </view>
     <view class="buttons">
       <view class="addcart" @tap="addCart">加入购物车</view>

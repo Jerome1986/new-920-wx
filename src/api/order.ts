@@ -95,6 +95,19 @@ export const proOrderCancelApi = (orderId: string) => {
 }
 
 /**
+ * 查看订单物流信息
+ * @param openid - 微信用户唯一ID
+ * @param transaction_id - 交易单号
+ */
+export const orderLogisticsApi = (openid: string, transaction_id: string) => {
+  return request({
+    method: 'POST',
+    url: '/order/getOrderLogistics',
+    data: { openid, transaction_id },
+  })
+}
+
+/**
  * 办理会员支付接口
  * @param userId
  * @param userMobile

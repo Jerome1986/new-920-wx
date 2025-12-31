@@ -8,6 +8,8 @@ export interface CartItem {
   selected: boolean
   /** 商品ID */
   productId: string
+  /** 对应的手机型号 */
+  model?: string
   /** 商品货号 */
   skuNo: string
   /** 商品名称 */

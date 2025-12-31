@@ -21,10 +21,22 @@ export const productsHotGetApi = (pageNum: number, pageSize: number) => {
  * 根据分类名称获取产品列表
  * @param cateName - 分类名称
  */
-export const productsListGetApi = (cateName: string) => {
+export const productsListTobGetApi = (cateName: string) => {
   return request<ProductItem[]>({
     method: 'GET',
-    url: '/product/get',
+    url: '/product/getB',
+    data: { cateName },
+  })
+}
+
+/**
+ * 根据分类名称获取产品列表
+ * @param cateName - 分类名称
+ */
+export const productsListTocGetApi = (cateName: string) => {
+  return request<ProductItem[]>({
+    method: 'GET',
+    url: '/product/getC',
     data: { cateName },
   })
 }
@@ -39,6 +51,20 @@ export const productListByCateIdGetApi = (cateId: string, pageNum: number, pageS
   return request<ProductPageResult>({
     method: 'GET',
     url: '/product/cateId',
+    data: { cateId, pageNum, pageSize },
+  })
+}
+
+/**
+ * 根据分类ID获取C端商品
+ * @param cateId - 分类ID
+ * @param pageNum - 页码
+ * @param pageSize - 条数
+ */
+export const productListByCateIdTocGetApi = (cateId: string, pageNum: number, pageSize: number) => {
+  return request<ProductPageResult>({
+    method: 'GET',
+    url: '/product/cateIdToc',
     data: { cateId, pageNum, pageSize },
   })
 }

@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useMemberStore } from '@/stores'
-import { onLoad, onShow } from '@dcloudio/uni-app'
-import { formatOrderState, formatTimestamp } from '@/utils/formatTimestamp.ts'
-import type { OrderItem } from '@/types/Order'
-import { confirmOrderLogistics, userOrderGetApi } from '@/api/order.ts'
-import { MERCHANT_ID } from '@/utils/config.ts'
-import type { BusinessSuccessResponse } from '@/types/Gobal'
+import { onLoad } from '@dcloudio/uni-app'
+import { formatPurchasedOrderState, formatTimestamp } from '@/utils/formatTimestamp.ts'
+import { purchasedOrderCancelApi, purchaseOrderGetApi } from '@/api/purchase.ts'
+import type { PurchaseItem } from '@/types/Purchase'
 
 // 定义store
 const userStore = useMemberStore()
@@ -14,10 +12,9 @@ const userStore = useMemberStore()
 // tag列表
 const tagList = ref([
   { id: 'tag1', text: 'ALL', label: '全部' },
-  // { id: 'tag2', text: 'PENDING', label: '待支付' },
-  { id: 'tag3', text: 'PAID', label: '待发货' },
-  { id: 'tag4', text: 'SHIPPED', label: '待收货' },
-  { id: 'tag5', text: 'COMPLETED', label: '已完成' },
+  { id: 'tag2', text: 'PAID', label: '待取货' },
+  { id: 'tag3', text: 'COMPLETED', label: '已完成' },
+  { id: 'tag4', text: 'CANCELLED', label: '已取消' },
 ])
 
 // 分页
@@ -40,35 +37,37 @@ const handleTag = (text: string, index: number) => {
   console.log('切换状态', text)
   activeIndex.value = index
   reset() // 重置订单页面信息
-  orderListGet(userStore.profile._id, text, params.value.pageNum, params.value.pageSize)
+  //  请求进货单接口
+  purchaseOrderListGet(userStore.profile._id, text, params.value.pageNum, params.value.pageSize)
 }
 
 // 订单列表
 const finish = ref(false)
 const loading = ref(false) // 防抖
-const orderList = ref<OrderItem[]>([])
-const orderListGet = async (userId: string, status: string, pageNum: number, pageSize: number) => {
-  if (finish.value || loading.value) return // 通过标记退出分页加载
-  loading.value = true
-
-  // 发起请求
-  const res = await userOrderGetApi(userId, status, pageNum, pageSize)
-  console.log('订单', res.data)
-  // 首页直接赋值，分页追加
+const purchaseOrderList = ref<PurchaseItem[]>([])
+const purchaseOrderListGet = async (
+  userId: string,
+  status: string,
+  pageNum: number,
+  pageSize: number,
+) => {
+  // 请求进货单
+  if (finish.value) return // 退出分页
+  const res = await purchaseOrderGetApi(userId, status, pageNum, pageSize)
+  console.log('结果', res)
+  // 如果是第一页就直接赋值，否则就用数组添加
   if (params.value.pageNum === 1) {
-    orderList.value = res.data.list
+    purchaseOrderList.value = res.data.list
   } else {
-    orderList.value.push(...res.data.list)
+    purchaseOrderList.value.push(...res.data.list)
   }
 
-  // 如果当前页小于总页数就++
+  // 加载分页
   if (params.value.pageNum < res.data.totalPage) {
     params.value.pageNum++
   } else {
-    finish.value = true // 否则退出分页
+    finish.value = true
   }
-
-  loading.value = false
 }
 
 // 触底加载更多
@@ -76,7 +75,7 @@ const isLoading = ref(false) // 加载中标记，避免并发
 const handleScrolltolower = async () => {
   if (finish.value || isLoading.value) return
   isLoading.value = true
-  await orderListGet(
+  await purchaseOrderListGet(
     userStore.profile._id,
     tagList.value[activeIndex.value].text,
     params.value.pageNum,
@@ -89,68 +88,43 @@ const handleScrolltolower = async () => {
 const handleGoDetail = (orderNo: string) => {
   console.log('跳转订单详情', orderNo)
   uni.navigateTo({
-    url: `/pagesMember/myOrder/proOrderDetail?orderNo=${orderNo}`,
+    url: `/pagesMember/storeOrders/storeOrderDetail?orderNo=${orderNo}`,
   })
 }
 
-// 处理确认收货
-const handleConfirm = (orderNo: string, transaction_id: string) => {
-  ;(wx as any).openBusinessView({
-    businessType: 'weappOrderConfirm', // 业务类型，根据微信文档
-    extraData: {
-      merchant_id: MERCHANT_ID,
-      merchant_trade_no: orderNo,
-      transaction_id,
-    },
-    async success(res: BusinessSuccessResponse) {
-      console.log('打开成功', res)
-      // 判断打开后是否取消
-      if (res.extraData.status === 'cancel')
-        return uni.showToast({ icon: 'none', title: '已取消', mask: true })
-
-      // 成功操作将订单状态更新入库已完成
-      await confirmOrderLogistics(userStore.profile._id, orderNo)
-
-      // 如果正常操作更新当前订单数组为已完成
-      orderList.value.find((item) => {
-        if (item.out_trade_no === orderNo) {
-          item.status = 'COMPLETED'
+// 取消订单
+const handleCancelOrder = (orderNo: string) => {
+  console.log('取消订单', orderNo)
+  uni.showModal({
+    title: '提示',
+    content: '确定要取消订单吗?',
+    confirmColor: '#d62731',
+    success: async (res) => {
+      if (res.confirm) {
+        // TODO: 实现取消订单逻辑
+        const res = await purchasedOrderCancelApi(orderNo)
+        if (res.code === 200) {
+          // 请求成功，同步一下STORE里的运营资金
+          userStore.setProfile({ operating_balance: res.data.operating_balance })
+          // 重置分页状态，从第1页重新加载
+          reset()
+          await purchaseOrderListGet(
+            userStore.profile._id,
+            tagList.value[activeIndex.value].text,
+            params.value.pageNum,
+            params.value.pageSize,
+          )
         }
-      })
-
-      // 将激活下标设定到更新项
-      activeIndex.value = tagList.value.findIndex((item) => item.text === 'COMPLETED')
-      reset() // 重置订单页面信息
-      // 重新拉取订单数据
-      await orderListGet(
-        userStore.profile._id,
-        tagList.value[activeIndex.value].text,
-        params.value.pageNum,
-        params.value.pageSize,
-      )
-
-      // 成功提示
-      await uni.showToast({
-        title: '订单已完成',
-        icon: 'success',
-        mask: true,
-      })
-    },
-
-    fail(err: any) {
-      console.error('打开失败', err)
+      } else {
+        console.log('已取消')
+      }
     },
   })
 }
-
-// 收货组件回调
-onShow((options) => {
-  console.log('收货组件回调', options)
-})
 
 onLoad(() => {
   if (userStore.profile?._id) {
-    orderListGet(userStore.profile._id, 'ALL', params.value.pageNum, params.value.pageSize)
+    purchaseOrderListGet(userStore.profile._id, 'ALL', params.value.pageNum, params.value.pageSize)
   }
 })
 </script>
@@ -177,9 +151,9 @@ onLoad(() => {
       :enhanced="true"
       :show-scrollbar="false"
       @scrolltolower="handleScrolltolower"
-      v-if="orderList.length > 0"
+      v-if="purchaseOrderList.length > 0"
     >
-      <view class="order-card" v-for="item in orderList" :key="item._id">
+      <view class="order-card" v-for="item in purchaseOrderList" :key="item._id">
         <!-- 头部：订单号 + 状态 -->
         <view class="card-head" @click="handleGoDetail(item.out_trade_no)">
           <view class="order-no">
@@ -190,20 +164,22 @@ onLoad(() => {
             class="status"
             :class="{
               paid: item.status === 'PAID',
-              pending: item.status === 'PENDING',
               shipped: item.status === 'SHIPPED',
               completed: item.status === 'COMPLETED',
               cancelled: item.status === 'CANCELLED',
-              refunded: item.status === 'REFUNDED',
             }"
           >
-            {{ formatOrderState(item.status) }}
+            {{ formatPurchasedOrderState(item.status) }}
           </view>
         </view>
 
-        <!-- 商品列表 -->
+        <!-- 商品列表--列表只显示2条以内的商品，需要详情查看 -->
         <view class="product-list" @click="handleGoDetail(item.out_trade_no)">
-          <view class="product-item" v-for="product in item.products" :key="product._id">
+          <view
+            class="product-item"
+            v-for="product in item.products.slice(0, 2)"
+            :key="product._id"
+          >
             <!-- 商品图片 -->
             <image class="cover" :src="product.sku?.image || product.cover" mode="aspectFill" />
 
@@ -224,19 +200,6 @@ onLoad(() => {
         <!-- 订单金额和收货信息 -->
         <view class="order-info" @click="handleGoDetail(item.out_trade_no)">
           <view class="info-row">
-            <text class="label">收货人：</text>
-            <text class="value"
-              >{{ item.addressInfo.userName }} {{ item.addressInfo.telNumber }}</text
-            >
-          </view>
-          <view class="info-row">
-            <text class="label">收货地址：</text>
-            <text class="value">
-              {{ item.addressInfo.provinceName }} {{ item.addressInfo.cityName }}
-              {{ item.addressInfo.countyName }} {{ item.addressInfo.detailInfo }}
-            </text>
-          </view>
-          <view class="info-row">
             <text class="label">下单时间：</text>
             <text class="value">{{ formatTimestamp(item.createdAt, 2) }}</text>
           </view>
@@ -250,37 +213,18 @@ onLoad(() => {
           </view>
 
           <view class="actions">
-            <!-- 待支付：取消订单、立即支付 -->
-            <!--            <template v-if="item.status === 'PENDING'">-->
-            <!--              <view class="btn ghost" @click.stop="handleCancel(item._id)">取消订单</view>-->
-            <!--              <view class="btn primary" @click.stop="handlePay(item)">立即支付</view>-->
-            <!--            </template>-->
-
-            <!-- 待发货：查看详情 -->
+            <!-- 待取货：取消订单 + 查看详情 -->
             <template v-if="item.status === 'PAID'">
+              <view class="btn ghost" @click.stop="handleCancelOrder(item.out_trade_no)"
+                >取消订单</view
+              >
               <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
                 >查看详情</view
-              >
-            </template>
-
-            <!-- 待收货：查看物流、确认收货 -->
-            <template v-if="item.status === 'SHIPPED'">
-              <view
-                class="btn primary"
-                @click.stop="handleConfirm(item.out_trade_no, item.transaction_id)"
-                >确认收货</view
               >
             </template>
 
             <!-- 已完成：查看详情 -->
             <template v-if="item.status === 'COMPLETED'">
-              <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
-                >查看详情</view
-              >
-            </template>
-
-            <!-- 已取消/已退款：查看详情 -->
-            <template v-if="item.status === 'CANCELLED' || item.status === 'REFUNDED'">
               <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
                 >查看详情</view
               >

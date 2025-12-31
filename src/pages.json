@@ -71,7 +71,7 @@
       }
     },
     {
-      "path": "pages/productDetail/productDetail",
+      "path": "pages/productDetail/productDetailToc",
       "style": {
         "navigationBarTitleText": "商品详情",
         "enablePullDownRefresh": false
@@ -81,6 +81,13 @@
       "path": "pages/confirmOrder/confirmOrder",
       "style": {
         "navigationBarTitleText": "确认订单",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/productDetail/productDetailTob",
+      "style": {
+        "navigationBarTitleText": "商品详情",
         "enablePullDownRefresh": false
       }
     }
@@ -176,6 +183,62 @@
           "path": "myScore/myScore",
           "style": {
             "navigationBarTitleText": "我的积分",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "myIncome/myIncome",
+          "style": {
+            "navigationBarTitleText": "门店收入",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "StoreManager/StoreManager",
+          "style": {
+            "navigationBarTitleText": "门店管理",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "storePurchase/storePurchase",
+          "style": {
+            "navigationBarTitleText": "门店采购",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "purchaseCart/purchaseCart",
+          "style": {
+            "navigationBarTitleText": "采购车",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "PurchasedConfirmation/PurchasedConfirmation",
+          "style": {
+            "navigationBarTitleText": "采购确认单",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "storeOrders/storeOrders",
+          "style": {
+            "navigationBarTitleText": "采购订单",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "storeOrders/storeOrderDetail",
+          "style": {
+            "navigationBarTitleText": "门店订单详情",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "storeInventory/storeInventory",
+          "style": {
+            "navigationBarTitleText": "门店库存",
             "enablePullDownRefresh": false
           }
         }

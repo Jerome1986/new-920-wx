@@ -23,25 +23,9 @@ const onAgreeChange = (e: any) => {
 // 同意协议
 const showAgreementModal = () => {
   console.log('showAgreementModal', agree.value)
-  uni.showModal({
-    title: '提示',
-    content: '您将使用账号信息登录，并同意《用户协议》《隐私政策》。\n点击“同意”继续。',
-    confirmText: '同意',
-    cancelText: '再看看',
-    confirmColor: '#d62731',
-    success: (res) => {
-      if (res.confirm) agree.value = true
-      uni.showToast({
-        icon: 'success',
-        title: '已同意',
-        duration: 1000,
-        mask: true,
-      })
-    },
-    fail: (err) => {
-      console.error('showModal fail:', err)
-    },
-  })
+  if (!agree.value) {
+    uni.showToast({ icon: 'none', duration: 2000, mask: true, title: '请先阅读并勾选用户协议' })
+  }
 }
 
 // 获取手机号凭证返回类型
@@ -54,57 +38,66 @@ type GetPhoneNumberEvent = {
   }
 }
 // 手机登录
-const handleLogin = (e: GetPhoneNumberEvent) => {
+const handleLogin = async (e: GetPhoneNumberEvent) => {
   console.log('handleMobileLogin', e)
+  try {
+    const wxRes = await wxLoginApi(
+      freshCode.value,
+      e.detail.encryptedData!,
+      e.detail.iv!,
+      inviterCode.value,
+      inviter2Code.value,
+    )
+    console.log('wxMobileLoginApi 返回', wxRes)
 
+    if (wxRes.code === 200 && wxRes.data) {
+      const userRes = wxRes.data
+      console.log(userRes)
+      // 检测会员是否过期
+      if (userRes.role === 'vip' && userRes.vipEndTime && isVipExpired(userRes.vipEndTime)) {
+        userRes.role = 'user'
+        console.log('会员已过期')
+      }
+
+      userStore.setProfile(userRes) // 将返回的用户信息存入store
+
+      await uni.showToast({
+        icon: 'success',
+        title: '登录成功',
+        duration: 1000,
+      })
+
+      setTimeout(() => {
+        uni.switchTab({ url: '/pages/home/home' })
+      }, 1000)
+    } else {
+      await uni.showToast({
+        icon: 'none',
+        title: wxRes.message || '登录失败，请稍后重试',
+      })
+      console.warn('登录接口响应失败', wxRes)
+    }
+  } catch (err) {
+    await uni.showToast({ icon: 'none', title: '请求异常，请检查网络' })
+    console.error('调用登录接口异常', err)
+  }
+}
+
+// 刷新CODE
+const freshCode = ref('')
+// 获取参数-邀请码
+const inviterCode = ref('')
+const inviter2Code = ref('')
+onLoad(async (options: any) => {
+  console.log('入参', options)
+  // 进页面就重新获取code，防止过期
   uni.login({
     success: async (res) => {
-      if (!res.code) {
+      freshCode.value = res.code + '' // 强制触发一次新的 code
+      if (!freshCode.value) {
         await uni.showToast({ icon: 'none', title: '获取code失败' })
         console.error('uni.login 获取code失败', res)
         return
-      }
-
-      try {
-        const wxRes = await wxLoginApi(
-          res.code,
-          e.detail.encryptedData!,
-          e.detail.iv!,
-          inviterCode.value,
-          inviter2Code.value,
-        )
-        console.log('wxMobileLoginApi 返回', wxRes)
-
-        if (wxRes.code === 200 && wxRes.data) {
-          const userRes = wxRes.data
-          console.log(userRes)
-          // 检测会员是否过期
-          if (userRes.role === 'vip' && userRes.vipEndTime && isVipExpired(userRes.vipEndTime)) {
-            userRes.role = 'user'
-            console.log('会员已过期')
-          }
-
-          userStore.setProfile(userRes) // 将返回的用户信息存入store
-
-          await uni.showToast({
-            icon: 'success',
-            title: '登录成功',
-            duration: 1000,
-          })
-
-          setTimeout(() => {
-            uni.switchTab({ url: '/pages/home/home' })
-          }, 1000)
-        } else {
-          await uni.showToast({
-            icon: 'none',
-            title: wxRes.message || '登录失败，请稍后重试',
-          })
-          console.warn('登录接口响应失败', wxRes)
-        }
-      } catch (err) {
-        await uni.showToast({ icon: 'none', title: '请求异常，请检查网络' })
-        console.error('调用登录接口异常', err)
       }
     },
     fail: (err) => {
@@ -112,13 +105,6 @@ const handleLogin = (e: GetPhoneNumberEvent) => {
       console.error('login 失败', err)
     },
   })
-}
-
-// 获取参数-邀请码
-const inviterCode = ref('')
-const inviter2Code = ref('')
-onLoad(async (options: any) => {
-  console.log('入参', options)
 
   // 先判断分享链接进入
   if (options.inviterCode) {
@@ -177,9 +163,9 @@ onLoad(async (options: any) => {
 
       <!-- 登录按钮 -->
       <view class="login-btn">
-        <button v-if="!agree" class="btn" @tap="showAgreementModal">手机号快捷登录</button>
+        <button v-show="!agree" class="btn" @tap="showAgreementModal">手机号快捷登录</button>
         <button
-          v-else
+          v-show="agree"
           class="btn"
           type="primary"
           open-type="getPhoneNumber"

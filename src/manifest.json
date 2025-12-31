@@ -55,7 +55,11 @@
       "urlCheck": false
     },
     "usingComponents": true,
-    "requiredPrivateInfos": ["chooseAddress"]
+    "requiredPrivateInfos": ["chooseAddress"],
+    "logisticsPlugin": {
+      "version": "2.1.5",
+      "provider": "wx9ad912bf20548d92"
+    }
   },
   "mp-alipay": {
     "usingComponents": true

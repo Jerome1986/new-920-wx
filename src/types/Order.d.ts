@@ -59,13 +59,11 @@ export interface OrderUserInfo {
  */
 export interface OrderLogistics {
   /** 物流公司 */
-  company?: string
+  express_company?: string
   /** 物流单号 */
-  trackingNumber?: string
-  /** 物流状态 */
-  status?: string
-  /** 物流更新时间 */
-  updateTime?: string
+  tracking_no?: string
+  /** 物流信息备注 */
+  item_desc?: string
 }
 
 /**
@@ -95,7 +93,7 @@ export interface OrderItem {
   /** 支付流水号 */
   paymentNo?: string
   /** 物流信息 */
-  logistics?: OrderLogistics
+  logistics?: OrderLogistics[]
   /** 订单备注 */
   remark?: string
   /** 创建时间 */

@@ -4,6 +4,7 @@ import { ref, watch } from 'vue'
 import { autoLookNumApi } from '@/api/product.ts'
 
 const props = defineProps<{
+  models: 'toB' | 'toC'
   list: ProductItem[]
   finish: boolean
 }>()
@@ -66,9 +67,16 @@ const emits = defineEmits(['update:lookNum', 'update:loadMore'])
 // 点击跳转详情
 const handleItemDetail = async (productId: string) => {
   const updateLook = await autoLookNumApi(productId)
-  await uni.navigateTo({
-    url: `/pages/productDetail/productDetail?productId=${productId}`,
-  })
+  if (props.models === 'toC') {
+    await uni.navigateTo({
+      url: `/pages/productDetail/productDetailToc?productId=${productId}`,
+    })
+  } else if (props.models === 'toB') {
+    await uni.navigateTo({
+      url: `/pages/productDetail/productDetailTob?productId=${productId}`,
+    })
+  }
+
   emits('update:lookNum', updateLook.data.lookNum, productId)
 }
 

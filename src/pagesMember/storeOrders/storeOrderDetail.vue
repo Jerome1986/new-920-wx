@@ -1,71 +1,29 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { formatOrderState, formatTimestamp } from '@/utils/formatTimestamp.ts'
-import type { OrderItem } from '@/types/Order'
-import { confirmOrderLogistics, userOrderDetailGetApi } from '@/api/order.ts'
-import { validateExpressList } from '@/utils/logisticsMapping.ts'
-import { MERCHANT_ID } from '@/utils/config.ts'
-import type { BusinessSuccessResponse } from '@/types/Gobal'
-import { useMemberStore } from '@/stores'
+import { formatPurchasedOrderState, formatTimestamp } from '@/utils/formatTimestamp.ts'
+import { purchaseOrderDetailApi } from '@/api/purchase.ts'
+import type { PurchaseItem } from '@/types/Purchase'
 
 // 安全距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
-const userStore = useMemberStore()
 
 // 订单号
 const orderNo = ref('')
 
 // 订单详情
-const orderDetail = ref<OrderItem | null>(null)
+const orderDetail = ref<PurchaseItem | null>(null)
 
 // 获取订单详情
 const getOrderDetail = async (out_trade_no: string) => {
   try {
     //  调用API获取订单详情
-    const res = await userOrderDetailGetApi(out_trade_no)
-    console.log(res.data)
+    const res = await purchaseOrderDetailApi(out_trade_no)
     orderDetail.value = res.data
   } catch (error) {
     console.error('获取订单详情失败', error)
     await uni.showToast({
       title: '获取订单详情失败',
-      icon: 'none',
-    })
-  }
-}
-
-// 处理确认收货
-const handleConfirm = (transaction_id: string) => {
-  // @ts-ignore
-  if (wx.openBusinessView) {
-    // @ts-ignore
-    wx.openBusinessView({
-      businessType: 'weappOrderConfirm',
-      extraData: {
-        merchant_id: MERCHANT_ID,
-        merchant_trade_no: orderDetail.value?.out_trade_no,
-        transaction_id: transaction_id,
-      },
-      async success(res: BusinessSuccessResponse) {
-        console.log('确认收货成功', res)
-        // 判断打开后是否取消
-        if (res.extraData.status === 'cancel')
-          return uni.showToast({ icon: 'none', title: '已取消', mask: true })
-        // 将订单状态更新入库已完成
-        await confirmOrderLogistics(userStore.profile._id, orderNo.value)
-        await getOrderDetail(orderNo.value)
-        await uni.redirectTo({
-          url: '//pagesMember/myOrder/myOrder',
-        })
-      },
-      fail(err: any) {
-        console.error('确认收货失败', err)
-      },
-    })
-  } else {
-    uni.showToast({
-      title: '请升级微信版本',
       icon: 'none',
     })
   }
@@ -102,38 +60,16 @@ onLoad((options: any) => {
             class="iconfont"
             :class="{
               'icon-success': orderDetail.status === 'COMPLETED',
-              'icon-time': orderDetail.status === 'PENDING',
               'icon-logistics': orderDetail.status === 'SHIPPED',
               'icon-check': orderDetail.status === 'PAID',
-              'icon-close': orderDetail.status === 'CANCELLED' || orderDetail.status === 'REFUNDED',
+              'icon-close': orderDetail.status === 'CANCELLED',
             }"
           ></text>
         </view>
-        <view class="status-text">{{ formatOrderState(orderDetail.status) }}</view>
-        <view class="status-desc" v-if="orderDetail.status === 'PAID'">商家正在备货中</view>
-        <view class="status-desc" v-if="orderDetail.status === 'SHIPPED'">
-          商品正在配送中，请耐心等待
-        </view>
+        <view class="status-text">{{ formatPurchasedOrderState(orderDetail.status) }}</view>
+        <view class="status-desc" v-if="orderDetail.status === 'PAID'">请前往公司签到补货</view>
         <view class="status-desc" v-if="orderDetail.status === 'COMPLETED'">
           订单已完成，感谢您的购买
-        </view>
-      </view>
-
-      <!-- 收货地址 -->
-      <view class="address-section">
-        <view class="section-header">
-          <text class="iconfont icon-location"></text>
-          <text class="title">收货地址</text>
-        </view>
-        <view class="address-content">
-          <view class="user-info">
-            <text class="name">{{ orderDetail.addressInfo.userName }}</text>
-            <text class="phone">{{ orderDetail.addressInfo.telNumber }}</text>
-          </view>
-          <view class="address-text">
-            {{ orderDetail.addressInfo.provinceName }} {{ orderDetail.addressInfo.cityName }}
-            {{ orderDetail.addressInfo.countyName }} {{ orderDetail.addressInfo.detailInfo }}
-          </view>
         </view>
       </view>
 
@@ -141,7 +77,7 @@ onLoad((options: any) => {
       <view class="product-section">
         <view class="section-header">
           <text class="iconfont icon-a-ziyuan1"></text>
-          <text class="title">商品清单</text>
+          <text class="title">采购清单</text>
         </view>
         <view class="product-list">
           <view class="product-item" v-for="product in orderDetail.products" :key="product._id">
@@ -177,62 +113,15 @@ onLoad((options: any) => {
               <text class="copy" @click="handleCopy(orderDetail.out_trade_no)">复制</text>
             </view>
           </view>
-          <view class="info-item" v-if="orderDetail.transaction_id">
-            <text class="label">微信订单号</text>
-            <view class="value-wrapper">
-              <text class="value">{{ orderDetail.transaction_id }}</text>
-              <text class="copy" @click="handleCopy(orderDetail.transaction_id)">复制</text>
-            </view>
-          </view>
-          <view
-            class="info-item"
-            v-if="orderDetail.logistics?.length && orderDetail.logistics[0].express_company"
-          >
-            <text class="label">快递公司</text>
-            <view class="value-wrapper">
-              <text class="value">{{
-                validateExpressList(orderDetail.logistics[0].express_company)
-              }}</text>
-              <text
-                class="copy"
-                @click="handleCopy(validateExpressList(orderDetail.logistics[0].express_company))"
-                >复制</text
-              >
-            </view>
-          </view>
-          <view
-            class="info-item"
-            v-if="orderDetail.logistics?.length && orderDetail.logistics[0].tracking_no"
-          >
-            <text class="label">快递单号</text>
-            <view class="value-wrapper">
-              <text class="value">{{ orderDetail.logistics[0].tracking_no }}</text>
-              <text class="copy" @click="handleCopy(orderDetail.logistics[0].tracking_no)"
-                >复制</text
-              >
-            </view>
-          </view>
+
           <view class="info-item">
             <text class="label">下单时间</text>
             <text class="value">{{ formatTimestamp(orderDetail.createdAt, 2) }}</text>
           </view>
-          <view class="info-item" v-if="orderDetail.paidAt">
-            <text class="label">支付时间</text>
-            <text class="value">{{ formatTimestamp(orderDetail.paidAt, 2) }}</text>
-          </view>
-          <view class="info-item" v-if="orderDetail.shippedAt">
-            <text class="label">发货时间</text>
-            <text class="value">{{ formatTimestamp(orderDetail.shippedAt, 2) }}</text>
-          </view>
+
           <view class="info-item" v-if="orderDetail.completedAt">
             <text class="label">完成时间</text>
             <text class="value">{{ formatTimestamp(orderDetail.completedAt, 2) }}</text>
-          </view>
-          <view class="info-item">
-            <text class="label">支付方式</text>
-            <text class="value">{{
-              orderDetail.paymentMethod === 'wechat' ? '微信支付' : '其他'
-            }}</text>
           </view>
         </view>
       </view>
@@ -278,16 +167,9 @@ onLoad((options: any) => {
     <!-- 底部操作栏 -->
     <view class="footer" v-if="orderDetail.status === 'SHIPPED' || orderDetail.status === 'PAID'">
       <view class="footer-content">
-        <!-- 待发货 -->
+        <!-- 待取货 -->
         <template v-if="orderDetail.status === 'PAID'">
-          <view class="tips">商家正在备货中，请耐心等待</view>
-        </template>
-
-        <!-- 待收货 -->
-        <template v-if="orderDetail.status === 'SHIPPED'">
-          <view class="btn primary" @click="handleConfirm(orderDetail.transaction_id)"
-            >确认收货</view
-          >
+          <view class="tips">请尽快前往公司取货</view>
         </template>
       </view>
       <view class="safe-area" :style="{ height: safeAreaInsets?.bottom + 'px' }"></view>

@@ -9,14 +9,13 @@ export const useMemberStore = defineStore(
   () => {
     // 用户默认数据
     const DEFAULT_INFO = ref<UserItem>({
-      balance: 0,
       inviter2Code: '',
       openid: '',
       _id: '',
       inviterCode: '',
       referralCode: '',
       nickname: '',
-      avatarUrl: 'https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/images/defaultAvatar.png',
+      avatarUrl: 'https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/defaultAvatar.png',
       mobile: '点击登录',
       gender: 1,
       role: 'user',
@@ -30,6 +29,8 @@ export const useMemberStore = defineStore(
       vipDiscount: 0,
       myCodeUrl: '',
       score: 0,
+      operating_balance: 0,
+      settle_balance: 0,
     })
 
     // 会员信息

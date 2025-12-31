@@ -13,3 +13,16 @@ export const cateListGetApi = (level: number, parentId: string = '') => {
     data: { level, parentId },
   })
 }
+
+/**
+ * C端分类获取
+ * @param level - 分类层级
+ * @param parentId - 父级ID
+ */
+export const cateListTocGetApi = (level: number, parentId: string = '') => {
+  return request<CateItem[]>({
+    method: 'GET',
+    url: '/cate/tocGet',
+    data: { level, parentId },
+  })
+}

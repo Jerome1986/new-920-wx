@@ -7,7 +7,7 @@ import { onLoad } from '@dcloudio/uni-app'
 // 分页
 const params = ref({
   pageNum: 1,
-  pageSize: 8,
+  pageSize: 10,
 })
 
 // 退出分页标记
@@ -106,7 +106,7 @@ const handleItemDetail = async (productId: string) => {
   const item = hotList.value.find((p) => p._id === productId)
   if (item) item.lookNum = updateLook.data.lookNum
   await uni.navigateTo({
-    url: `/pages/productDetail/productDetail?productId=${productId}`,
+    url: `/pages/productDetail/productDetailToc?productId=${productId}`,
   })
 }
 </script>

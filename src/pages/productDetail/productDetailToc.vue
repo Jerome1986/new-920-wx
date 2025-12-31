@@ -33,6 +33,15 @@ onLoad(async (options) => {
   }
 })
 
+// 处理型号的选择
+const activeModelsIndex = ref<number | null>(null)
+const selectModels = ref('')
+const handleSelectModels = (model: string, index: number) => {
+  console.log(model, index)
+  activeModelsIndex.value = index
+  selectModels.value = model
+}
+
 // 处理sku的选择
 const activeSkuIndex = ref<number | null>(null) // 当前选择的sku索引
 const activeSkuCover = ref('') // 当前选择的sku图片
@@ -49,7 +58,7 @@ const handleSelectSku = (item: SkuItem, index: number) => {
 
 //  处理sku的确认
 const handleSkuConfrim = () => {
-  if (!selectSku.value) {
+  if (!selectSku.value || !selectModels.value) {
     return uni.showToast({
       icon: 'error',
       title: '请选择规格',
@@ -84,6 +93,7 @@ const handleAddCart = (val: string) => {
       _id: generateId('cart_'),
       selected: true,
       productId: productData.value?._id!,
+      model: selectModels.value,
       skuNo: productData.value?.skuNo || '',
       name: productData.value?.name || '',
       dec: productData.value?.dec || '',
@@ -191,6 +201,20 @@ const handleAddCart = (val: string) => {
           </view>
         </view>
         <!-- SKU选择区域 -->
+        <!--  适配机型   -->
+        <view class="skuTitle">适配机型</view>
+        <view class="skuContent">
+          <view
+            class="skuItem"
+            :class="{ activeModels: index === activeModelsIndex }"
+            v-for="(item, index) in productData?.models"
+            :key="index"
+            @click="handleSelectModels(item, index)"
+          >
+            {{ item }}
+          </view>
+        </view>
+        <!--  规格  -->
         <view class="skuTitle">规格</view>
         <view class="skuContent">
           <view
@@ -208,7 +232,11 @@ const handleAddCart = (val: string) => {
       </view>
     </uni-popup>
     <!-- 底部操作栏 -->
-    <FooterBar @addCart="handleAddCart('addCart')" @nowAdd="handleAddCart('nowAdd')"></FooterBar>
+    <FooterBar
+      model="toC"
+      @addCart="handleAddCart('addCart')"
+      @nowAdd="handleAddCart('nowAdd')"
+    ></FooterBar>
     <!--  占位  -->
     <view
       :style="{ paddingBottom: safeAreaInsets?.bottom + 'px' }"
@@ -440,6 +468,7 @@ const handleAddCart = (val: string) => {
       }
 
       .skuContent {
+        margin-bottom: 24rpx;
         display: flex;
         flex-wrap: wrap;
         gap: 24rpx;
@@ -456,6 +485,13 @@ const handleAddCart = (val: string) => {
 
         // SKU每一项-选中状态
         .activeSku {
+          color: $jel-brandColor;
+          font-size: 28rpx;
+          border: 1rpx solid $jel-brandColor;
+          background-color: rgba(255, 242, 237);
+        }
+        // 选中的型号
+        .activeModels {
           color: $jel-brandColor;
           font-size: 28rpx;
           border: 1rpx solid $jel-brandColor;

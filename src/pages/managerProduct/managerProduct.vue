@@ -52,6 +52,7 @@ onLoad((options: any) => {
 <template>
   <view class="managerProduct">
     <GlobalProductBar
+      :models="'toB'"
       :list="productList"
       @update:load-more="handleScrolltolower"
       :finish="finish"

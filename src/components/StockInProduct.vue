@@ -30,7 +30,7 @@ const emits = defineEmits(['update:lookNum'])
 const handleItem = async (productId: string) => {
   const updateLook = await autoLookNumApi(productId)
   await uni.navigateTo({
-    url: `/pages/productDetail/productDetail?productId=${productId}`,
+    url: `/pages/productDetail/productDetailToc?productId=${productId}`,
   })
   emits('update:lookNum', updateLook.data.lookNum, productId)
 }

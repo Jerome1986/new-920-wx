@@ -1,25 +1,35 @@
 <script setup lang="ts">
 import NavTab from '@/components/NavTab.vue'
+import SubCategory from '@/components/SubCategory.vue'
+import ThirdCategory from '@/components/ThirdCategory.vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { cateListTocGetApi } from '@/api/cate.ts'
+import { cateListGetApi } from '@/api/cate.ts'
 import GlobalProductBar from '@/components/GlobalProductBar.vue'
 import { useProductPageDriver } from '@/hooks/useProductPageDriver.ts'
-import { productListByCateIdTocGetApi } from '@/api/product.ts'
+import { productListByCateIdGetApi } from '@/api/product.ts'
 
 // 商品列表驱动器（解构使 ref 成为顶层变量，模板自动解包）
-
 const {
   level1List,
+  level2List,
+  level3List,
   selectLevel1,
+  selectLevel2,
+  selectLevel3,
   showProductList,
   productList,
   finish,
   loadMore,
   init,
-  handleNewLook,
 } = useProductPageDriver({
-  fetchCategory: cateListTocGetApi,
-  fetchProductList: productListByCateIdTocGetApi,
+  fetchCategory: cateListGetApi,
+  fetchProductList: productListByCateIdGetApi,
+  // 点击三级分类时跳转到商品列表页
+  onNavigateToThirdCategory: (thirdCategoryId: string) => {
+    uni.navigateTo({
+      url: `/pages/managerProduct/managerProduct?thirdCategoryId=${thirdCategoryId}`,
+    })
+  },
 })
 
 // 处理搜索
@@ -41,15 +51,16 @@ onLoad(async () => {
     </div>
     <!-- 一级分类 -->
     <NavTab :list="level1List" @cateSelected="selectLevel1"></NavTab>
-
+    <!-- 二级分类 -->
+    <SubCategory :list="level2List" @changePhone="selectLevel2"></SubCategory>
+    <!-- 三级分类 -->
+    <ThirdCategory :list="level3List" @selectedType="selectLevel3"></ThirdCategory>
     <!-- 商品列表（只有没有三级分类时显示） -->
     <view class="list" v-if="showProductList">
       <GlobalProductBar
-        :models="'toC'"
         :list="productList"
         :finish="finish"
         @update:loadMore="loadMore"
-        @update:lookNum="handleNewLook"
       ></GlobalProductBar>
     </view>
   </view>

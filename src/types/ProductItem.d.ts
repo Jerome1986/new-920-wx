@@ -10,6 +10,8 @@ export type ProductItem = {
   name: string
   /** 商品描述（简要说明） */
   dec: string
+  /** 适配的手机型号范围 */
+  models: string[]
   /** 商品原价（未打折前价格，单位：元） */
   originalPrice: number
   /** 当前售价（促销/实际出售价格，单位：元） */

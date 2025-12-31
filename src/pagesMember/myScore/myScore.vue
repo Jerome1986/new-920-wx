@@ -5,6 +5,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import type { ScoreItem } from '@/types/ScoreDetails'
 import { scoreListGetApi } from '@/api/scoreDetail.ts'
 import { userInfoGetApi } from '@/api/user.ts'
+import { formatTimestamp } from '@/utils/formatTimestamp.ts'
 
 // 定义store
 const userStore = useMemberStore()
@@ -128,7 +129,7 @@ onLoad(() => {
         <view class="score-item" v-for="item in scoreList" :key="item._id">
           <view class="item-left">
             <view class="source">{{ item.source }}</view>
-            <view class="time">{{ item.createdAt }}</view>
+            <view class="time">{{ formatTimestamp(item.createdAt, 2) }}</view>
           </view>
           <view class="item-right">
             <view

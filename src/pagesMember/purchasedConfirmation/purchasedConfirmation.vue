@@ -1,48 +1,20 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
-import { useCartStore, useMemberStore, useRateStore } from '@/stores'
-import type { AddressInfo } from '@/types/UserItem'
-import { proOrderCancelApi, proOrderPayApi } from '@/api/order.ts'
+import { computed } from 'vue'
+import { useCartTobStore, useManagerStore, useMemberStore, useRateStore } from '@/stores'
 import type { OrderAmount, OrderProductItem, OrderUserInfo } from '@/types/Order'
+import { purchaseOrderAddApi } from '@/api/purchase.ts'
 
 // 安全距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
 
 // 定义store
-const cartStore = useCartStore()
+const cartTobStore = useCartTobStore()
 const userStore = useMemberStore()
 const rateStore = useRateStore()
-
-// 选择地址-直接调用微信的收货地址
-const addressInfo = ref<AddressInfo | null>(null)
-const handleAddress = () => {
-  uni.chooseAddress({
-    success: (res: any) => {
-      console.log('选择的地址信息:', res)
-      addressInfo.value = {
-        userName: res.userName,
-        telNumber: res.telNumber,
-        provinceName: res.provinceName,
-        cityName: res.cityName,
-        countyName: res.countyName,
-        detailInfo: res.detailInfo,
-        postalCode: res.postalCode,
-        nationalCode: res.nationalCode,
-      }
-    },
-    fail: (err: any) => {
-      console.log('选择地址失败:', err)
-      uni.showToast({
-        title: '获取地址失败',
-        icon: 'none',
-      })
-    },
-  })
-}
-
+const managerStore = useManagerStore()
 // 可抵扣金额
 const deductAmount = computed(() => {
-  const total = cartStore.totalPrice
+  const total = cartTobStore.totalPrice
 
   const rules = rateStore.rateRules // 积分规则
   const userScore = userStore.profile?.score < 0 ? 0 : userStore.profile?.score // 用户剩余积分
@@ -61,20 +33,12 @@ const deductAmount = computed(() => {
 
 // 实际支付金额
 const needPay = computed(() => {
-  return cartStore.totalPrice - deductAmount.value
+  return cartTobStore.totalPrice - deductAmount.value
 })
 
 // 确认订单提交入库
 const submit = async () => {
-  console.log('提交订单', cartStore.selectProduct)
-  if (!addressInfo.value) {
-    await uni.showToast({
-      icon: 'error',
-      title: '请填写地址',
-      mask: true,
-    })
-    return
-  }
+  console.log('提交订单', cartTobStore.selectProduct)
 
   // 当前订单的用户信息
   const userInfo: OrderUserInfo = {
@@ -85,106 +49,72 @@ const submit = async () => {
   }
 
   // 当前订单的商品
-  const products: OrderProductItem[] = cartStore.selectProduct.map((item) => {
+  const products: OrderProductItem[] = cartTobStore.selectProduct.map((item) => {
     const { selected, ...rest } = item
     return rest
   })
 
   // 商品金额信息
   const amount: OrderAmount = {
-    totalPrice: Number(cartStore.totalPrice.toFixed(2)),
+    totalPrice: Number(cartTobStore.totalPrice.toFixed(2)),
     deductAmount: Number(deductAmount.value.toFixed(2)),
     actualPayment: Number(needPay.value.toFixed(2)),
     usedScore: Number(deductAmount.value.toFixed(2)),
   }
 
-  // 调用API提交订单
-  const orderRes = await proOrderPayApi(
-    userInfo,
-    addressInfo.value,
-    products,
-    cartStore.totalCount,
-    amount,
-    'wechat',
-    '商品购买',
-  )
+  // 提示下单
+  uni.showModal({
+    title: '提示',
+    content: '确定提交订单吗？',
+    confirmColor: '#d62731',
+    success: async (result) => {
+      if (result.confirm && managerStore.managerStoreInfo?.storeId) {
+        //  调用API提交订单
+        const res = await purchaseOrderAddApi(
+          managerStore.managerStoreInfo?.storeId,
+          userInfo,
+          products,
+          cartTobStore.totalCount,
+          amount,
+          '采购货物',
+        )
 
-  console.log('订单结果', orderRes)
-  // 调起微信支付
-  wx.requestPayment({
-    timeStamp: orderRes.data.timeStamp,
-    nonceStr: orderRes.data.nonceStr,
-    package: orderRes.data.packageValue,
-    signType: orderRes.data.signType,
-    paySign: orderRes.data.paySign,
-    async success(res) {
-      console.log('支付结果', res)
-      // 重新拉取用户信息
-      await userStore.userInfoGet(userStore.profile._id)
-      await uni.showToast({ icon: 'success', title: '支付成功' })
+        if (res.code === 200) {
+          // 更新运营资金余额
+          userStore.setProfile({ operating_balance: res.data.operating_balance })
+          // 提示
+          await uni.showToast({
+            icon: 'success',
+            title: '下单成功',
+          })
 
-      // 跳转到订单页
-      setTimeout(() => {
-        uni.redirectTo({
-          url: '/pagesMember/myOrder/myOrder',
-        })
-        // 清空购物车中已选中的商品
-        cartStore.clearSelectedCart()
-      }, 1500)
-    },
-    async fail(err) {
-      console.error('支付失败', err)
-      // 如果是取消支付，则将当前订单状态更新为已取消
-      const cannelRes = await proOrderCancelApi(orderRes.data.out_trade_no)
-      if (cannelRes.code === 200) {
-        await uni.showToast({ icon: 'none', title: cannelRes.message })
+          //  返回到门店管理页面
+          setTimeout(() => {
+            cartTobStore.clearSelectedCart() // 清空购物车
+            uni.reLaunch({ url: '/pagesMember/StoreManager/StoreManager' })
+          }, 800)
+        }
+      } else {
+        // 如果获取不到门店ID或者异常
+        await uni.showToast({ icon: 'none', title: '下单异常' })
+        await uni.reLaunch({ url: '/pagesMember/StoreManager/StoreManager' })
       }
     },
-  })
-
-  await uni.showToast({
-    icon: 'success',
-    title: '下单成功',
   })
 }
 </script>
 
 <template>
   <scroll-view class="confirmOrder" :scroll-y="true" :enhanced="true" :show-scrollbar="false">
-    <!-- 收货地址 -->
-    <view class="address-info">
-      <!-- 未选择地址 -->
-      <view v-if="!addressInfo" class="no-address" @click="handleAddress">
-        <text class="iconfont icon-add"></text>
-        <text class="text">获取收货地址</text>
-        <text class="iconfont icon-bianzu" style="color: #aaaaaa; font-size: 24rpx"></text>
-      </view>
-
-      <!-- 已选择地址 -->
-      <view v-else class="has-address" @click="handleAddress">
-        <view class="address-header">
-          <view class="user-info">
-            <text class="name">{{ addressInfo.userName }}</text>
-            <text class="phone">{{ addressInfo.telNumber }}</text>
-          </view>
-          <text class="iconfont icon-arrow-right"></text>
-        </view>
-        <view class="address-detail">
-          {{ addressInfo.provinceName }} {{ addressInfo.cityName }} {{ addressInfo.countyName }}
-          {{ addressInfo.detailInfo }}
-        </view>
-      </view>
-    </view>
-
     <!-- 商品列表 -->
     <view class="product-list">
       <view class="list-header">
         <text class="iconfont icon-a-ziyuan1"></text>
         <text class="title">商品清单</text>
-        <text class="count">({{ cartStore.totalCount }}件)</text>
+        <text class="count">({{ cartTobStore.totalCount }}件)</text>
       </view>
 
-      <view class="product-item" v-for="item in cartStore.selectProduct" :key="item._id">
+      <view class="product-item" v-for="item in cartTobStore.selectProduct" :key="item._id">
         <!-- 封面图 -->
         <image class="cover" :src="item.sku?.image || item.cover" mode="aspectFill"></image>
 
@@ -200,7 +130,7 @@ const submit = async () => {
             </view>
 
             <!-- 商品描述 -->
-            <view class="desc">型号：{{ item.model }}</view>
+            <view class="desc">型号：{{ item.dec }}</view>
           </view>
 
           <view class="right">
@@ -218,7 +148,11 @@ const submit = async () => {
       <view class="title">金额明细</view>
       <view class="item">
         <text class="label">商品金额</text>
-        <text class="value">￥{{ cartStore.totalPrice.toFixed(2) }}</text>
+        <text class="value">￥{{ cartTobStore.totalPrice.toFixed(2) }}</text>
+      </view>
+      <view class="item">
+        <text class="label">运营资金</text>
+        <text class="value">￥{{ userStore.profile.operating_balance?.toFixed(2) }}</text>
       </view>
       <view class="item">
         <text class="label">剩余积分</text>
@@ -261,78 +195,6 @@ const submit = async () => {
   height: 100%;
   padding: 24rpx;
   background-color: $jel-pageBackGroundColor;
-
-  // 收货地址
-  .address-info {
-    margin-bottom: 24rpx;
-    background-color: #fff;
-    border-radius: 8rpx;
-
-    .no-address {
-      display: flex;
-      align-items: center;
-      padding: 32rpx 24rpx;
-      cursor: pointer;
-
-      .iconfont.icon-add {
-        font-size: 32rpx;
-        color: $jel-brandColor;
-        margin-right: 16rpx;
-      }
-
-      .text {
-        flex: 1;
-        font-size: 28rpx;
-        color: $jel-font-title;
-      }
-
-      .iconfont.icon-arrow-right {
-        font-size: 28rpx;
-        color: $jel-font-dec2;
-      }
-    }
-
-    .has-address {
-      padding: 24rpx;
-      cursor: pointer;
-
-      .address-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 16rpx;
-
-        .user-info {
-          display: flex;
-          align-items: center;
-          gap: 24rpx;
-
-          .name {
-            font-size: 32rpx;
-            font-weight: bold;
-            color: $jel-font-title;
-          }
-
-          .phone {
-            font-size: 28rpx;
-            color: $jel-font-dec2;
-          }
-        }
-
-        .iconfont.icon-arrow-right {
-          font-size: 28rpx;
-          color: $jel-font-dec2;
-        }
-      }
-
-      .address-detail {
-        font-size: 28rpx;
-        color: $jel-font-dec;
-        line-height: 1.6;
-        padding-right: 48rpx;
-      }
-    }
-  }
 
   // 商品列表
   .product-list {

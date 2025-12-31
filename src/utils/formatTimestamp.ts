@@ -28,7 +28,7 @@ export const formatGender = (gender: number) => {
   }
 }
 
-// 订单状态转换
+// 商品订单状态转换
 export const formatOrderState = (state: string) => {
   switch (state) {
     case 'PENDING':
@@ -43,6 +43,20 @@ export const formatOrderState = (state: string) => {
       return '已取消'
     case 'REFUNDED':
       return '已退款'
+    default:
+      return '全部'
+  }
+}
+
+// 进货订单状态转换
+export const formatPurchasedOrderState = (state: string) => {
+  switch (state) {
+    case 'PAID':
+      return '待取货'
+    case 'COMPLETED':
+      return '已完成'
+    case 'CANCELLED':
+      return '已取消'
     default:
       return '全部'
   }
