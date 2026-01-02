@@ -33,7 +33,7 @@ export const navList = ref([
     icon: '⚡',
     title: '快速售卖',
     desc: '快捷销售下单',
-    path: '/pagesMember/quickSale/quickSale',
+    path: '/pagesMember/sellPage/sellPage',
   },
   {
     id: 6,

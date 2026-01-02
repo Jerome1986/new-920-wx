@@ -92,7 +92,7 @@ const handleWithdraw = () => {
   })
 }
 
-// 格式化流水类型
+// 格式化流水类型--映射字段
 const formatFlowType = (type: any) => {
   const typeMap: Record<string, string> = {
     income_store: '门店收入',
@@ -106,6 +106,9 @@ const formatFlowType = (type: any) => {
 
 onLoad(() => {
   if (userStore.profile?._id) {
+    // 进页面获取最新的用户信息
+    userStore.userInfoGet(userStore.profile._id)
+    // 获取门店最新流水信息
     storeFlowGet(userStore.profile._id, 'ALL', params.value.pageNum, params.value.pageSize)
   }
 })

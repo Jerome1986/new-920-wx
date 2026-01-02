@@ -56,7 +56,6 @@ const initScrollHeight = () => {
   // 减去顶部统计卡片、搜索栏、容器padding等高度
   scrollHeight.value = systemInfo.windowHeight - 220
 }
-
 // 页面加载
 initScrollHeight()
 </script>

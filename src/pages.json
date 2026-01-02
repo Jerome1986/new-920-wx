@@ -241,6 +241,13 @@
             "navigationBarTitleText": "门店库存",
             "enablePullDownRefresh": false
           }
+        },
+        {
+          "path": "sellPage/sellPage",
+          "style": {
+            "navigationBarTitleText": "快速售卖",
+            "enablePullDownRefresh": false
+          }
         }
       ]
     }

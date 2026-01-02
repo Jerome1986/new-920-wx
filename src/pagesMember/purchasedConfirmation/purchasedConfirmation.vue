@@ -68,36 +68,40 @@ const submit = async () => {
     content: '确定提交订单吗？',
     confirmColor: '#d62731',
     success: async (result) => {
-      if (result.confirm && managerStore.managerStoreInfo?.storeId) {
-        //  调用API提交订单
-        const res = await purchaseOrderAddApi(
-          managerStore.managerStoreInfo?.storeId,
-          userInfo,
-          products,
-          cartTobStore.totalCount,
-          amount,
-          '采购货物',
-        )
+      // 用户点击取消，不做任何操作
+      if (!result.confirm) return
 
-        if (res.code === 200) {
-          // 更新运营资金余额
-          userStore.setProfile({ operating_balance: res.data.operating_balance })
-          // 提示
-          await uni.showToast({
-            icon: 'success',
-            title: '下单成功',
-          })
-
-          //  返回到门店管理页面
-          setTimeout(() => {
-            cartTobStore.clearSelectedCart() // 清空购物车
-            uni.reLaunch({ url: '/pagesMember/StoreManager/StoreManager' })
-          }, 800)
-        }
-      } else {
-        // 如果获取不到门店ID或者异常
-        await uni.showToast({ icon: 'none', title: '下单异常' })
+      // 检查门店ID是否存在
+      if (!managerStore.managerStoreInfo?.storeId) {
+        await uni.showToast({ icon: 'none', title: '门店信息异常' })
         await uni.reLaunch({ url: '/pagesMember/StoreManager/StoreManager' })
+        return
+      }
+
+      //  调用API提交订单
+      const res = await purchaseOrderAddApi(
+        managerStore.managerStoreInfo.storeId,
+        userInfo,
+        products,
+        cartTobStore.totalCount,
+        amount,
+        '采购货物',
+      )
+
+      if (res.code === 200) {
+        // 更新运营资金余额
+        userStore.setProfile({ operating_balance: res.data.operating_balance })
+        // 提示
+        await uni.showToast({
+          icon: 'success',
+          title: '下单成功',
+        })
+
+        //  返回到门店管理页面
+        setTimeout(() => {
+          cartTobStore.clearSelectedCart() // 清空购物车
+          uni.reLaunch({ url: '/pagesMember/StoreManager/StoreManager' })
+        }, 800)
       }
     },
   })

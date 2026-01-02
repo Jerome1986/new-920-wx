@@ -114,6 +114,11 @@ const handleCancelOrder = (orderNo: string) => {
             params.value.pageNum,
             params.value.pageSize,
           )
+          // 退款提示
+          await uni.showToast({
+            icon: 'success',
+            title: `订单已取消,运营资金退还${res.data.refunding}`,
+          })
         }
       } else {
         console.log('已取消')
