@@ -141,3 +141,33 @@ export const vipProductGetApi = () => {
     url: '/product/vip',
   })
 }
+
+/**
+ * 根据搜索匹配手机型号
+ * @param searchVal - 搜索内容
+ */
+export const quickSellSearchModelsApi = (searchVal: string) => {
+  return request<string[]>({
+    method: 'POST',
+    url: '/quickSell/modelList',
+    data: { searchVal },
+  })
+}
+
+/**
+ * 根据搜索匹配产品列表
+ * @param searchVal - 搜索内容
+ * @param subCategoryId - 二级分类ID
+ * @param thirdCategoryId - 三级分类ID
+ */
+export const quickSellSearchProductApi = (
+  searchVal: string,
+  subCategoryId: string,
+  thirdCategoryId: string,
+) => {
+  return request<ProductItem[]>({
+    method: 'POST',
+    url: '/quickSell/productList',
+    data: { searchVal, subCategoryId, thirdCategoryId },
+  })
+}

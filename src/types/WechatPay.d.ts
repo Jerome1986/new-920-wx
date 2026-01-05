@@ -16,3 +16,11 @@ export type WechatPayParams = {
   /** 时间戳，单位秒，用于生成签名 */
   timeStamp: string
 }
+
+// 扫码支付下单
+export type NativeResponse = {
+  /** 支付二维码链接 */
+  code_url: string
+  /** 业务订单号 */
+  out_trade_no: string
+}

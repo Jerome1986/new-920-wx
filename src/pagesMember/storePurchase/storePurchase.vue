@@ -58,6 +58,7 @@ onLoad(async () => {
     <!-- 商品列表（只有没有三级分类时显示） -->
     <view class="list" v-if="showProductList">
       <GlobalProductBar
+        :models="'toB'"
         :list="productList"
         :finish="finish"
         @update:loadMore="loadMore"

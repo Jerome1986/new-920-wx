@@ -16,8 +16,8 @@ const userStore = useMemberStore()
   <view class="vip-card">
     <image
       class="backGroud"
-      src="https://objectstorageapi.gzg.sealos.run/dxepxlzz-sealaf-h91gpva7y7-cloud-bin/test-product/backgroudVip.png"
-      mode="widthFix"
+      src="https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/images/backgroudVip.png"
+      mode="aspectFill"
     ></image>
     <view class="vipContent">
       <view class="top">
@@ -66,12 +66,15 @@ const userStore = useMemberStore()
 <style scoped lang="scss">
 .vip-card {
   position: relative;
-  height: 216rpx;
+  min-height: 216rpx;
 
   .backGroud {
     position: absolute;
     left: 0;
     top: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 16rpx;
   }
 
   .vipContent {

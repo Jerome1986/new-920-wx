@@ -33,3 +33,32 @@ export type VipRenderInfo = {
   /** 赠送贴膜次数 */
   giftCount: number
 }
+
+// 对应可用状态类型说明
+export type VipStatus =
+  | 'valid' // 正常可用
+  | 'expired' // 已过期
+  | 'no_times' // 次数用完
+  | 'not_vip' // 从未开通过
+  | 'disabled' // 被禁用（预留）
+
+export interface CheckVipResponse {
+  /** 查询的用户ID */
+  userId: string
+  /** 查询的用户手机号码 */
+  mobile: string
+  /** 是否会员（历史 + 当前） */
+  isVip: boolean
+  /** 当前是否可用 */
+  isValid: boolean //
+  /** 具体状态说明 */
+  status: VipStatus
+  /** 到期时间 */
+  vipEndTime: Date
+  /** 剩余次数（没有就是 0） */
+  remainTimes: number
+  /** 是否需要续费  status === 'expired' || status === 'not_vip' */
+  needRenew: boolean
+  /** 是否需要购买次数 status === 'no_times'   */
+  needBuyTimes: boolean
+}

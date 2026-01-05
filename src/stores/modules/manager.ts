@@ -15,7 +15,6 @@ export const useManagerStore = defineStore(
       if (!userStore.profile._id)
         return uni.showToast({ icon: 'none', title: '当前用户未登录，无法获取门店信息' })
       const res = await managerStoreInfoGetApi(userStore.profile._id)
-      console.log('库存', res)
       managerStoreInfo.value = res.data
     }
 

@@ -248,6 +248,20 @@
             "navigationBarTitleText": "快速售卖",
             "enablePullDownRefresh": false
           }
+        },
+        {
+          "path": "quickOrder/quickOrder",
+          "style": {
+            "navigationBarTitleText": "收银订单",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "quickOrder/giftOrder",
+          "style": {
+            "navigationBarTitleText": "会员免费订单",
+            "enablePullDownRefresh": false
+          }
         }
       ]
     }
