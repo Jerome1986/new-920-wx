@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { offlineOrderGetApi } from '@/api/order.ts'
 import type { OrderStatus, QuickOrderResult } from '@/types/Order'
 
@@ -22,7 +22,7 @@ const handleCancelOrder = () => {
     success: (res) => {
       if (res.confirm) {
         // TODO: 调用取消订单接口
-        console.log('取消订单:', orderInfo.value?.productSkuNo)
+        console.log('取消订单:', orderInfo.value?.out_trade_no)
         uni.showToast({
           title: '订单已取消',
           icon: 'success',
@@ -35,43 +35,6 @@ const handleCancelOrder = () => {
   })
 }
 
-// 刷新支付状态
-const handleRefreshStatus = () => {
-  // TODO: 调用接口查询支付状态
-  console.log('刷新支付状态')
-  uni.showToast({
-    title: '正在查询...',
-    icon: 'loading',
-    duration: 1000,
-  })
-}
-
-// 完成订单（手动确认已收款）
-const handleConfirmPaid = () => {
-  uni.showModal({
-    title: '确认收款',
-    content: '请确认已收到客户付款',
-    confirmColor: '#d62731',
-    success: (res) => {
-      if (res.confirm && orderInfo.value) {
-        // TODO: 调用确认收款接口
-        console.log('确认收款:', orderInfo.value?.productSkuNo)
-        orderInfo.value.status = 'PAID'
-        uni.showToast({
-          title: '订单完成',
-          icon: 'success',
-        })
-      }
-    },
-  })
-}
-
-// 修改价格
-const handleModifyPrice = () => {
-  // TODO: 实现修改价格逻辑
-  console.log('修改价格')
-}
-
 // 根据传过来的订单号获取线下贴膜订单
 const offlineOrderGet = async (out_trade_no: string) => {
   const res = await offlineOrderGetApi<OrderStatus>(out_trade_no)
@@ -79,12 +42,38 @@ const offlineOrderGet = async (out_trade_no: string) => {
   console.log('订单', res)
 }
 
+// 轮询订单，同步成功状态
+let timer: any
+
 onLoad((query?: AnyObject) => {
   if (!query) return
   console.log('页面接收到参数', query)
+
   if (query.code_url && query.out_trade_no) {
     qrCodeUrl.value = query.code_url // 后端返回的 base64 图片
     offlineOrderGet(query.out_trade_no)
+
+    // 设置轮询
+    timer = setInterval(async () => {
+      const res = await offlineOrderGetApi<OrderStatus>(query.out_trade_no)
+      console.log('轮询结果', res.data.status)
+      if (res.data.status === 'PAID') {
+        clearInterval(timer!)
+        timer = null
+        // 显示支付成功
+        isPaid.value = true
+        console.log('已支付，结束轮询')
+      }
+    }, 5000)
+  }
+})
+
+// 退出页面卸载轮询
+onUnload(() => {
+  if (timer) {
+    clearInterval(timer)
+    timer = null
+    console.log('页面关闭，轮询清理完成')
   }
 })
 </script>
@@ -143,10 +132,6 @@ onLoad((query?: AnyObject) => {
           <text class="amount-label">应付金额</text>
           <view class="amount-row">
             <text class="amount-value">¥{{ orderInfo?.amount.toFixed(2) }}</text>
-            <view class="btn-modify" @click="handleModifyPrice">
-              <text class="iconfont icon-bianji"></text>
-              <text>改价</text>
-            </view>
           </view>
         </view>
         <text class="scan-tip">请客户使用微信扫码支付</text>
@@ -165,13 +150,6 @@ onLoad((query?: AnyObject) => {
     <view class="footer-bar">
       <view class="btn-cancel" @click="handleCancelOrder">
         <text>取消订单</text>
-      </view>
-      <view class="btn-refresh" @click="handleRefreshStatus">
-        <text class="iconfont icon-shuaxin"></text>
-        <text>刷新状态</text>
-      </view>
-      <view class="btn-confirm" @click="handleConfirmPaid">
-        <text>确认收款</text>
       </view>
     </view>
   </view>
@@ -454,6 +432,7 @@ onLoad((query?: AnyObject) => {
   left: 0;
   right: 0;
   display: flex;
+  justify-content: center;
   align-items: center;
   padding: 20rpx 32rpx calc(20rpx + env(safe-area-inset-bottom));
   background-color: #fff;
@@ -463,7 +442,6 @@ onLoad((query?: AnyObject) => {
     padding: 20rpx 32rpx;
     border: 2rpx solid $jel-font-dec;
     border-radius: 40rpx;
-    margin-right: 20rpx;
 
     text {
       font-size: 28rpx;
@@ -472,46 +450,6 @@ onLoad((query?: AnyObject) => {
 
     &:active {
       opacity: 0.7;
-    }
-  }
-
-  .btn-refresh {
-    display: flex;
-    align-items: center;
-    padding: 20rpx 32rpx;
-    border: 2rpx solid $jel-brandColor;
-    border-radius: 40rpx;
-    margin-right: auto;
-
-    .iconfont {
-      font-size: 28rpx;
-      color: $jel-brandColor;
-      margin-right: 8rpx;
-    }
-
-    text {
-      font-size: 28rpx;
-      color: $jel-brandColor;
-    }
-
-    &:active {
-      opacity: 0.7;
-    }
-  }
-
-  .btn-confirm {
-    padding: 20rpx 48rpx;
-    background: linear-gradient(135deg, $jel-brandColor 0%, #e84545 100%);
-    border-radius: 40rpx;
-
-    text {
-      font-size: 28rpx;
-      font-weight: 600;
-      color: #fff;
-    }
-
-    &:active {
-      opacity: 0.85;
     }
   }
 }
