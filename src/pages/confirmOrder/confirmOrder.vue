@@ -135,10 +135,10 @@ const submit = async () => {
     async fail(err) {
       console.error('支付失败', err)
       // 如果是取消支付，则将当前订单状态更新为已取消
-      const cannelRes = await proOrderCancelApi(orderRes.data.out_trade_no)
-      if (cannelRes.code === 200) {
-        await uni.showToast({ icon: 'none', title: cannelRes.message })
-      }
+      // const cannelRes = await proOrderCancelApi(orderRes.data.out_trade_no)
+      // if (cannelRes.code === 200) {
+      //   await uni.showToast({ icon: 'none', title: cannelRes.message })
+      // }
     },
   })
 
@@ -205,7 +205,7 @@ const submit = async () => {
 
           <view class="right">
             <!-- 价格 -->
-            <view class="price">￥{{ item.currentPrice.toFixed(2) }}</view>
+            <view class="price">￥{{ (item.currentPrice / 100).toFixed(2) }}</view>
             <!-- 数量 -->
             <view class="quantity">x{{ item.quantity }}</view>
           </view>
@@ -218,20 +218,20 @@ const submit = async () => {
       <view class="title">金额明细</view>
       <view class="item">
         <text class="label">商品金额</text>
-        <text class="value">￥{{ cartStore.totalPrice.toFixed(2) }}</text>
+        <text class="value">￥{{ (cartStore.totalPrice / 100).toFixed(2) }}</text>
       </view>
       <view class="item">
         <text class="label">剩余积分</text>
-        <text class="value">{{ userStore.profile.score.toFixed(2) }}</text>
+        <text class="value">{{ (userStore.profile.score / 100).toFixed(2) }}</text>
       </view>
       <!-- 当前可抵扣的积分 -->
       <view class="item">
         <text class="label">可抵积分</text>
-        <text class="value" style="color: #d62731">{{ deductAmount.toFixed(2) }}</text>
+        <text class="value" style="color: #d62731">{{ (deductAmount / 100).toFixed(2) }}</text>
       </view>
       <view class="item total">
         <text class="label">合计</text>
-        <text class="value">￥{{ needPay.toFixed(2) }}</text>
+        <text class="value">￥{{ (needPay / 100).toFixed(2) }}</text>
       </view>
     </view>
 
@@ -247,7 +247,7 @@ const submit = async () => {
     <view class="toolbar-content">
       <view class="left">
         <text class="label">实际支付:</text>
-        <text class="amount">￥{{ needPay.toFixed(2) }}</text>
+        <text class="amount">￥{{ (needPay / 100).toFixed(2) }}</text>
       </view>
       <button class="btn" @click="submit">结算</button>
     </view>

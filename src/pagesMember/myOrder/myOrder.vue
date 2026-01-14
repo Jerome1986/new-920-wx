@@ -3,8 +3,8 @@ import { ref } from 'vue'
 import { useMemberStore } from '@/stores'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { formatOrderState, formatTimestamp } from '@/utils/formatTimestamp.ts'
-import type { OrderItem } from '@/types/Order'
-import { confirmOrderLogistics, userOrderGetApi } from '@/api/order.ts'
+import type { OrderAmount, OrderItem } from '@/types/Order'
+import { confirmOrderLogistics, proOrderCancelApi, userOrderGetApi } from '@/api/order.ts'
 import { MERCHANT_ID } from '@/utils/config.ts'
 import type { BusinessSuccessResponse } from '@/types/Gobal'
 
@@ -18,6 +18,7 @@ const tagList = ref([
   { id: 'tag3', text: 'PAID', label: '待发货' },
   { id: 'tag4', text: 'SHIPPED', label: '待收货' },
   { id: 'tag5', text: 'COMPLETED', label: '已完成' },
+  { id: 'tag5', text: 'PROCESSING', label: '退款中/已退款' },
 ])
 
 // 分页
@@ -143,6 +144,34 @@ const handleConfirm = (orderNo: string, transaction_id: string) => {
   })
 }
 
+// 取消订单并退款
+const handleCancel = (outTradeNo: string, amount: OrderAmount) => {
+  console.log('取消订单', outTradeNo, amount)
+  uni.showModal({
+    title: '提示',
+    content: '确定要取消该订单吗？',
+    async success(res) {
+      if (res.confirm) {
+        const res = await proOrderCancelApi(outTradeNo, amount)
+        console.log('退款接口', res.data)
+        if (res.data.status === 'PROCESSING') {
+          console.log('退款中')
+          // 将激活下标设定到更新项
+          activeIndex.value = tagList.value.findIndex((item) => item.text === 'PROCESSING')
+          reset() // 重置订单页面信息
+          // 重新拉取订单数据
+          await orderListGet(
+            userStore.profile._id,
+            tagList.value[activeIndex.value].text,
+            params.value.pageNum,
+            params.value.pageSize,
+          )
+        }
+      }
+    },
+  })
+}
+
 // 收货组件回调
 onShow((options) => {
   console.log('收货组件回调', options)
@@ -194,7 +223,7 @@ onLoad(() => {
               shipped: item.status === 'SHIPPED',
               completed: item.status === 'COMPLETED',
               cancelled: item.status === 'CANCELLED',
-              refunded: item.status === 'REFUNDED',
+              refunded: item.status === 'REFUNDED' || item.status === 'PROCESSING',
             }"
           >
             {{ formatOrderState(item.status) }}
@@ -214,7 +243,7 @@ onLoad(() => {
                 {{ product.sku.attrs.label }}: {{ product.sku.attrs.value }}
               </view>
               <view class="bottom">
-                <view class="price">￥{{ product.currentPrice.toFixed(2) }}</view>
+                <view class="price">￥{{ (product.currentPrice / 100).toFixed(2) }}</view>
                 <view class="quantity">x{{ product.quantity }}</view>
               </view>
             </view>
@@ -246,18 +275,15 @@ onLoad(() => {
         <view class="card-foot">
           <view class="amount-info">
             <text class="label">共{{ item.totalCount }}件商品 合计：</text>
-            <text class="price">￥{{ item.amount.actualPayment.toFixed(2) }}</text>
+            <text class="price">￥{{ (item.amount.actualPayment / 100).toFixed(2) }}</text>
           </view>
 
           <view class="actions">
-            <!-- 待支付：取消订单、立即支付 -->
-            <!--            <template v-if="item.status === 'PENDING'">-->
-            <!--              <view class="btn ghost" @click.stop="handleCancel(item._id)">取消订单</view>-->
-            <!--              <view class="btn primary" @click.stop="handlePay(item)">立即支付</view>-->
-            <!--            </template>-->
-
             <!-- 待发货：查看详情 -->
             <template v-if="item.status === 'PAID'">
+              <view class="btn ghost" @click.stop="handleCancel(item.out_trade_no, item.amount)"
+                >取消订单</view
+              >
               <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
                 >查看详情</view
               >
@@ -279,10 +305,20 @@ onLoad(() => {
               >
             </template>
 
-            <!-- 已取消/已退款：查看详情 -->
-            <template v-if="item.status === 'CANCELLED' || item.status === 'REFUNDED'">
+            <!-- 已取消：查看详情  item.status === 'REFUNDED' -->
+            <template v-if="item.status === 'CANCELLED'">
               <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
                 >查看详情</view
+              >
+            </template>
+
+            <!-- 退款中/已退款：查看详情  item.status === 'REFUNDED' -->
+            <template v-if="item.status === 'PROCESSING' || item.status === 'REFUNDED'">
+              <view
+                class="btn ghost"
+                :class="{ refunded: item.status === 'REFUNDED' }"
+                @click.stop="handleGoDetail(item.out_trade_no)"
+                >{{ item.status === 'PROCESSING' ? '退款中' : '已退款' }}</view
               >
             </template>
           </view>
@@ -550,6 +586,11 @@ onLoad(() => {
             color: $jel-font-title;
             border: 1rpx solid $jel-border;
             background-color: #fff;
+          }
+
+          &.refunded {
+            color: #ffffff;
+            background-color: $jel-font-success;
           }
 
           &.primary {

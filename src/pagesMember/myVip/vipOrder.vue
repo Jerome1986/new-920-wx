@@ -120,7 +120,7 @@ onLoad(() => {
 
           <view class="price-row">
             <text class="symbol">￥</text>
-            <text class="price">{{ Number(item.amount).toFixed(2) }}</text>
+            <text class="price">{{ Number(item.amount / 100).toFixed(2) }}</text>
           </view>
         </view>
 

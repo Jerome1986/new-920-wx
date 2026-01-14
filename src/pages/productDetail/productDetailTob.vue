@@ -356,7 +356,6 @@ const handleAddCart = (val: string) => {
       image {
         width: 100%;
         display: block;
-        margin-bottom: 24rpx;
 
         &:last-child {
           margin-bottom: 0;

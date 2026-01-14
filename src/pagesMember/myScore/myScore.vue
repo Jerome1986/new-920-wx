@@ -98,7 +98,7 @@ onLoad(() => {
         <view class="icon">🏆</view>
         <view class="info">
           <text class="label">当前积分</text>
-          <text class="value">{{ currentScore.toFixed(2) }}</text>
+          <text class="value">{{ (currentScore / 100).toFixed(2) }}</text>
         </view>
       </view>
     </view>
@@ -136,9 +136,9 @@ onLoad(() => {
               class="amount"
               :class="{ income: item.type === 'INCOME', expense: item.type === 'EXPENSE' }"
             >
-              {{ item.type === 'INCOME' ? '+' : '-' }}{{ item.amount }}
+              {{ item.type === 'INCOME' ? '+' : '-' }}{{ (item.amount / 100).toFixed(2) }}
             </view>
-            <view class="balance">余额: {{ item.balance.toFixed(2) }}</view>
+            <view class="balance">余额: {{ (item.balance / 100).toFixed(2) }}</view>
           </view>
         </view>
       </view>

@@ -41,6 +41,8 @@ export const formatOrderState = (state: string) => {
       return '已完成'
     case 'CANCELLED':
       return '已取消'
+    case 'PROCESSING':
+      return '退款中'
     case 'REFUNDED':
       return '已退款'
     default:

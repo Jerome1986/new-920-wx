@@ -125,7 +125,7 @@ const handleItemDetail = async (productId: string) => {
         <view class="title">{{ item.skuNo }} {{ item.name }}</view>
         <view class="desc">{{ item.dec }}</view>
         <view class="footer">
-          <view class="price">{{ item.minPrice?.toFixed(2) }}</view>
+          <view class="price">{{ ((item.minPrice ?? 0) / 100).toFixed(2) }}</view>
           <view class="views">
             <text class="iconfont icon-zongliulanliang"></text>
             <text>{{ 'lookView' in item ? item.lookView : item.lookNum }}</text>
@@ -146,7 +146,7 @@ const handleItemDetail = async (productId: string) => {
         <view class="title">{{ item.skuNo }} {{ item.name }}</view>
         <view class="desc">{{ item.dec }}</view>
         <view class="footer">
-          <view class="price">{{ item.minPrice?.toFixed(2) }}</view>
+          <view class="price">{{ ((item.minPrice ?? 0) / 100).toFixed(2) }}</view>
           <view class="views">
             <text class="iconfont icon-zongliulanliang"></text>
             <text>{{ 'lookView' in item ? item.lookView : item.lookNum }}</text>

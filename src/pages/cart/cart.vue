@@ -78,10 +78,10 @@ const handleCheckout = () => {
                 <view class="price-box">
                   <view class="price">
                     <text class="symbol">￥</text>
-                    <text class="number">{{ item.currentPrice.toFixed(2) }}</text>
+                    <text class="number">{{ (item.currentPrice / 100).toFixed(2) }}</text>
                   </view>
                   <view class="original-price" v-if="item.originalPrice > item.currentPrice">
-                    ￥{{ item.originalPrice.toFixed(2) }}
+                    ￥{{ (item.originalPrice / 100).toFixed(2) }}
                   </view>
                 </view>
 
@@ -139,7 +139,7 @@ const handleCheckout = () => {
           <text class="label">合计:</text>
           <text class="price">
             <text class="symbol">￥</text>
-            <text class="number">{{ cartStore.totalPrice.toFixed(2) }}</text>
+            <text class="number">{{ (cartStore.totalPrice / 100).toFixed(2) }}</text>
           </text>
         </view>
       </view>

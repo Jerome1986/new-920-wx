@@ -2,7 +2,8 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import type { freeOrderStatus, QuickOrderResult } from '@/types/Order'
-import { offlineOrderGetApi } from '@/api/order'
+import { completeGiftOrderApi, offlineOrderGetApi } from '@/api/order'
+import { formatTimestamp } from '@/utils/formatTimestamp.ts'
 
 // 订单信息
 const orderInfo = ref<QuickOrderResult<freeOrderStatus>>()
@@ -53,12 +54,14 @@ const handleConfirmService = () => {
     success: async (res) => {
       if (res.confirm) {
         // TODO: 调用完成服务接口
-        // const result = await completeGiftOrderApi(orderInfo.value?.out_trade_no)
-        console.log('确认完成服务:', orderInfo.value?.out_trade_no)
-        await uni.showToast({ title: '服务已完成', icon: 'success' })
-        // 更新本地状态
-        if (orderInfo.value) {
-          orderInfo.value.status = 'COMPLETED'
+        if (orderInfo.value?.out_trade_no) {
+          const result = await completeGiftOrderApi(orderInfo.value?.out_trade_no)
+          console.log('确认完成服务:', result)
+          await uni.showToast({ title: '服务已完成', icon: 'success' })
+          // 更新本地状态
+          if (orderInfo.value) {
+            orderInfo.value.status = result.data.orderStatus
+          }
         }
       }
     },
@@ -101,7 +104,7 @@ onLoad((query?: AnyObject) => {
 <template>
   <view class="gift-order">
     <!-- 可滚动内容区域 -->
-    <scroll-view class="scroll-content" scroll-y>
+    <scroll-view class="scroll-content" :scroll-y="true">
       <!-- 状态头部 -->
       <view class="order-header" :style="{ background: currentStatus.bgColor }">
         <view class="status-info">
@@ -172,11 +175,11 @@ onLoad((query?: AnyObject) => {
           </view>
           <view class="info-row">
             <text class="label">创建时间</text>
-            <text class="value">{{ orderInfo?.createdAt }}</text>
+            <text class="value">{{ formatTimestamp(orderInfo?.createdAt, 2) }}</text>
           </view>
           <view class="info-row" v-if="orderInfo?.completedAt">
             <text class="label">完成时间</text>
-            <text class="value">{{ orderInfo?.completedAt }}</text>
+            <text class="value">{{ formatTimestamp(orderInfo?.completedAt, 2) }}</text>
           </view>
           <view class="info-row" v-if="orderInfo?.remark">
             <text class="label">订单备注</text>

@@ -10,7 +10,7 @@ export type OrderStatus =
   | 'SHIPPED' // 已发货
   | 'COMPLETED' // 已完成
   | 'CANCELLED' // 已取消
-  | 'REFUNDING' // 退款中
+  | 'PROCESSING' // 退款中
   | 'REFUNDED' // 已退款
 
 /**
@@ -245,4 +245,14 @@ export interface QuickOrderResult<TStatus> extends offlineOrderResult {
   cancelledAt?: Date
   completedAt?: Date
   refundReason?: string
+}
+
+// 会员免费贴膜服务完成返回数据类型
+export interface QuickOrderGiftVipResult {
+  /** 订单号 */
+  out_trade_no: string
+  /** 更新后的订单状态 */
+  orderStatus: freeOrderStatus
+  /** 会员剩余的贴膜次数 */
+  remainVipGift: number
 }

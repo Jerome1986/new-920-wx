@@ -82,8 +82,8 @@ const goToPurchaseCart = () => {
       </view>
     </view>
     <view class="buttons">
-      <view class="addcart" @tap="addCart">加入购物车</view>
-      <view class="buynow" @tap="buyNow">立即添加</view>
+      <view class="addcart" @tap="addCart">添加</view>
+      <view class="buynow" @tap="buyNow">立即购买</view>
     </view>
   </view>
 </template>

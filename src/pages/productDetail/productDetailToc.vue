@@ -143,10 +143,12 @@ const handleAddCart = (val: string) => {
             <view class="price">
               <text class="symbol">￥</text>
               <!-- 默认显示最小的价格，如果选择了规格则显示规格价格 -->
-              <text class="number">{{ productData?.currentPrice.toFixed(2) }}</text>
+              <text class="number">{{ ((productData?.currentPrice ?? 0) / 100).toFixed(2) }}</text>
               <text style="font-size: 24rpx"> 起</text>
             </view>
-            <view class="original-price"> ￥{{ productData?.originalPrice.toFixed(2) }}</view>
+            <view class="original-price">
+              ￥{{ ((productData?.originalPrice ?? 0) / 100).toFixed(2) }}</view
+            >
           </view>
         </view>
         <view class="views">
@@ -183,7 +185,7 @@ const handleAddCart = (val: string) => {
     <!--  sku弹窗 样式  -->
     <uni-popup class="uniPopup" ref="popup" type="bottom" background-color="#fff">
       <view class="skuList">
-        <!-- 图片价格区域 -->
+        <!-- 图片价格区域 - 固定在顶部 -->
         <view class="skuView">
           <view class="skuCover">
             <image :src="activeSkuCover" mode="aspectFit" />
@@ -196,39 +198,41 @@ const handleAddCart = (val: string) => {
             <!-- 价格 -->
             <view class="skuPrice">
               <text class="skuPrice--text">¥</text>
-              <text class="skuPrice--text">{{ activeSkuPrice.toFixed(2) }}</text>
+              <text class="skuPrice--text">{{ (activeSkuPrice / 100).toFixed(2) }}</text>
             </view>
           </view>
         </view>
-        <!-- SKU选择区域 -->
-        <!--  适配机型   -->
-        <view class="skuTitle">适配机型</view>
-        <view class="skuContent">
-          <view
-            class="skuItem"
-            :class="{ activeModels: index === activeModelsIndex }"
-            v-for="(item, index) in productData?.models"
-            :key="index"
-            @click="handleSelectModels(item, index)"
-          >
-            {{ item }}
+        <!-- SKU选择区域 - 可滚动 -->
+        <scroll-view class="scroll-area" :scroll-y="true">
+          <!--  适配机型   -->
+          <view class="skuTitle">适配机型</view>
+          <view class="skuContent">
+            <view
+              class="skuItem"
+              :class="{ activeModels: index === activeModelsIndex }"
+              v-for="(item, index) in productData?.models"
+              :key="index"
+              @click="handleSelectModels(item, index)"
+            >
+              {{ item }}
+            </view>
           </view>
-        </view>
-        <!--  规格  -->
-        <view class="skuTitle">规格</view>
-        <view class="skuContent">
-          <view
-            class="skuItem"
-            :class="{ activeSku: index === activeSkuIndex }"
-            v-for="(item, index) in productData?.sku"
-            :key="index"
-            @click="handleSelectSku(item, index)"
-          >
-            {{ item.attrs.value }}
+          <!--  规格  -->
+          <view class="skuTitle">规格</view>
+          <view class="skuContent">
+            <view
+              class="skuItem"
+              :class="{ activeSku: index === activeSkuIndex }"
+              v-for="(item, index) in productData?.sku"
+              :key="index"
+              @click="handleSelectSku(item, index)"
+            >
+              {{ item.attrs.value }}
+            </view>
           </view>
-        </view>
-        <!-- 选好了 -->
-        <view class="confrim" @click="handleSkuConfrim">确定</view>
+          <!-- 选好了 -->
+          <view class="confrim" @click="handleSkuConfrim">确定</view>
+        </scroll-view>
       </view>
     </uni-popup>
     <!-- 底部操作栏 -->
@@ -240,7 +244,7 @@ const handleAddCart = (val: string) => {
     <!--  占位  -->
     <view
       :style="{ paddingBottom: safeAreaInsets?.bottom + 'px' }"
-      style="width: 100%; height: 170rpx"
+      style="width: 100%; height: 180rpx"
     ></view>
   </scroll-view>
 </template>
@@ -367,12 +371,7 @@ const handleAddCart = (val: string) => {
     .detail-content {
       image {
         width: 100%;
-        display: block;
-        margin-bottom: 24rpx;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
+        height: 100%;
       }
     }
   }
@@ -388,9 +387,11 @@ const handleAddCart = (val: string) => {
       padding: 24rpx;
       width: 100%;
       max-height: 70vh; // 限制最大高度，避免超出屏幕
-      overflow-y: auto; // 内容过多时可滚动
+      display: flex;
+      flex-direction: column;
 
       .skuView {
+        flex-shrink: 0; // 不收缩，固定在顶部
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -460,55 +461,61 @@ const handleAddCart = (val: string) => {
         }
       }
 
-      // 规格
-      .skuTitle {
-        margin-bottom: 24rpx;
-        font-size: 28rpx;
-        color: $jel-font-title;
-      }
+      // 滚动区域
+      .scroll-area {
+        flex: 1; // 占据剩余空间
+        overflow-y: auto; // 可滚动
 
-      .skuContent {
-        margin-bottom: 24rpx;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 24rpx;
-        // SKU每一项
-        .skuItem {
-          padding: 8rpx 16rpx;
-          display: inline-block;
-          width: auto;
+        // 规格
+        .skuTitle {
+          margin-bottom: 24rpx;
           font-size: 28rpx;
           color: $jel-font-title;
-          background-color: #f5f5f5;
-          border-radius: 8rpx;
         }
 
-        // SKU每一项-选中状态
-        .activeSku {
-          color: $jel-brandColor;
-          font-size: 28rpx;
-          border: 1rpx solid $jel-brandColor;
-          background-color: rgba(255, 242, 237);
-        }
-        // 选中的型号
-        .activeModels {
-          color: $jel-brandColor;
-          font-size: 28rpx;
-          border: 1rpx solid $jel-brandColor;
-          background-color: rgba(255, 242, 237);
-        }
-      }
+        .skuContent {
+          margin-bottom: 24rpx;
+          display: flex;
+          flex-wrap: wrap;
+          gap: 24rpx;
+          // SKU每一项
+          .skuItem {
+            padding: 8rpx 16rpx;
+            display: inline-block;
+            width: auto;
+            font-size: 28rpx;
+            color: $jel-font-title;
+            background-color: #f5f5f5;
+            border-radius: 8rpx;
+          }
 
-      // 确定按钮
-      .confrim {
-        margin-top: 100rpx;
-        height: 80rpx;
-        line-height: 80rpx;
-        text-align: center;
-        background-color: $jel-brandColor;
-        color: #fff;
-        font-size: 32rpx;
-        border-radius: 100rpx;
+          // SKU每一项-选中状态
+          .activeSku {
+            color: $jel-brandColor;
+            font-size: 28rpx;
+            border: 1rpx solid $jel-brandColor;
+            background-color: rgba(255, 242, 237);
+          }
+          // 选中的型号
+          .activeModels {
+            color: $jel-brandColor;
+            font-size: 28rpx;
+            border: 1rpx solid $jel-brandColor;
+            background-color: rgba(255, 242, 237);
+          }
+        }
+
+        // 确定按钮
+        .confrim {
+          margin-top: 100rpx;
+          height: 80rpx;
+          line-height: 80rpx;
+          text-align: center;
+          background-color: $jel-brandColor;
+          color: #fff;
+          font-size: 32rpx;
+          border-radius: 100rpx;
+        }
       }
     }
   }

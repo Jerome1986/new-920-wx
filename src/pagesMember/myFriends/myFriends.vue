@@ -54,6 +54,7 @@ const totalFriends = computed(() => {
 // 根据自身邀请码查询好友
 const friendsListGet = async (referralCode: string) => {
   const res = await referralsUserListGetApi(referralCode)
+  console.log('好有结果', res.data)
   if (res.code === 200) {
     firstFriends.value = res.data.firstUsers
     subFriends.value = res.data.secondUsers
@@ -110,44 +111,49 @@ onShareAppMessage((res) => {
     <view class="head" v-if="totalFriends">
       <view class="total">我的好友：{{ totalFriends }}个</view>
     </view>
-    <!-- 一级好友 -->
-    <view class="friendsList" v-if="firstFriends.length > 0">
-      <view class="item" v-for="item in firstFriends" :key="item._id">
-        <view class="userAvatar">
-          <image class="url" :src="item.avatarUrl" mode="aspectFit"></image>
-        </view>
-        <view class="info">
-          <view class="mobile">
-            <text style="margin-right: 12rpx">{{ maskMiddle(item.mobile) }}</text>
-            <image
-              style="width: 40rpx; height: 40rpx"
-              src="/static/images/first.png"
-              mode="aspectFit"
-            ></image>
+    <scroll-view class="scroll-view" :scroll-y="true">
+      <!-- 一级好友 -->
+      <view class="friendsList" v-if="firstFriends.length > 0">
+        <view class="item" v-for="item in firstFriends" :key="item._id">
+          <view class="userAvatar">
+            <image class="url" :src="item.avatarUrl" mode="aspectFit"></image>
           </view>
-          <view class="consumption">注册时间：{{ formatTimestamp(item.registerTime) }}</view>
+          <view class="info">
+            <view class="mobile">
+              <text style="margin-right: 12rpx">{{ maskMiddle(item.mobile) }}</text>
+              <image
+                style="width: 40rpx; height: 40rpx"
+                src="/static/images/first.png"
+                mode="aspectFit"
+              ></image>
+            </view>
+            <view class="consumption">注册时间：{{ formatTimestamp(item.registerTime) }}</view>
+          </view>
         </view>
       </view>
-    </view>
-    <!-- 二级好友 -->
-    <view class="friendsList" v-if="subFriends.length > 0">
-      <view class="item" v-for="item in subFriends" :key="item._id">
-        <view class="userAvatar">
-          <image class="url" :src="item.avatarUrl" mode="aspectFit"></image>
-        </view>
-        <view class="info">
-          <view class="mobile">
-            <text style="margin-right: 12rpx">{{ maskMiddle(item.mobile) }}</text>
-            <image
-              style="width: 40rpx; height: 40rpx"
-              src="/static/images/sub.png"
-              mode="aspectFit"
-            ></image>
+      <!-- 二级好友 -->
+      <view class="friendsList" v-if="subFriends.length > 0">
+        <view class="item" v-for="item in subFriends" :key="item._id">
+          <view class="userAvatar">
+            <image class="url" :src="item.avatarUrl" mode="aspectFit"></image>
           </view>
-          <view class="consumption">注册时间：{{ formatTimestamp(item.registerTime) }}</view>
+          <view class="info">
+            <view class="mobile">
+              <text style="margin-right: 12rpx">{{ maskMiddle(item.mobile) }}</text>
+              <image
+                style="width: 40rpx; height: 40rpx"
+                src="/static/images/sub.png"
+                mode="aspectFit"
+              ></image>
+            </view>
+            <view class="consumption">注册时间：{{ formatTimestamp(item.registerTime) }}</view>
+          </view>
         </view>
       </view>
-    </view>
+      <!--  占位   -->
+      <view class="zhanwei"> </view>
+    </scroll-view>
+
     <!--  暂无好友  -->
     <view class="noMore" v-if="!noMore">
       <view class="pic">
@@ -165,6 +171,9 @@ onShareAppMessage((res) => {
 
 <style scoped lang="scss">
 .myFriends {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
   padding: 24rpx;
 
   /* 新增：邀请码卡片 */
@@ -178,6 +187,7 @@ onShareAppMessage((res) => {
     align-items: center;
     justify-content: space-between;
     gap: 16rpx;
+    height: 152rpx;
 
     .row {
       display: flex;
@@ -239,35 +249,38 @@ onShareAppMessage((res) => {
     font-size: 28rpx;
     color: $jel-font-title;
   }
+  .scroll-view {
+    flex: 1;
+    width: 100%;
+    /*好友列表*/
+    .friendsList {
+      margin-top: 24rpx;
 
-  /*好友列表*/
-  .friendsList {
-    margin-top: 24rpx;
+      .item {
+        padding: 24rpx;
+        margin-bottom: 24rpx;
+        display: flex;
+        align-items: center;
+        gap: 16rpx;
+        background-color: #ffffff;
+        border-radius: 8rpx;
 
-    .item {
-      padding: 24rpx;
-      margin-bottom: 24rpx;
-      display: flex;
-      align-items: center;
-      gap: 16rpx;
-      background-color: #ffffff;
-      border-radius: 8rpx;
-
-      .userAvatar {
-        .url {
-          height: 100rpx;
-          width: 100rpx;
-          border-radius: 50%;
-          overflow: hidden;
+        .userAvatar {
+          .url {
+            height: 100rpx;
+            width: 100rpx;
+            border-radius: 50%;
+            overflow: hidden;
+          }
         }
-      }
 
-      .info {
-        color: $jel-font-title;
-        font-size: 28rpx;
+        .info {
+          color: $jel-font-title;
+          font-size: 28rpx;
 
-        .consumption {
-          color: $jel-font-dec;
+          .consumption {
+            color: $jel-font-dec;
+          }
         }
       }
     }
@@ -299,7 +312,12 @@ onShareAppMessage((res) => {
       border-radius: 8rpx;
     }
   }
-
+  .zhanwei {
+    margin-top: 80rpx;
+    height: 100rpx;
+    padding: 0 20rpx var(--window-bottom);
+    box-sizing: content-box;
+  }
   /*底部按钮*/
   .toolbar {
     position: fixed;

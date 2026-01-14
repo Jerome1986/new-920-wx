@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
-import { offlineOrderGetApi } from '@/api/order.ts'
+import { cancelOfflineOrderApi, completeOfflineOrderApi, offlineOrderGetApi } from '@/api/order.ts'
 import type { OrderStatus, QuickOrderResult } from '@/types/Order'
+import { formatTimestamp } from '@/utils/formatTimestamp.ts'
 
 // 订单信息
 const orderInfo = ref<QuickOrderResult<OrderStatus>>()
@@ -19,17 +20,20 @@ const handleCancelOrder = () => {
     title: '提示',
     content: '确定要取消该订单吗？',
     confirmColor: '#d62731',
-    success: (res) => {
-      if (res.confirm) {
-        // TODO: 调用取消订单接口
+    success: async (res) => {
+      if (res.confirm && orderInfo.value?.out_trade_no) {
+        // 调用取消订单接口
         console.log('取消订单:', orderInfo.value?.out_trade_no)
-        uni.showToast({
-          title: '订单已取消',
-          icon: 'success',
-        })
-        setTimeout(() => {
-          uni.navigateBack()
-        }, 1500)
+        const res = await cancelOfflineOrderApi(orderInfo.value?.out_trade_no)
+        if (res.code === 200) {
+          await uni.showToast({
+            title: '订单已取消',
+            icon: 'success',
+          })
+          setTimeout(() => {
+            uni.navigateBack()
+          }, 1500)
+        }
       }
     },
   })
@@ -40,6 +44,33 @@ const offlineOrderGet = async (out_trade_no: string) => {
   const res = await offlineOrderGetApi<OrderStatus>(out_trade_no)
   orderInfo.value = res.data
   console.log('订单', res)
+}
+
+// 确认服务完成
+const handleCompletedOrder = () => {
+  uni.showModal({
+    title: '提示',
+    content: '确定服务已完成吗？',
+    confirmColor: '#d62731',
+    success: async (res) => {
+      if (res.confirm && orderInfo.value?.out_trade_no) {
+        // 调用取消订单接口
+        console.log('完成订单:', orderInfo.value?.out_trade_no)
+        const res = await completeOfflineOrderApi(orderInfo.value?.out_trade_no)
+        if (res.code === 200) {
+          await uni.showToast({
+            title: '订单已完成',
+            icon: 'success',
+          })
+          setTimeout(() => {
+            uni.redirectTo({
+              url: '/pagesMember/StoreManager/StoreManager',
+            })
+          }, 1500)
+        }
+      }
+    },
+  })
 }
 
 // 轮询订单，同步成功状态
@@ -57,12 +88,12 @@ onLoad((query?: AnyObject) => {
     timer = setInterval(async () => {
       const res = await offlineOrderGetApi<OrderStatus>(query.out_trade_no)
       console.log('轮询结果', res.data.status)
-      if (res.data.status === 'PAID') {
+      if (res.data.status === 'PAID' || res.data.status === 'CANCELLED') {
         clearInterval(timer!)
         timer = null
         // 显示支付成功
-        isPaid.value = true
-        console.log('已支付，结束轮询')
+        res.data.status === 'PAID' ? (isPaid.value = true) : (isPaid.value = false)
+        console.log('已支付/已取消，结束轮询')
       }
     }, 5000)
   }
@@ -79,11 +110,12 @@ onUnload(() => {
 </script>
 
 <template>
-  <view class="quick-order">
+  <scroll-view class="quick-order" :scroll-y="true">
     <!-- 订单状态头部 -->
     <view class="order-header">
       <view class="status-info">
-        <text class="status-text">等待客户付款</text>
+        <text class="status-text" v-if="!isPaid">等待客户付款</text>
+        <text class="status-text status-success" v-else>付款成功</text>
         <text class="order-no">订单号：{{ orderInfo?.out_trade_no }}</text>
       </view>
     </view>
@@ -95,7 +127,7 @@ onUnload(() => {
           <text class="iconfont icon-shangpin"></text>
           <text>商品信息</text>
         </view>
-        <text class="create-time">{{ orderInfo?.createdAt }}</text>
+        <text class="create-time">{{ formatTimestamp(orderInfo?.createdAt, 2) }}</text>
       </view>
       <view class="product-info" v-if="orderInfo">
         <image class="product-cover" :src="orderInfo.productCover" mode="aspectFill" />
@@ -104,7 +136,7 @@ onUnload(() => {
           <text class="product-sku">{{ orderInfo?.productDec }}</text>
           <text class="product-model">适配：{{ orderInfo.models?.[0] }}</text>
           <view class="price-row">
-            <text class="current-price">¥{{ orderInfo?.amount.toFixed(2) }}</text>
+            <text class="current-price">¥{{ ((orderInfo?.amount ?? 0) / 100).toFixed(2) }}</text>
           </view>
         </view>
       </view>
@@ -131,7 +163,7 @@ onUnload(() => {
         <view class="amount-info">
           <text class="amount-label">应付金额</text>
           <view class="amount-row">
-            <text class="amount-value">¥{{ orderInfo?.amount.toFixed(2) }}</text>
+            <text class="amount-value">¥{{ ((orderInfo?.amount ?? 0) / 100).toFixed(2) }}</text>
           </view>
         </view>
         <text class="scan-tip">请客户使用微信扫码支付</text>
@@ -141,25 +173,28 @@ onUnload(() => {
       <view class="paid-content" v-else>
         <image class="paid-icon" src="/static/images/paidSuccess.png" mode="aspectFit" />
         <text class="paid-title">付款成功</text>
-        <text class="paid-amount">¥{{ orderInfo?.amount.toFixed(2) }}</text>
+        <text class="paid-amount">¥{{ ((orderInfo?.amount ?? 0) / 100).toFixed(2) }}</text>
         <text class="paid-tip">客户已完成支付</text>
       </view>
     </view>
-
-    <!-- 底部操作栏 -->
-    <view class="footer-bar">
-      <view class="btn-cancel" @click="handleCancelOrder">
-        <text>取消订单</text>
-      </view>
+  </scroll-view>
+  <!-- 底部操作栏 -->
+  <view class="footer-bar" v-if="!isPaid">
+    <view class="btn-cancel" @click="handleCancelOrder">
+      <text>取消订单</text>
+    </view>
+  </view>
+  <view class="footer-bar" v-else>
+    <view class="btn-completed" @click="handleCompletedOrder">
+      <text>确认完成</text>
     </view>
   </view>
 </template>
 
 <style scoped lang="scss">
 .quick-order {
-  min-height: 100vh;
+  height: 100vh;
   background-color: $jel-pageBackGroundColor;
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
 }
 
 // 订单状态头部
@@ -205,7 +240,7 @@ onUnload(() => {
     }
 
     text {
-      font-size: 30rpx;
+      font-size: 28rpx;
       font-weight: 600;
       color: $jel-font-title;
     }
@@ -257,7 +292,7 @@ onUnload(() => {
       justify-content: space-between;
 
       .product-name {
-        font-size: 30rpx;
+        font-size: 28rpx;
         font-weight: 600;
         color: $jel-font-title;
         display: -webkit-box;
@@ -310,7 +345,7 @@ onUnload(() => {
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 32rpx;
+      margin-bottom: 24rpx;
       overflow: hidden;
       background-color: #fff;
 
@@ -439,6 +474,8 @@ onUnload(() => {
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.05);
 
   .btn-cancel {
+    text-align: center;
+    width: 80%;
     padding: 20rpx 32rpx;
     border: 2rpx solid $jel-font-dec;
     border-radius: 40rpx;
@@ -447,9 +484,18 @@ onUnload(() => {
       font-size: 28rpx;
       color: $jel-font-dec2;
     }
+  }
 
-    &:active {
-      opacity: 0.7;
+  .btn-completed {
+    text-align: center;
+    width: 80%;
+    padding: 20rpx 32rpx;
+    border-radius: 40rpx;
+    background-color: $jel-brandColor;
+
+    text {
+      font-size: 28rpx;
+      color: #ffffff;
     }
   }
 }

@@ -14,18 +14,24 @@ const rateStore = useRateStore()
 const managerStore = useManagerStore()
 // 可抵扣金额
 const deductAmount = computed(() => {
-  const total = cartTobStore.totalPrice
+  const totalYuan = cartTobStore.totalPrice || 0
+  const totalCent = Math.floor(totalYuan * 100)
 
-  const rules = rateStore.rateRules // 积分规则
-  const userScore = userStore.profile?.score < 0 ? 0 : userStore.profile?.score // 用户剩余积分
+  const rules = rateStore.rateRules
+  const userScore = Math.max(0, userStore.profile?.score || 0)
 
-  // 判断规则是否存在
   if (rules && typeof rules.maxUsePercent === 'number' && typeof rules.useRate === 'number') {
-    const maxDeductMoney = total * rules.maxUsePercent // 最大可抵扣金额  购物车订单总额 * 订单抵扣比例
-    const userPointsValue = userScore * rules.useRate // 用户积分可兑换多少金额  剩余积分 * 兑换RMB的比例
+    // 最大可抵扣（分）
+    const maxDeductCent = Math.floor(totalCent * rules.maxUsePercent)
 
-    // 金额必须是 >=0
-    return Math.max(0, Math.min(maxDeductMoney, userPointsValue))
+    // 积分可抵扣（分）
+    const scoreDeductCent = Math.floor(userScore * rules.useRate * 100)
+
+    // 实际可用（分）
+    const canUseCent = Math.min(maxDeductCent, scoreDeductCent)
+
+    // ⚠️ 关键：直接取整元
+    return Math.floor(canUseCent / 100)
   }
 
   return 0
@@ -160,7 +166,7 @@ const submit = async () => {
       </view>
       <view class="item">
         <text class="label">剩余积分</text>
-        <text class="value">{{ userStore.profile.score.toFixed(2) }}</text>
+        <text class="value">{{ ((userStore.profile.score ?? 0) / 100).toFixed(2) }}</text>
       </view>
       <!-- 当前可抵扣的积分 -->
       <view class="item">
@@ -289,6 +295,7 @@ const submit = async () => {
         }
 
         .right {
+          margin-left: 16rpx;
           display: flex;
           flex-direction: column;
           justify-content: space-between;

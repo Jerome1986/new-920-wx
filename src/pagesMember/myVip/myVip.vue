@@ -137,7 +137,7 @@ const buyNow = async () => {
           >
           <view class="price">
             <text style="font-size: 28rpx">￥</text>
-            <text>{{ item.price.toFixed(2) }}/年</text>
+            <text>{{ (item.price / 100).toFixed(2) }}/年</text>
           </view>
         </view>
         <view class="foot">{{ item.rights }}</view>
@@ -156,7 +156,7 @@ const buyNow = async () => {
       <view class="buyPrice">
         <text style="color: #333333">支付金额：</text>
         <text>￥</text>
-        <text style="font-size: 32rpx">{{ currentPrice()?.toFixed(2) }}</text>
+        <text style="font-size: 32rpx">{{ (currentPrice() / 100).toFixed(2) }}</text>
       </view>
       <view class="buyBtn" @click="buyNow">立即购买</view>
     </view>

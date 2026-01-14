@@ -105,7 +105,10 @@ onLoad((options: any) => {
               'icon-time': orderDetail.status === 'PENDING',
               'icon-logistics': orderDetail.status === 'SHIPPED',
               'icon-check': orderDetail.status === 'PAID',
-              'icon-close': orderDetail.status === 'CANCELLED' || orderDetail.status === 'REFUNDED',
+              'icon-close':
+                orderDetail.status === 'CANCELLED' ||
+                orderDetail.status === 'REFUNDED' ||
+                orderDetail.status === 'PROCESSING',
             }"
           ></text>
         </view>
@@ -155,7 +158,7 @@ onLoad((options: any) => {
                 {{ product.sku.attrs.label }}: {{ product.sku.attrs.value }}
               </view>
               <view class="bottom">
-                <view class="price">￥{{ product.currentPrice.toFixed(2) }}</view>
+                <view class="price">￥{{ (product.currentPrice / 100).toFixed(2) }}</view>
                 <view class="quantity">x{{ product.quantity }}</view>
               </view>
             </view>
@@ -246,19 +249,21 @@ onLoad((options: any) => {
         <view class="amount-list">
           <view class="amount-item">
             <text class="label">商品总额</text>
-            <text class="value">￥{{ orderDetail.amount.totalPrice.toFixed(2) }}</text>
+            <text class="value">￥{{ (orderDetail.amount.totalPrice / 100).toFixed(2) }}</text>
           </view>
           <view class="amount-item" v-if="orderDetail.amount.deductAmount > 0">
             <text class="label">积分抵扣</text>
-            <text class="value deduct">-￥{{ orderDetail.amount.deductAmount.toFixed(2) }}</text>
+            <text class="value deduct"
+              >-￥{{ (orderDetail.amount.deductAmount / 100).toFixed(2) }}</text
+            >
           </view>
           <view class="amount-item" v-if="orderDetail.amount.usedScore">
             <text class="label">使用积分</text>
-            <text class="value">{{ orderDetail.amount.usedScore }}</text>
+            <text class="value">{{ (orderDetail.amount.usedScore / 100).toFixed(2) }}</text>
           </view>
           <view class="amount-item total">
             <text class="label">实付款</text>
-            <text class="value">￥{{ orderDetail.amount.actualPayment.toFixed(2) }}</text>
+            <text class="value">￥{{ (orderDetail.amount.actualPayment / 100).toFixed(2) }}</text>
           </view>
         </view>
       </view>

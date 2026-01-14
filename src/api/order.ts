@@ -7,11 +7,12 @@ import type {
   OrderProductItem,
   OrderStatus,
   OrderUserInfo,
+  QuickOrderGiftVipResult,
   QuickOrderResult,
   VipOrderItem,
 } from '@/types/Order'
 import type { AddressInfo } from '@/types/UserItem'
-import type { NativeResponse, WechatPayParams } from '@/types/WechatPay'
+import type { NativeResponse, RefundResult, WechatPayParams } from '@/types/WechatPay'
 import type { updateResult } from '@/types/Gobal'
 import type { CheckVipResponse } from '@/types/VipItem'
 
@@ -87,14 +88,15 @@ export const confirmOrderLogistics = (userId: string, orderNo: string) => {
 }
 
 /**
- * 商品订单取消
- * @param orderId - 订单ID
+ * 商品订单取消并退款
+ * @param outTradeNo - 订单ID
+ * @param amount - 订单金额信息
  */
-export const proOrderCancelApi = (orderId: string) => {
-  return request<updateResult>({
+export const proOrderCancelApi = (outTradeNo: string, amount: OrderAmount) => {
+  return request<RefundResult>({
     method: 'POST',
-    url: '/order/cancelPro',
-    data: { orderId },
+    url: '/wx/refund',
+    data: { outTradeNo, amount },
   })
 }
 
@@ -252,5 +254,41 @@ export const checkVipApi = (memberPhone: string) => {
     method: 'POST',
     url: '/quickSell/checkVip',
     data: { memberPhone },
+  })
+}
+
+/**
+ * 线下贴膜会员免费订单服务完成
+ * @param out_trade_no - 订单号
+ */
+export const completeGiftOrderApi = (out_trade_no: string) => {
+  return request<QuickOrderGiftVipResult>({
+    method: 'POST',
+    url: '/quickSell/completeGiftOrderApi',
+    data: { out_trade_no },
+  })
+}
+
+/**
+ * 取消线下贴膜的支付订单
+ * @param out_trade_no - 订单号
+ */
+export const cancelOfflineOrderApi = (out_trade_no: string) => {
+  return request<updateResult>({
+    method: 'POST',
+    url: '/quickSell/cancel',
+    data: { out_trade_no },
+  })
+}
+
+/**
+ * 线下贴膜订单服务完成
+ * @param out_trade_no - 订单号
+ */
+export const completeOfflineOrderApi = (out_trade_no: string) => {
+  return request<updateResult>({
+    method: 'POST',
+    url: '/quickSell/completed',
+    data: { out_trade_no },
   })
 }

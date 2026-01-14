@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import type { CateItem } from '@/types/CateItem'
 import type { ProductItem } from '@/types/ProductItem'
 import { cateMoGetApi, subCategoryGetApi } from '@/api/cate.ts'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { productListByCateIdGetApi, quickSellSearchModelsApi } from '@/api/product.ts'
 import { storeGetInventoryApi } from '@/api/store.ts'
 import type { StoreInventoryGetResult } from '@/types/StoreInventory'
@@ -151,11 +151,11 @@ const productListGet = async (cateId: string) => {
 const inventoryList = ref<StoreInventoryGetResult[]>([])
 const inventoryListGet = async (storeId: string) => {
   const res = await storeGetInventoryApi(storeId)
-  console.log(res)
+  console.log('库存', res)
   inventoryList.value = res.data
 }
 
-onLoad(() => {
+onShow(() => {
   if (managerStore.managerStoreInfo?.storeId) {
     console.log('请求')
     inventoryListGet(managerStore.managerStoreInfo?.storeId)
@@ -216,12 +216,13 @@ const priceEditable = ref(false) // 价格是否可编辑
 
 // 打开出单弹框
 const handleCreateOrder = (product: ProductItem) => {
+  console.log(product)
   currentProduct.value = product
   originalPrice.value = product.currentPrice
   isMember.value = false
   priceEditable.value = false
   resetQueryMember()
-  initPrice(product.currentPrice)
+  initPrice(product.currentPrice / 100)
   orderPopupRef.value?.open()
 }
 
@@ -240,6 +241,7 @@ const togglePriceEdit = () => {
 
 // 处理价格输入
 const handlePriceInput = (e: any) => {
+  console.log('键盘输入', e.detail.value)
   orderPrice.value = Number(e.detail.value) || 0
 }
 
@@ -281,7 +283,7 @@ const handleConfirmOrder = async () => {
     const result = await quickOrderApi(
       managerStore.managerStoreInfo?.storeId,
       productId,
-      orderPrice.value,
+      Number((orderPrice.value * 100).toFixed(2)), // 转换为分提交
       'WX',
       '门店贴膜',
       memberPhone.value,
@@ -419,7 +421,7 @@ const handleCancelOrder = () => {
           <!-- 品牌和价格 -->
           <view class="product-meta">
             <text class="brand-name">{{ product.dec }}</text>
-            <text class="price">¥ {{ product.currentPrice.toFixed(2) }}</text>
+            <text class="price">¥ {{ (product.currentPrice / 100).toFixed(2) }}</text>
           </view>
 
           <!-- 适配型号标签 -->
