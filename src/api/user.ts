@@ -1,5 +1,10 @@
 import { request } from '@/utils/http.ts'
-import type { inviter2CodeResult, referralsUserList, UserItem } from '@/types/UserItem'
+import type {
+  fundsSettlementResult,
+  inviter2CodeResult,
+  referralsUserList,
+  UserItem,
+} from '@/types/UserItem'
 import type { QrcodeItem } from '@/types/QrcodeItem.d.ts'
 
 /**
@@ -47,5 +52,18 @@ export const userInfoGetApi = (userId: string) => {
     method: 'GET',
     url: '/user/get',
     data: { userId },
+  })
+}
+
+/**
+ * 将待结算余额转入运营资金
+ * @param userId  - 用户ID
+ * @param amount - 即将转入的金额
+ */
+export const fundsSettlementAPi = (userId: string, amount: number) => {
+  return request<fundsSettlementResult>({
+    method: 'POST',
+    url: '/funds/settlement',
+    data: { userId, amount },
   })
 }

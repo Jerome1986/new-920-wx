@@ -5,6 +5,7 @@ import { onLoad } from '@dcloudio/uni-app'
 import { formatTimestamp } from '@/utils/formatTimestamp.ts'
 import type { FinanceRecords } from '@/types/FinanceRecords'
 import { storeFlowGetApi } from '@/api/storeFlow.ts'
+import { fundsSettlementAPi } from '@/api/user.ts'
 
 // 流水类型的数据类型
 type DirectionData = 'IN' | 'OUT' | 'ALL'
@@ -57,6 +58,13 @@ const tagList = ref([
   { id: 'tag3', text: 'OUT', label: '支出' },
 ])
 
+// 重置页码
+const resetPage = () => {
+  finish.value = false
+  loading.value = false
+  params.value.pageNum = 1
+}
+
 // 当前激活的tag
 const activeTag = ref<DirectionData>('ALL')
 
@@ -64,9 +72,7 @@ const activeTag = ref<DirectionData>('ALL')
 const handleTag = (tag: DirectionData) => {
   activeTag.value = tag
   if (userStore.profile?._id) {
-    finish.value = false
-    loading.value = false
-    params.value.pageNum = 1
+    resetPage()
     storeFlowGet(userStore.profile._id, tag, params.value.pageNum, params.value.pageSize)
   }
 }
@@ -76,20 +82,99 @@ const handleScrolltolower = () => {
   storeFlowGet(userStore.profile._id, activeTag.value, params.value.pageNum, params.value.pageSize)
 }
 
+// 输入弹窗显示状态
+const showInputModal = ref(false)
+const inputAmount = ref('')
+
 // 处理转入操作
 const handleWithdraw = () => {
-  // TODO: 实现转入逻辑
+  inputAmount.value = ''
+  showInputModal.value = true
+}
+
+// 确认转入
+const confirmWithdraw = () => {
+  const amount = parseFloat(inputAmount.value)
+  if (!amount || amount <= 0) {
+    uni.showToast({
+      title: '请输入有效的转入金额',
+      icon: 'none',
+    })
+    return
+  }
+
+  if (amount < 100) {
+    uni.showToast({
+      icon: 'none',
+      title: '转入金额必须大于100',
+    })
+    return
+  }
+
+  if (amount > (userStore.profile.settle_balance || 0)) {
+    uni.showToast({
+      title: '转入金额不能超过待结算余额',
+      icon: 'none',
+    })
+    return
+  }
+
   uni.showModal({
-    title: '提示',
-    content: '是否将待结算余额转入运营资金？',
+    title: '确认转入',
+    content: `确认将 ¥${amount.toFixed(2)} 转入运营资金？`,
     confirmColor: '#d62731',
-    success: (res) => {
+    success: async (res) => {
       if (res.confirm) {
-        // TODO: 调用转入API
-        console.log('执行转入操作')
+        // TODO: 调用转入API 提交金额时转换为分，统一单位
+        const result = await fundsSettlementAPi(
+          userStore.profile._id,
+          Number((amount * 100).toFixed(2)),
+        )
+        console.log('执行转入操作，金额：', result, amount)
+        await uni.showToast({
+          title: '转入成功',
+          icon: 'success',
+        })
+        showInputModal.value = false
+        // 刷新用户数据
+        if (userStore.profile?._id) {
+          await userStore.userInfoGet(userStore.profile._id)
+          console.log(activeTag.value)
+        }
+
+        // 获取门店最新流水信息
+        resetPage()
+        await storeFlowGet(
+          userStore.profile._id,
+          activeTag.value,
+          params.value.pageNum,
+          params.value.pageSize,
+        )
       }
     },
   })
+}
+
+// 取消转入
+const cancelWithdraw = () => {
+  showInputModal.value = false
+  inputAmount.value = ''
+}
+
+// 处理金额输入
+const handleAmountInput = (e: any) => {
+  // 只允许输入数字和小数点
+  let value = e.detail.value.replace(/[^\d.]/g, '')
+  // 确保只有一个点
+  const parts = value.split('.')
+  if (parts.length > 2) {
+    value = parts[0] + '.' + parts.slice(1).join('')
+  }
+  // 限制小数点后两位
+  if (parts[1] && parts[1].length > 2) {
+    value = parts[0] + '.' + parts[1].substring(0, 2)
+  }
+  inputAmount.value = value
 }
 
 // 格式化流水类型--映射字段
@@ -100,6 +185,7 @@ const formatFlowType = (type: any) => {
     payout_withdraw: '提现',
     payout_product: '门店进货',
     refund: '退款',
+    transfer_to_operating: '运营资金',
   }
   return typeMap[type as string] || type
 }
@@ -199,6 +285,41 @@ onLoad(() => {
     <view class="empty" v-else>
       <image class="empty-img" src="@/static/images/empty.png" mode="aspectFit"></image>
       <text class="empty-text">暂无流水明细</text>
+    </view>
+
+    <!-- 转入金额输入弹窗 -->
+    <view class="input-modal-overlay" v-if="showInputModal" @click="cancelWithdraw">
+      <view class="input-modal" @click.stop>
+        <view class="modal-header">
+          <text class="modal-title">转入金额</text>
+        </view>
+        <view class="modal-body">
+          <view class="balance-info">
+            <text class="balance-label">待结算余额：</text>
+            <text class="balance-value">
+              ¥{{ userStore.profile.settle_balance?.toFixed(2) || '0.00' }}
+            </text>
+          </view>
+          <view class="input-section">
+            <text class="input-label">转入金额</text>
+            <view class="input-wrapper">
+              <text class="currency-symbol">¥</text>
+              <input
+                class="amount-input"
+                type="digit"
+                v-model="inputAmount"
+                placeholder="请输入转入金额"
+                placeholder-style="color: #999;"
+                @input="handleAmountInput"
+              />
+            </view>
+          </view>
+        </view>
+        <view class="modal-footer">
+          <view class="btn cancel-btn" @click="cancelWithdraw">取消</view>
+          <view class="btn confirm-btn" @click="confirmWithdraw">确认转入</view>
+        </view>
+      </view>
     </view>
   </view>
 </template>
@@ -446,6 +567,155 @@ onLoad(() => {
   .empty-text {
     font-size: 28rpx;
     color: $jel-font-dec;
+  }
+}
+
+// 转入金额输入弹窗
+.input-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 0 40rpx;
+
+  .input-modal {
+    background-color: #fff;
+    border-radius: 16rpx;
+    width: 100%;
+    max-width: 560rpx;
+    overflow: hidden;
+
+    .modal-header {
+      padding: 40rpx 32rpx 20rpx;
+      text-align: center;
+
+      .modal-title {
+        font-size: 36rpx;
+        font-weight: 600;
+        color: $jel-font-title;
+      }
+    }
+
+    .modal-body {
+      padding: 0 32rpx 40rpx;
+
+      .balance-info {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 32rpx;
+        padding: 24rpx 20rpx;
+        background-color: #f8f9fa;
+        border-radius: 12rpx;
+
+        .balance-label {
+          font-size: 28rpx;
+          color: $jel-font-dec2;
+        }
+
+        .balance-value {
+          font-size: 30rpx;
+          font-weight: 600;
+          color: $jel-brandColor;
+        }
+      }
+
+      .input-section {
+        .input-label {
+          display: block;
+          font-size: 28rpx;
+          color: $jel-font-title;
+          margin-bottom: 16rpx;
+          font-weight: 500;
+        }
+
+        .input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+          border: 1rpx solid #e9ecef;
+          border-radius: 12rpx;
+          background-color: #f8f9fa;
+          transition: border-color 0.2s;
+
+          &:focus-within {
+            border-color: $jel-brandColor;
+            background-color: #fff;
+          }
+
+          .currency-symbol {
+            font-size: 32rpx;
+            color: $jel-font-dec2;
+            margin: 0 12rpx;
+          }
+
+          .amount-input {
+            flex: 1;
+            height: 80rpx;
+            font-size: 32rpx;
+            color: $jel-font-title;
+            border: none;
+            outline: none;
+            background: transparent;
+            padding-right: 16rpx;
+
+            &::placeholder {
+              color: #adb5bd;
+            }
+          }
+        }
+      }
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 16rpx;
+      padding: 32rpx;
+      background-color: #fafbfc;
+      border-top: 1rpx solid #f1f3f4;
+
+      .btn {
+        flex: 1;
+        height: 84rpx;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32rpx;
+        font-weight: 600;
+        border-radius: 16rpx;
+        transition: all 0.2s ease;
+        border: none;
+        outline: none;
+        position: relative;
+
+        &.cancel-btn {
+          color: #64748b;
+          background-color: #ffffff;
+          border: 1rpx solid #e2e8f0;
+
+          &:active {
+            background-color: #f8fafc;
+            transform: translateY(1rpx);
+          }
+        }
+
+        &.confirm-btn {
+          color: #ffffff;
+          background-color: $jel-brandColor;
+
+          &:active {
+            background-color: #c82333;
+            transform: translateY(1rpx);
+          }
+        }
+      }
+    }
   }
 }
 </style>

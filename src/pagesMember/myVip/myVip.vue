@@ -53,6 +53,13 @@ const handleSelected = (item: vipProItem, index: number) => {
 // 点击立即购买
 const buyNow = async () => {
   console.log('buyNow', currentVip.value)
+  if (currentVip.value?.status === 'disable') {
+    await uni.showToast({
+      icon: 'none',
+      title: '暂未开放',
+    })
+    return
+  }
   // 1.向后端发起支付请求
   if (currentVip.value?._id) {
     const payRes = await vipPayApi(

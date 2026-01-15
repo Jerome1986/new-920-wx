@@ -12,7 +12,7 @@ export interface FinanceRecords {
   consumer_user_id: string
   /** 收入或支出对应的金额，建议正数，统一用 direction 控制  */
   amount: Number
-  /** 流水对应的费用类型，如：income_store（门店收入） / income_commission（佣金） / payout_technician / payout_withdraw / refund /  */
+  /** 流水对应的费用类型，如：income_store（门店收入） / income_commission（佣金） / payout_technician / payout_withdraw / refund / transfer_to_operating */
   type: String
   /** IN 代表进账，OUT代表出账 */
   direction: 'IN' | 'OUT'

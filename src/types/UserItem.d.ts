@@ -73,3 +73,15 @@ export interface referralsUserList {
   firstUsers: UserItem[]
   secondUsers: UserItem[]
 }
+
+/**
+ * 个人将待结算余额转入运营资金
+ */
+export interface fundsSettlementResult {
+  /** 用户ID */
+  userId: string
+  /** 运营资金 */
+  operating_balance: number
+  /** 待结算余额 */
+  settle_balance: number
+}
