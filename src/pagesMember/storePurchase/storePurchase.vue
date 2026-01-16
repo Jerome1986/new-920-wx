@@ -35,7 +35,7 @@ const {
 // 处理搜索
 const handleSearch = () => {
   uni.navigateTo({
-    url: '/pages/search/search',
+    url: '/pages/search/searchToB',
   })
 }
 

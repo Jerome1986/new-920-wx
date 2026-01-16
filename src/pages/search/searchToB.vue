@@ -1,0 +1,124 @@
+<script lang="ts" setup>
+import SearchBar from '@/components/SearchBar.vue'
+import type { ProductItem } from '@/types/ProductItem'
+import { ref } from 'vue'
+import NavTitle from '@/components/NavTitle.vue'
+import GuessBar from '@/pages/search/GuessBar.vue'
+import type { JelSearchBar } from '@/types/component'
+import { productListSearchToBGetApi } from '@/api/product.ts'
+import GlobalProductBar from '@/components/GlobalProductBar.vue'
+
+// 搜索组件
+const searchRef = ref<JelSearchBar>()
+
+// 当前搜索关键词
+const currentSearchKeyword = ref('')
+
+// 分页
+const params = ref({
+  pageNum: 1,
+  pageSize: 8,
+})
+
+// 产品数据
+const finish = ref(false)
+const products = ref<ProductItem[]>([])
+const getProducts = async (val: string, pageNum: number, pageSize: number) => {
+  if (finish.value) return
+  const res = await productListSearchToBGetApi(val, pageNum, pageSize)
+  console.log('搜索结果', res.data)
+  products.value.push(...res.data.list)
+  if (params.value.pageNum < res.data.totalPage) {
+    params.value.pageNum++
+  } else {
+    finish.value = true
+  }
+}
+
+// 选择猜你想搜事件
+const selectGuess = (guessName: string) => {
+  console.log('猜你想搜', guessName)
+  currentSearchKeyword.value = guessName // 保存当前搜索词
+  products.value = [] // 清空旧的搜索结果
+  params.value.pageNum = 1
+  finish.value = false
+  searchRef.value?.setSearchValue(guessName) // 让搜索组件input同步搜索内容
+  getProducts(guessName, params.value.pageNum, params.value.pageSize)
+}
+
+// 处理历史搜索事件
+const historySearch = async (val: string) => {
+  console.log('搜索', val)
+  currentSearchKeyword.value = val // 保存当前搜索词
+  products.value = [] // 清空旧的搜索结果
+  params.value.pageNum = 1
+  finish.value = false
+  await getProducts(val, params.value.pageNum, params.value.pageSize)
+}
+
+// 处理搜索按钮点击
+const handleSearch = async (val: string) => {
+  console.log('搜索按钮', val)
+  currentSearchKeyword.value = val // 保存当前搜索词
+  products.value = [] // 清空旧的搜索结果
+  params.value.pageNum = 1
+  finish.value = false
+  await getProducts(val, params.value.pageNum, params.value.pageSize)
+}
+
+// 处理清除事件
+const handleClear = () => {
+  currentSearchKeyword.value = '' // 清空搜索词
+  products.value = []
+  params.value.pageNum = 1
+  finish.value = false
+}
+
+// 搜索结果加载更多
+const handleScrollToLower = async () => {
+  if (currentSearchKeyword.value) {
+    await getProducts(currentSearchKeyword.value, params.value.pageNum, params.value.pageSize)
+  }
+}
+</script>
+
+<template>
+  <scroll-view
+    class="searchPage"
+    :enhanced="true"
+    :show-scrollbar="false"
+    :scroll-y="true"
+    @scrolltolower="handleScrollToLower"
+  >
+    <!-- 搜索组件 -->
+    <SearchBar
+      ref="searchRef"
+      @search="handleSearch"
+      @historySearch="historySearch"
+      @clear="handleClear"
+    ></SearchBar>
+    <!--  猜你想搜  -->
+    <GuessBar @selectGuess="selectGuess"></GuessBar>
+
+    <!-- 搜索结果 -->
+    <view v-show="products.length > 0 || currentSearchKeyword" class="searchResult">
+      <NavTitle title="搜索结果" :is-more="false"></NavTitle>
+      <GlobalProductBar
+        :models="'toC'"
+        :key="currentSearchKeyword || 'default'"
+        :list="products"
+        :finish="finish"
+      ></GlobalProductBar>
+    </view>
+  </scroll-view>
+</template>
+
+<style lang="scss">
+.searchPage {
+  padding: 24rpx 24rpx 60rpx 24rpx;
+  width: 100%;
+  height: 100%;
+  background-color: $jel-pageBackGroundColor;
+  overflow-y: auto;
+}
+</style>

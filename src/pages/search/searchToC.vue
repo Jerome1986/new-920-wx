@@ -6,7 +6,7 @@ import { useMemberStore } from '@/stores'
 import NavTitle from '@/components/NavTitle.vue'
 import HotProductList from '@/components/HotProductList.vue'
 import GuessBar from '@/pages/search/GuessBar.vue'
-import type { JelSearchBar } from '@/types/component'
+import type { JelHotProductList, JelSearchBar } from '@/types/component'
 import { productListSearchGetApi } from '@/api/product.ts'
 import GlobalProductBar from '@/components/GlobalProductBar.vue'
 
@@ -80,16 +80,17 @@ const handleClear = () => {
   finish.value = false
 }
 
+// 热门推荐
+const hotProductRef = ref<JelHotProductList>()
+
 // 搜索结果加载更多
 const handleScrollToLower = async () => {
   if (currentSearchKeyword.value) {
     await getProducts(currentSearchKeyword.value, params.value.pageNum, params.value.pageSize)
+  } else {
+    // 热门推荐
+    hotProductRef.value?.hotListGet()
   }
-}
-
-// 跳转详情
-const handleNavigate = (id: string) => {
-  console.log('详情')
 }
 </script>
 
@@ -113,12 +114,13 @@ const handleNavigate = (id: string) => {
     <!-- 热门推荐 -->
     <view class="activityList" v-show="products.length === 0 && !currentSearchKeyword">
       <NavTitle title="热门推荐" :is-more="false"></NavTitle>
-      <HotProductList key="hot-products"></HotProductList>
+      <HotProductList key="hot-products" ref="hotProductRef"></HotProductList>
     </view>
     <!-- 搜索结果 -->
     <view v-show="products.length > 0 || currentSearchKeyword" class="searchResult">
       <NavTitle title="搜索结果" :is-more="false"></NavTitle>
       <GlobalProductBar
+        :models="'toC'"
         :key="currentSearchKeyword || 'default'"
         :list="products"
         :finish="finish"

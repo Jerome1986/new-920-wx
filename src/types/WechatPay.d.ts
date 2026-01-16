@@ -75,7 +75,7 @@ export interface RefundResult {
   create_time: string
   /** 资金账户状态（是否已出账） */
   funds_account: FundsAccountStatus
-  /** 商户退款单号（你系统里的退款主键） */
+  /** 商户退款单号 */
   out_refund_no: string
   /** 原商户订单号 */
   out_trade_no: string

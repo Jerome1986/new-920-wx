@@ -57,9 +57,9 @@
       }
     },
     {
-      "path": "pages/search/search",
+      "path": "pages/search/searchToC",
       "style": {
-        "navigationBarTitleText": "搜索",
+        "navigationBarTitleText": "商品搜索",
         "enablePullDownRefresh": false
       }
     },
@@ -88,6 +88,13 @@
       "path": "pages/productDetail/productDetailTob",
       "style": {
         "navigationBarTitleText": "商品详情",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/search/searchToB",
+      "style": {
+        "navigationBarTitleText": "采购搜索",
         "enablePullDownRefresh": false
       }
     }
@@ -260,6 +267,13 @@
           "path": "quickOrder/giftOrder",
           "style": {
             "navigationBarTitleText": "会员免费订单",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "storeReport/storeReport",
+          "style": {
+            "navigationBarTitleText": "门店报表",
             "enablePullDownRefresh": false
           }
         }

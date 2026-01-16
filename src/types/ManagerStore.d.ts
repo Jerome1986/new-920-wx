@@ -31,3 +31,15 @@ export interface StoreInfo {
   /** 是否匹配了新手库存套餐 */
   inventory_config: boolean
 }
+
+// 门店汇总报告数据类型
+export interface StoreTotalReport {
+  /** 线下贴膜总收益 */
+  totalRevenue: number
+  /** 线下贴膜总服务次数 */
+  totalServices: number
+  /** 门店所有佣金总和 */
+  totalCommission: number
+  /** 合计总收入 */
+  total: number
+}

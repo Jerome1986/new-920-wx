@@ -102,8 +102,26 @@ export const productListSearchGetApi = (
 ) => {
   return request<ProductPageResult>({
     method: 'POST',
-    url: '/product/search',
+    url: '/product/searchToC',
     data: { searchVal, productType, pageNum, pageSize },
+  })
+}
+
+/**
+ * 采购商品搜索接口
+ * @param searchVal
+ * @param pageNum
+ * @param pageSize
+ */
+export const productListSearchToBGetApi = (
+  searchVal: string,
+  pageNum: number,
+  pageSize: number,
+) => {
+  return request<ProductPageResult>({
+    method: 'POST',
+    url: '/product/searchToB',
+    data: { searchVal, pageNum, pageSize },
   })
 }
 

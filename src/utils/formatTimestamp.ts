@@ -102,3 +102,17 @@ export const getRecentMonths = (n: number) => {
 
   return result
 }
+
+// 格式化金额--数据库存分，将分转换为元来显示
+export const formatAmount = (amount: number) => {
+  return `¥${(amount / 100).toFixed(2)}`
+}
+
+// 格式化月份显示
+export const formatMonth = (monthStr: string) => {
+  if (!monthStr) return ''
+  const date = new Date(monthStr)
+  const year = date.getFullYear()
+  const month = date.getMonth() + 1
+  return `${year}年${month}月`
+}
