@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import { useCartTobStore, useManagerStore, useMemberStore, useRateStore } from '@/stores'
 import type { OrderAmount, OrderProductItem, OrderUserInfo } from '@/types/Order'
 import { purchaseOrderAddApi } from '@/api/purchase.ts'
+import { formatAmount } from '@/utils/formatTimestamp.ts'
 
 // 安全距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
@@ -145,7 +146,7 @@ const submit = async () => {
 
           <view class="right">
             <!-- 价格 -->
-            <view class="price">￥{{ item.currentPrice.toFixed(2) }}</view>
+            <view class="price">{{ formatAmount(item.currentPrice) }}</view>
             <!-- 数量 -->
             <view class="quantity">x{{ item.quantity }}</view>
           </view>
@@ -158,11 +159,11 @@ const submit = async () => {
       <view class="title">金额明细</view>
       <view class="item">
         <text class="label">商品金额</text>
-        <text class="value">￥{{ cartTobStore.totalPrice.toFixed(2) }}</text>
+        <text class="value">￥{{ formatAmount(cartTobStore.totalPrice) }}</text>
       </view>
       <view class="item">
         <text class="label">运营资金</text>
-        <text class="value">￥{{ userStore.profile.operating_balance?.toFixed(2) }}</text>
+        <text class="value">{{ formatAmount(userStore.profile.operating_balance ?? 0) }}</text>
       </view>
       <view class="item">
         <text class="label">剩余积分</text>
@@ -171,11 +172,11 @@ const submit = async () => {
       <!-- 当前可抵扣的积分 -->
       <view class="item">
         <text class="label">可抵积分</text>
-        <text class="value" style="color: #d62731">{{ deductAmount.toFixed(2) }}</text>
+        <text class="value" style="color: #d62731">{{ (deductAmount / 100).toFixed(2) }}</text>
       </view>
       <view class="item total">
         <text class="label">合计</text>
-        <text class="value">￥{{ needPay.toFixed(2) }}</text>
+        <text class="value">{{ formatAmount(needPay) }}</text>
       </view>
     </view>
 
@@ -191,7 +192,7 @@ const submit = async () => {
     <view class="toolbar-content">
       <view class="left">
         <text class="label">实际支付:</text>
-        <text class="amount">￥{{ needPay.toFixed(2) }}</text>
+        <text class="amount">{{ formatAmount(needPay) }}</text>
       </view>
       <button class="btn" @click="submit">结算</button>
     </view>

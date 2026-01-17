@@ -8,6 +8,7 @@ import { useCartTobStore } from '@/stores'
 import type { CartItem } from '@/types/CartItem'
 import { generateId } from '@/utils/id.ts'
 import { checkLogin } from '@/utils/validate.ts'
+import { formatAmount } from '@/utils/formatTimestamp.ts'
 
 const { safeAreaInsets } = uni.getSystemInfoSync()
 
@@ -144,10 +145,12 @@ const handleAddCart = (val: string) => {
             <view class="price">
               <text class="symbol">￥</text>
               <!-- 默认显示最小的价格，如果选择了规格则显示规格价格 -->
-              <text class="number">{{ productData?.currentPrice.toFixed(2) }}</text>
+              <text class="number">{{ formatAmount(productData?.currentPrice ?? 0) }}</text>
               <text style="font-size: 24rpx"> 起</text>
             </view>
-            <view class="original-price"> ￥{{ productData?.originalPrice.toFixed(2) }}</view>
+            <view class="original-price">
+              ￥{{ formatAmount(productData?.originalPrice ?? 0) }}</view
+            >
           </view>
         </view>
         <view class="views">
@@ -197,7 +200,7 @@ const handleAddCart = (val: string) => {
             <!-- 价格 -->
             <view class="skuPrice">
               <text class="skuPrice--text">¥</text>
-              <text class="skuPrice--text">{{ activeSkuPrice.toFixed(2) }}</text>
+              <text class="skuPrice--text">{{ formatAmount(activeSkuPrice) }}</text>
             </view>
           </view>
         </view>

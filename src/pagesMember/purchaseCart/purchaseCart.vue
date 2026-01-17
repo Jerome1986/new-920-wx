@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useCartTobStore } from '@/stores'
+import { formatAmount } from '@/utils/formatTimestamp.ts'
 
 // 获取安全区域
 const { safeAreaInsets } = uni.getSystemInfoSync()
@@ -105,10 +106,10 @@ const handleCheckout = () => {
                 <view class="price-box">
                   <view class="price">
                     <text class="symbol">￥</text>
-                    <text class="number">{{ item.currentPrice.toFixed(2) }}</text>
+                    <text class="number">{{ formatAmount(item.currentPrice) }}</text>
                   </view>
                   <view class="original-price" v-if="item.originalPrice > item.currentPrice">
-                    ￥{{ item.originalPrice.toFixed(2) }}
+                    ￥{{ formatAmount(item.originalPrice) }}
                   </view>
                 </view>
 
@@ -166,7 +167,7 @@ const handleCheckout = () => {
           <text class="label">合计:</text>
           <text class="price">
             <text class="symbol">￥</text>
-            <text class="number">{{ cartTobStore.totalPrice.toFixed(2) }}</text>
+            <text class="number">{{ formatAmount(cartTobStore.totalPrice) }}</text>
           </text>
         </view>
       </view>

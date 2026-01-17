@@ -12,6 +12,7 @@ import { searchProduct } from '@/pagesMember/sellPage/useProductSearch.ts'
 import { highlightKeyword } from '@/pagesMember/sellPage/useHighlightKeyword.ts'
 import { giftOrderApi, quickOrderApi } from '@/api/order.ts'
 import { useQueryMember } from '@/pagesMember/sellPage/useQueryMember.ts'
+import { deviceFindPhoneNameApi } from '@/api/device.ts'
 
 // 会员查询相关（每个页面实例独立状态）
 const {
@@ -26,6 +27,17 @@ const {
   initPrice,
 } = useQueryMember()
 
+// 获取本机设备
+const getPhoneModel = async () => {
+  console.log('系统信息', uni.getSystemInfoSync())
+  selectedModel.value = uni.getSystemInfoSync().model
+  const res = await deviceFindPhoneNameApi(selectedModel.value)
+  if (res.code === 200) {
+    selectedModel.value = res.data.phoneName
+  }
+}
+onLoad(() => getPhoneModel())
+
 // store
 const managerStore = useManagerStore()
 
@@ -33,7 +45,7 @@ const managerStore = useManagerStore()
 const keyword = ref('')
 
 // 当前选中的手机型号
-const selectedModel = ref('P30 lite')
+const selectedModel = ref('')
 
 // 型号筛选开关
 const modelFilterEnabled = ref(false)

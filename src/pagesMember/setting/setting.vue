@@ -67,6 +67,8 @@ const onLogout = () => {
 .list {
   .item {
     margin-bottom: 24rpx;
+    height: 90rpx;
+    line-height: 90rpx;
     font-size: 28rpx;
     color: $jel-font-title;
     text-align: left;
@@ -79,6 +81,7 @@ const onLogout = () => {
 .action {
   text-align: center;
   line-height: 90rpx;
+  height: 90rpx;
   margin-top: 40rpx;
   font-size: 32rpx;
   color: #333;

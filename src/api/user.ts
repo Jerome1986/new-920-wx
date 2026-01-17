@@ -67,3 +67,16 @@ export const fundsSettlementAPi = (userId: string, amount: number) => {
     data: { userId, amount },
   })
 }
+
+/**
+ * 更新用户头像
+ * @param userId  -  用户ID
+ * @param avatarUrl - 头像链接
+ */
+export const userAvatarChangeApi = (userId: string, avatarUrl: string) => {
+  return request({
+    method: 'POST',
+    url: '/user/changeAvatar',
+    data: { userId, avatarUrl },
+  })
+}

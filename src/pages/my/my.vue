@@ -10,6 +10,7 @@ import { ref } from 'vue'
 import { checkedHireApi } from '@/api/hire.ts'
 import { cooperateCheckApi } from '@/api/cooperate.ts'
 import type { JelHotProductList } from '@/types/component'
+import { userAvatarChangeApi } from '@/api/user.ts'
 
 // 定义 store
 const userStore = useMemberStore()
@@ -21,11 +22,68 @@ const login = () => {
   })
 }
 
+// 更换头像
+const changeAvatar = () => {
+  console.log('changeAvatar')
+  // 1.先验证是否更换频率超出次数
+  if (userStore.profile.avatarUpdateCount && userStore.profile.avatarUpdateCount >= 3) {
+    uni.showToast({ icon: 'none', title: '操作太频繁，请稍后再试', duration: 2000, mask: true })
+    return
+  }
+
+  // 2.选择图片
+  uni.chooseImage({
+    count: 1,
+    success: (res) => {
+      console.log(res)
+      const name = 'avatar_' + Date.now()
+      // 3.上传图片等待服务器返回正确的链接
+      uni.uploadFile({
+        url: 'https://i2dkfjxqvm.gzg.sealos.run/upload-images',
+        filePath: res.tempFilePaths[0],
+        name,
+        success: async (uploadFileRes) => {
+          console.log(uploadFileRes.data)
+          // 4.  更新用户头像
+          const upRes = await userAvatarChangeApi(userStore.profile._id, uploadFileRes.data)
+          console.log('更新结果', upRes)
+
+          if (upRes.code === 200) {
+            await uni.showToast({ icon: 'none', title: '头像更新成功', duration: 2000, mask: true })
+            // 同步STORE
+            userStore.setProfile({ avatarUrl: uploadFileRes.data })
+          } else {
+            await uni.showToast({
+              icon: 'none',
+              title: upRes.message || '请稍后再试',
+              duration: 2000,
+              mask: true,
+            })
+          }
+        },
+        fail: (err) => {
+          console.log(err)
+        },
+      })
+    },
+  })
+}
+
 // 点击个人设置
-const options = () => {
-  console.log('options')
-  uni.navigateTo({
-    url: '/pagesMember/setting/setting',
+const onLogout = () => {
+  uni.showModal({
+    title: '提示',
+    content: '确定退出登录吗？',
+    confirmColor: '#d62731',
+    success: (result) => {
+      if (result.confirm) {
+        userStore.clearProfile()
+        uni.showToast({
+          icon: 'success',
+          title: '退出成功',
+        })
+      }
+    },
   })
 }
 
@@ -80,7 +138,7 @@ const handleScrolltolower = async () => {
     <view class="user-info">
       <!-- 信息区域 -->
       <view class="info">
-        <view class="avatar">
+        <view class="avatar" @click="changeAvatar">
           <image :src="userStore.profile?.avatarUrl"></image>
         </view>
         <!--   未登录     -->
@@ -96,9 +154,9 @@ const handleScrolltolower = async () => {
         </view>
       </view>
       <!-- 设置按钮 -->
-      <view class="options" @click="options">
-        <text class="iconfont icon-shezhi" style="font-size: 28rpx"></text>
-        <text style="font-size: 24rpx; margin-left: 8rpx">设置</text>
+      <view class="options" @click="onLogout" v-if="userStore.profile?._id">
+        <text class="iconfont icon-tuichudenglu" style="font-size: 28rpx"></text>
+        <text style="font-size: 24rpx; margin-left: 8rpx">退出</text>
       </view>
     </view>
 

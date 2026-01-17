@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useMemberStore } from '@/stores'
 import { onLoad } from '@dcloudio/uni-app'
-import { formatTimestamp } from '@/utils/formatTimestamp.ts'
+import { formatAmount, formatTimestamp } from '@/utils/formatTimestamp.ts'
 import type { FinanceRecords } from '@/types/FinanceRecords'
 import { storeFlowGetApi } from '@/api/storeFlow.ts'
 import { fundsSettlementAPi } from '@/api/user.ts'
@@ -95,6 +95,8 @@ const handleWithdraw = () => {
 // 确认转入
 const confirmWithdraw = () => {
   const amount = parseFloat(inputAmount.value)
+  console.log(amount)
+
   if (!amount || amount <= 0) {
     uni.showToast({
       title: '请输入有效的转入金额',
@@ -111,7 +113,7 @@ const confirmWithdraw = () => {
     return
   }
 
-  if (amount > (userStore.profile.settle_balance || 0)) {
+  if (amount > (userStore.profile.settle_balance ?? 0) / 100) {
     uni.showToast({
       title: '转入金额不能超过待结算余额',
       icon: 'none',
@@ -125,31 +127,35 @@ const confirmWithdraw = () => {
     confirmColor: '#d62731',
     success: async (res) => {
       if (res.confirm) {
-        // TODO: 调用转入API 提交金额时转换为分，统一单位
+        //  调用转入API 提交金额时转换为分，统一单位
         const result = await fundsSettlementAPi(
           userStore.profile._id,
           Number((amount * 100).toFixed(2)),
         )
         console.log('执行转入操作，金额：', result, amount)
-        await uni.showToast({
-          title: '转入成功',
-          icon: 'success',
-        })
-        showInputModal.value = false
-        // 刷新用户数据
-        if (userStore.profile?._id) {
-          await userStore.userInfoGet(userStore.profile._id)
-          console.log(activeTag.value)
-        }
+        if (result.code === 200) {
+          await uni.showToast({
+            title: '转入成功',
+            icon: 'success',
+          })
+          showInputModal.value = false
+          // 刷新用户数据
+          if (userStore.profile?._id) {
+            await userStore.userInfoGet(userStore.profile._id)
+            console.log(activeTag.value)
+          }
 
-        // 获取门店最新流水信息
-        resetPage()
-        await storeFlowGet(
-          userStore.profile._id,
-          activeTag.value,
-          params.value.pageNum,
-          params.value.pageSize,
-        )
+          // 获取门店最新流水信息
+          resetPage()
+          await storeFlowGet(
+            userStore.profile._id,
+            activeTag.value,
+            params.value.pageNum,
+            params.value.pageSize,
+          )
+        } else {
+          await uni.showToast({ icon: 'none', title: '转入失败' })
+        }
       }
     },
   })
@@ -210,7 +216,7 @@ onLoad(() => {
           <view class="balance-icon">💰</view>
           <view class="balance-info">
             <text class="label">待结算余额</text>
-            <text class="value">¥{{ userStore.profile.settle_balance?.toFixed(2) || '0.00' }}</text>
+            <text class="value">{{ formatAmount(userStore.profile.settle_balance ?? 0) }}</text>
           </view>
         </view>
 
@@ -223,9 +229,9 @@ onLoad(() => {
             <view class="balance-icon-small">💳</view>
             <view class="balance-col">
               <text class="label">运营资金</text>
-              <text class="value-small"
-                >¥{{ userStore.profile.operating_balance?.toFixed(2) || '0.00' }}</text
-              >
+              <text class="value-small">{{
+                formatAmount(userStore.profile.operating_balance ?? 0)
+              }}</text>
             </view>
             <view class="action-btn" @click="handleWithdraw">
               <text class="btn-text">转入</text>
@@ -297,7 +303,7 @@ onLoad(() => {
           <view class="balance-info">
             <text class="balance-label">待结算余额：</text>
             <text class="balance-value">
-              ¥{{ userStore.profile.settle_balance?.toFixed(2) || '0.00' }}
+              {{ formatAmount(userStore.profile.settle_balance ?? 0) }}
             </text>
           </view>
           <view class="input-section">

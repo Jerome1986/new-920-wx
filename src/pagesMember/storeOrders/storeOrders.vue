@@ -2,7 +2,11 @@
 import { ref } from 'vue'
 import { useMemberStore } from '@/stores'
 import { onLoad } from '@dcloudio/uni-app'
-import { formatPurchasedOrderState, formatTimestamp } from '@/utils/formatTimestamp.ts'
+import {
+  formatAmount,
+  formatPurchasedOrderState,
+  formatTimestamp,
+} from '@/utils/formatTimestamp.ts'
 import { purchasedOrderCancelApi, purchaseOrderGetApi } from '@/api/purchase.ts'
 import type { PurchaseItem } from '@/types/Purchase'
 
@@ -101,7 +105,7 @@ const handleCancelOrder = (orderNo: string) => {
     confirmColor: '#d62731',
     success: async (res) => {
       if (res.confirm) {
-        // TODO: 实现取消订单逻辑
+        // 实现取消订单逻辑
         const res = await purchasedOrderCancelApi(orderNo)
         if (res.code === 200) {
           // 请求成功，同步一下STORE里的运营资金
@@ -195,7 +199,7 @@ onLoad(() => {
                 {{ product.sku.attrs.label }}: {{ product.sku.attrs.value }}
               </view>
               <view class="bottom">
-                <view class="price">￥{{ product.currentPrice.toFixed(2) }}</view>
+                <view class="price">{{ formatAmount(product.currentPrice) }}</view>
                 <view class="quantity">x{{ product.quantity }}</view>
               </view>
             </view>
@@ -214,7 +218,7 @@ onLoad(() => {
         <view class="card-foot">
           <view class="amount-info">
             <text class="label">共{{ item.totalCount }}件商品 合计：</text>
-            <text class="price">￥{{ item.amount.actualPayment.toFixed(2) }}</text>
+            <text class="price">{{ formatAmount(item.amount.actualPayment) }}</text>
           </view>
 
           <view class="actions">

@@ -46,6 +46,10 @@ export type UserItem = {
   operating_balance?: number
   /** 店长待结算余额 （展示用，字段归属类型UserItem）*/
   settle_balance?: number
+  /** 用户更新头像的次数，超过10分钟后会重置 */
+  avatarUpdateCount?: number
+  /** 更新头像的时间 */
+  avatarUpdateAt?: Date
 }
 
 // 收货地址信息
