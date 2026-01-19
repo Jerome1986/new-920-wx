@@ -143,9 +143,8 @@ const handleAddCart = (val: string) => {
         <view class="left">
           <view style="display: flex; align-items: center">
             <view class="price">
-              <text class="symbol">￥</text>
               <!-- 默认显示最小的价格，如果选择了规格则显示规格价格 -->
-              <text class="number">{{ formatAmount(productData?.currentPrice ?? 0) }}</text>
+              <text class="number">{{ formatAmount(productData?.minPrice ?? 0) }}</text>
               <text style="font-size: 24rpx"> 起</text>
             </view>
             <view class="original-price">

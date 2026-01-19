@@ -83,6 +83,7 @@ const handleSelectSuggestion = async (model: string) => {
   isSelecting.value = true
   keyword.value = model
   showSuggestion.value = false
+  modelFilterEnabled.value = false
   reset()
   //  将选择的建议项搜索产品，调用接口
   productList.value = await searchProduct(
@@ -204,6 +205,7 @@ const handleTagChange = async (index: number, cateId: string) => {
   // 重置
   activeCateIndex.value = 0
   keyword.value = ''
+  modelFilterEnabled.value = false
   reset()
   // 根据标签筛选
   await cateListGet(cateId)
@@ -214,6 +216,7 @@ const handleTagChange = async (index: number, cateId: string) => {
 const handleCateChange = async (index: number) => {
   activeCateIndex.value = index
   keyword.value = ''
+  modelFilterEnabled.value = false
   reset()
   //  根据分类筛选
   await productListGet(cateList.value[activeCateIndex.value]._id)
@@ -255,6 +258,26 @@ const togglePriceEdit = () => {
 const handlePriceInput = (e: any) => {
   console.log('键盘输入', e.detail.value)
   orderPrice.value = Number(e.detail.value) || 0
+}
+
+// 搜索本机
+const handleSearchLocal = async (e: any) => {
+  modelFilterEnabled.value = e.detail.value
+  isSelecting.value = true
+  keyword.value = ''
+  reset()
+  // 开启搜索本机
+  if (modelFilterEnabled.value) {
+    productList.value = await searchProduct(
+      selectedModel.value,
+      tagList.value,
+      activeTagIndex.value,
+      cateList.value,
+      activeCateIndex.value,
+    )
+  } else {
+    await productListGet(cateList.value[activeCateIndex.value]._id)
+  }
 }
 
 // 确认出单
@@ -378,7 +401,7 @@ const handleCancelOrder = () => {
       <switch
         :checked="modelFilterEnabled"
         color="#d62731"
-        @change="modelFilterEnabled = $event.detail.value"
+        @change="handleSearchLocal"
         style="transform: scale(0.8)"
       />
     </view>

@@ -159,7 +159,7 @@ const submit = async () => {
       <view class="title">金额明细</view>
       <view class="item">
         <text class="label">商品金额</text>
-        <text class="value">￥{{ formatAmount(cartTobStore.totalPrice) }}</text>
+        <text class="value">{{ formatAmount(cartTobStore.totalPrice) }}</text>
       </view>
       <view class="item">
         <text class="label">运营资金</text>
