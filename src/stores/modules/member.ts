@@ -31,6 +31,7 @@ export const useMemberStore = defineStore(
       score: 0,
       operating_balance: 0,
       settle_balance: 0,
+      lockedAmount: 0,
     })
 
     // 会员信息

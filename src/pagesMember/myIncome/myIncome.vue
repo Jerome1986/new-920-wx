@@ -211,12 +211,21 @@ onLoad(() => {
     <!-- 收入总览卡片 -->
     <view class="income-summary">
       <view class="summary-card">
-        <!-- 待结算余额 -->
+        <!-- 待结算余额和冻结金额 -->
         <view class="balance-item main">
-          <view class="balance-icon">💰</view>
-          <view class="balance-info">
-            <text class="label">待结算余额</text>
-            <text class="value">{{ formatAmount(userStore.profile.settle_balance ?? 0) }}</text>
+          <view class="left">
+            <view class="balance-icon">💰</view>
+            <view class="balance-info">
+              <text class="label">待结算余额</text>
+              <text class="value">{{ formatAmount(userStore.profile.settle_balance ?? 0) }}</text>
+            </view>
+          </view>
+          <view class="right">
+            <view class="balance-icon">🔒</view>
+            <view class="balance-info">
+              <text class="label">冻结金额</text>
+              <text class="value">{{ formatAmount(userStore.profile.lockedAmount ?? 0) }}</text>
+            </view>
           </view>
         </view>
 
@@ -347,36 +356,51 @@ onLoad(() => {
     padding: 32rpx 24rpx;
     box-shadow: 0 8rpx 24rpx rgba(214, 39, 49, 0.15);
 
-    // 主余额（待结算）
+    // 主余额（待结算和冻结金额）
     .balance-item.main {
       display: flex;
+      justify-content: space-between;
       align-items: center;
-      gap: 20rpx;
       padding-bottom: 24rpx;
 
-      .balance-icon {
-        font-size: 48rpx;
-        line-height: 1;
-        flex-shrink: 0;
+      .left,
+      .right {
+        display: flex;
+        align-items: center;
+        gap: 8rpx;
+        flex: 1;
+
+        .balance-icon {
+          font-size: 48rpx;
+          line-height: 1;
+          flex-shrink: 0;
+        }
+
+        .balance-info {
+          display: flex;
+          flex-direction: column;
+          gap: 8rpx;
+          align-items: center;
+
+          .label {
+            font-size: 26rpx;
+            color: $jel-font-dec2;
+          }
+
+          .value {
+            font-size: 44rpx;
+            font-weight: bold;
+            letter-spacing: 1rpx;
+          }
+        }
       }
 
-      .balance-info {
-        display: flex;
-        flex-direction: column;
-        gap: 8rpx;
-        align-items: center;
+      .left .balance-info .value {
+        color: $jel-brandColor;
+      }
 
-        .label {
-          font-size: 26rpx;
-          color: $jel-font-dec2;
-        }
-
-        .value {
-          font-size: 44rpx;
-          font-weight: bold;
-          color: $jel-brandColor;
-          letter-spacing: 1rpx;
-        }
+      .right .balance-info .value {
+        color: $jel-font-dec2;
       }
     }
 
@@ -394,7 +418,7 @@ onLoad(() => {
       .balance-info-row {
         display: flex;
         align-items: center;
-        gap: 16rpx;
+        gap: 8rpx;
 
         .balance-icon-small {
           font-size: 48rpx;

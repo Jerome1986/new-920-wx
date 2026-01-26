@@ -69,7 +69,9 @@ const handleChangeSearch = (value: string | number) => {
     isSelecting.value = false
     return
   }
+
   setTimeout(async () => {
+    if (value === '苹果') keyword.value = 'iphone'
     const res = await quickSellSearchModelsApi(value as string)
     suggestionList.value = res.data
   }, 300)

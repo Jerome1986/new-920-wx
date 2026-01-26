@@ -46,6 +46,8 @@ export type UserItem = {
   operating_balance?: number
   /** 店长待结算余额 （展示用，字段归属类型UserItem）*/
   settle_balance?: number
+  /** 冻结金额，当待结算金额进入结算状态，生成账单，待结算金额将进入冻结金额，禁止使用 */
+  lockedAmount?: number
   /** 用户更新头像的次数，超过1天后会重置 */
   avatarUpdateCount?: number
   /** 更新头像的时间 */

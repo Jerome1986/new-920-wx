@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 import { formatAmount, formatMonth } from '@/utils/formatTimestamp.ts'
 import { getTimeRangeReportApi, storeTotalReportApi } from '@/api/store.ts'
 import { useManagerStore } from '@/stores'
@@ -38,16 +38,22 @@ const financeFlowDataGet = async () => {
 
 onLoad(() => financeFlowDataGet())
 
+// 根据时间筛选数据
+const getTimeRangeReportGet = async (type: string) => {
+  if (managerStore.managerStoreInfo?.storeId) {
+    const res = await getTimeRangeReportApi(managerStore.managerStoreInfo?.storeId, type)
+    statCards.value = res.data
+  }
+}
+onShow(() => getTimeRangeReportGet(timeActive.value))
+
 // 切换时间筛选
 const handleTimeFilter = async (filterId: string) => {
   timeActive.value = filterId
   selectedMonth.value = ''
   console.log('切换时间筛选:', filterId)
   // 根据筛选条件重新获取数据
-  if (managerStore.managerStoreInfo?.storeId) {
-    const res = await getTimeRangeReportApi(managerStore.managerStoreInfo?.storeId, filterId)
-    statCards.value = res.data
-  }
+  await getTimeRangeReportGet(filterId)
 }
 
 // 处理月份选择
