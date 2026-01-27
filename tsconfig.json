@@ -1,13 +1,18 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.json",
+  "extends": "./node_modules/@vue/tsconfig/tsconfig.json",
   "compilerOptions": {
     "allowJs": true,
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": [
+        "./src/*"
+      ]
     },
-    "lib": ["esnext", "dom"],
+    "lib": [
+      "esnext",
+      "dom"
+    ],
     "types": [
       "@dcloudio/types",
       "miniprogram-api-typings",
@@ -18,7 +23,14 @@
   },
   "vueCompilerOptions": {
     // experimentalRuntimeMode 已废弃，请升级 Vue - Official 插件至最新版本
-    "plugins": ["@uni-helper/uni-app-types/volar-plugin"]
+    "plugins": [
+      "@uni-helper/uni-app-types/volar-plugin"
+    ]
   },
-  "include": ["src/**/*.ts", "src/**/*.d.ts", "src/**/*.tsx", "src/**/*.vue"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.d.ts",
+    "src/**/*.tsx",
+    "src/**/*.vue"
+  ]
 }

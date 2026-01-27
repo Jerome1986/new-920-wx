@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import CustomNav from '@/pages/home/components/CustomNav.vue'
 import { ref } from 'vue'
-import { productsListTocGetApi } from '@/api/product.ts'
+import { productsListTocGetApi } from '@/api/product'
 import type { ProductItem } from '@/types/ProductItem.d.ts'
 import StockInProduct from '@/components/StockInProduct.vue'
-import { bannerListGetApi } from '@/api/banner.ts'
+import { bannerListGetApi } from '@/api/banner'
 import { onLoad } from '@dcloudio/uni-app'
 import { useRateStore } from '@/stores'
 import TeamStyle from '@/components/TeamStyle.vue'
 import type { TeamItem } from '@/types/TeamItem'
-import { teamListGetApi } from '@/api/team.ts'
+import { teamListGetApi } from '@/api/team'
 
 // 定义 store
 const rateStore = useRateStore()
