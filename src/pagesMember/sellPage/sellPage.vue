@@ -589,12 +589,10 @@ const handleCancelOrder = () => {
 </template>
 
 <style scoped lang="scss">
-// 主体列表上方占用高度（与模板一致，改 banner / 型号区 / 标签栏后请同步）
-// = .banner-placeholder 180 + .model-section 约 104 + .tag-bar-wrapper 100
-$sell-page-above-main: 384rpx;
-
 .sell-page {
+  box-sizing: border-box;
   padding-bottom: 60rpx;
+  min-height: 100vh;
   height: 100vh;
   background-color: $jel-pageBackGroundColor;
   display: flex;
@@ -603,6 +601,7 @@ $sell-page-above-main: 384rpx;
 
 // 头部区域
 .header-section {
+  flex-shrink: 0;
   position: relative;
 
   .banner-placeholder {
@@ -714,6 +713,7 @@ $sell-page-above-main: 384rpx;
 
 // 型号选择区域
 .model-section {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   padding: 24rpx 32rpx;
@@ -757,6 +757,7 @@ $sell-page-above-main: 384rpx;
 
 // 分类标签栏
 .tag-bar-wrapper {
+  flex-shrink: 0;
   height: 100rpx;
   background-color: #fff;
   border-bottom: 1rpx solid $jel-border;
@@ -794,20 +795,24 @@ $sell-page-above-main: 384rpx;
 }
 
 // 主体内容区域
+// 列表高度必须来自 flex 剩余空间，勿再用 100vh - xxx（会与 .main-content 实际高度不一致，导致 scroll-view 无法纵向滚动）
 .main-content {
   flex: 1;
+  min-height: 0;
   display: flex;
   overflow: hidden;
 
   // 左侧分类导航容器
   .cate-nav-wrapper {
+    height: 100%;
+    min-height: 0;
     padding-left: 20rpx;
     width: 220rpx;
     flex-shrink: 0;
     background-color: #fff;
 
     .cate-nav {
-      height: calc(100vh - #{$sell-page-above-main});
+      height: 100%;
 
       .cate-item {
         position: relative;
@@ -841,7 +846,8 @@ $sell-page-above-main: 384rpx;
   // 右侧商品列表
   .product-list {
     flex: 1;
-    height: calc(100vh - #{$sell-page-above-main});
+    min-width: 0;
+    height: 100%;
     padding: 20rpx;
 
     .product-card {
