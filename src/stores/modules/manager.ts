@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { StoreInfo } from '@/types/ManagerStore'
 import { managerStoreInfoGetApi } from '@/api/store.ts'
-import { useMemberStore } from '@/stores'
+import { useMemberStore } from '@/stores/modules/member'
 
 export const useManagerStore = defineStore(
   'manager',

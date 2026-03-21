@@ -73,6 +73,8 @@ const handleChangeSearch = (value: string | number) => {
   setTimeout(async () => {
     if (value === '苹果') keyword.value = 'iphone'
     const res = await quickSellSearchModelsApi(value as string)
+    console.log('型号裂表', res)
+
     suggestionList.value = res.data
   }, 300)
   // 有值显示列表，为空关闭列表
@@ -186,10 +188,12 @@ const getRemainingStock = (productId: string) => {
   return inventory?.unit_count ?? 0
 }
 
-// 触底加载更多（仅分页模式下生效，搜索结果无分页）
+// 触底加载更多（仅分页模式下生效；关键词搜索/本机搜索无分页）
 const handleLoadMore = async () => {
   // 搜索状态下不触发加载更多，因为搜索结果一次性返回
-  if (keyword.value) return
+  // - keyword 搜索：直接一次性返回
+  // - 本机搜索（modelFilterEnabled）：直接一次性返回
+  if (keyword.value || modelFilterEnabled.value) return
 
   await productListGet(cateList.value[activeCateIndex.value]._id)
 }
@@ -235,7 +239,7 @@ const priceEditable = ref(false) // 价格是否可编辑
 const handleCreateOrder = (product: ProductItem) => {
   console.log(product)
   currentProduct.value = product
-  originalPrice.value = product.currentPrice
+  originalPrice.value = product.currentPrice / 100
   isMember.value = false
   priceEditable.value = false
   resetQueryMember()
@@ -316,7 +320,9 @@ const handleConfirmOrder = async () => {
 
   // 没有免费次数，正常支付的情况
   if (managerStore.managerStoreInfo?.storeId && productId) {
-    if (!orderPrice.value) return uni.showToast({ icon: 'none', title: '支付金额不可以为0' })
+    console.log('价格', orderPrice.value)
+
+    if (orderPrice.value < 4) return uni.showToast({ icon: 'none', title: '支付金额过低' })
     const result = await quickOrderApi(
       managerStore.managerStoreInfo?.storeId,
       productId,
@@ -409,18 +415,20 @@ const handleCancelOrder = () => {
     </view>
 
     <!-- 分类标签栏 -->
-    <view class="tag-bar">
-      <view class="tag-list">
-        <view
-          class="tag-item"
-          v-for="(tag, index) in tagList"
-          :key="tag._id"
-          :class="{ active: activeTagIndex === index }"
-          @click="handleTagChange(index, tag._id)"
-        >
-          {{ tag.name }}
+    <view class="tag-bar-wrapper">
+      <scroll-view class="tag-bar" :scroll-x="true" :enhanced="true" :show-scrollbar="false">
+        <view class="tag-list">
+          <view
+            class="tag-item"
+            v-for="(tag, index) in tagList"
+            :key="tag._id"
+            :class="{ active: activeTagIndex === index }"
+            @click="handleTagChange(index, tag._id)"
+          >
+            {{ tag.name }}
+          </view>
         </view>
-      </view>
+      </scroll-view>
     </view>
 
     <!-- 主体内容区域 -->
@@ -582,7 +590,8 @@ const handleCancelOrder = () => {
 
 <style scoped lang="scss">
 .sell-page {
-  min-height: 100vh;
+  padding-bottom: 60rpx;
+  height: 100vh;
   background-color: $jel-pageBackGroundColor;
   display: flex;
   flex-direction: column;
@@ -743,28 +752,38 @@ const handleCancelOrder = () => {
 }
 
 // 分类标签栏
-.tag-bar {
-  display: flex;
-  align-items: center;
-  padding: 20rpx 32rpx;
+.tag-bar-wrapper {
+  height: 100rpx;
   background-color: #fff;
   border-bottom: 1rpx solid $jel-border;
+  .tag-bar {
+    padding: 20rpx 32rpx;
+    width: 100%;
+    white-space: nowrap;
+    background-color: #fff;
+    border-bottom: 1rpx solid $jel-border;
 
-  .tag-list {
-    display: flex;
-    gap: 20rpx;
+    .tag-list {
+      display: inline-flex;
+      flex-wrap: nowrap;
+      gap: 20rpx;
 
-    .tag-item {
-      padding: 12rpx 28rpx;
-      font-size: 26rpx;
-      color: $jel-font-title;
-      background-color: $jel-pageBackGroundColor;
-      border-radius: 8rpx;
-      transition: all 0.2s;
+      .tag-item {
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+        white-space: nowrap;
+        padding: 12rpx 28rpx;
+        font-size: 26rpx;
+        color: $jel-font-title;
+        background-color: $jel-pageBackGroundColor;
+        border-radius: 8rpx;
+        transition: all 0.2s;
 
-      &.active {
-        color: #fff;
-        background-color: $jel-brandColor;
+        &.active {
+          color: #fff;
+          background-color: $jel-brandColor;
+        }
       }
     }
   }

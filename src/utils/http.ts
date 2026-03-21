@@ -1,4 +1,5 @@
-import { useMemberStore } from '@/stores'
+// 注意：这里不要静态依赖 Pinia store（会导致 chunk 循环依赖告警）
+// token 从 persistedstate 的存储中读取即可。
 
 /**
  * 添加拦截器:
@@ -14,6 +15,23 @@ import { useMemberStore } from '@/stores'
 
 // 基地址
 const baseURL = 'https://i2dkfjxqvm.gzg.sealos.run/web'
+
+/**
+ * 从 pinia-plugin-persistedstate 读取 member store token
+ * - member store 的 defineStore id 为 'user'
+ * - persistedstate 默认 key 即为 store id
+ */
+function getMemberTokenFromStorage(): string {
+  try {
+    const raw = uni.getStorageSync('user')
+    if (!raw) return ''
+    const state = typeof raw === 'string' ? JSON.parse(raw) : raw
+    // member store 只持久化 state：{ profile: {...} }
+    return (state?.profile?._id as string) || ''
+  } catch {
+    return ''
+  }
+}
 
 // 添加拦截器
 const httpInterceptor = {
@@ -31,8 +49,7 @@ const httpInterceptor = {
       'source-client': 'minimap',
     }
     // 4. 添加 token 请求头标识
-    const userStore = useMemberStore()
-    const token = userStore.profile?._id
+    const token = getMemberTokenFromStorage()
     if (token) {
       options.header.Authorization = token
     }
@@ -88,8 +105,8 @@ export const request = <T>(options: UniApp.RequestOptions) => {
           resolve(res.data as Data<T>)
         } else if (res.statusCode === 401) {
           // 401错误  -> 清理用户信息，跳转到登录页
-          const userStore = useMemberStore()
-          userStore.clearProfile()
+          // 清理 persisted member store（pinia-plugin-persistedstate 默认 key 为 store id）
+          uni.removeStorageSync('user')
           uni.navigateTo({ url: '/pages/login/login' })
           safeShowToast((res.data as Data<T>).message || '请求错误')
           reject(res)
