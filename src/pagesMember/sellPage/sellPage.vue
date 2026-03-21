@@ -589,6 +589,10 @@ const handleCancelOrder = () => {
 </template>
 
 <style scoped lang="scss">
+// 主体列表上方占用高度（与模板一致，改 banner / 型号区 / 标签栏后请同步）
+// = .banner-placeholder 180 + .model-section 约 104 + .tag-bar-wrapper 100
+$sell-page-above-main: 384rpx;
+
 .sell-page {
   padding-bottom: 60rpx;
   height: 100vh;
@@ -602,7 +606,7 @@ const handleCancelOrder = () => {
   position: relative;
 
   .banner-placeholder {
-    height: 320rpx;
+    height: 180rpx;
     background: linear-gradient(135deg, #e8f4f8 0%, #d4e8ed 50%, #c5dce3 100%);
   }
 
@@ -803,7 +807,7 @@ const handleCancelOrder = () => {
     background-color: #fff;
 
     .cate-nav {
-      height: calc(100vh - 520rpx);
+      height: calc(100vh - #{$sell-page-above-main});
 
       .cate-item {
         position: relative;
@@ -837,7 +841,7 @@ const handleCancelOrder = () => {
   // 右侧商品列表
   .product-list {
     flex: 1;
-    height: calc(100vh - 520rpx);
+    height: calc(100vh - #{$sell-page-above-main});
     padding: 20rpx;
 
     .product-card {
