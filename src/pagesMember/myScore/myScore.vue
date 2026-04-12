@@ -16,7 +16,7 @@ const { safeAreaInsets } = uni.getSystemInfoSync()
 // 用户当前积分
 const currentScore = ref(userStore.profile.score)
 const userInfoGet = async () => {
-  const userRes = await userInfoGetApi(userStore.profile._id)
+  const userRes = await userInfoGetApi(userStore.profile.id)
   currentScore.value = userRes.data.score
 }
 
@@ -37,12 +37,14 @@ const scoreList = ref<ScoreItem[]>([])
 
 // 切换tag
 const handleTag = (tag: string) => {
+  console.log(tag)
+
   activeTag.value = tag
-  if (userStore.profile?._id) {
+  if (userStore.profile?.id) {
     finish.value = false
     loading.value = false
     params.value.pageNum = 1
-    getScoreList(userStore.profile._id, tag)
+    getScoreList(userStore.profile.id, tag)
   }
 }
 
@@ -80,12 +82,12 @@ const getScoreList = async (userId: string, tag: string) => {
 
 // 触底加载更多
 const handleScrolltolower = () => {
-  getScoreList(userStore.profile._id, activeTag.value)
+  getScoreList(userStore.profile.id, activeTag.value)
 }
 
 onLoad(() => {
-  if (userStore.profile?._id) {
-    getScoreList(userStore.profile._id, 'ALL')
+  if (userStore.profile?.id) {
+    getScoreList(userStore.profile.id, 'ALL')
   }
 })
 </script>
@@ -98,7 +100,7 @@ onLoad(() => {
         <view class="icon">🏆</view>
         <view class="info">
           <text class="label">当前积分</text>
-          <text class="value">{{ (currentScore / 100).toFixed(2) }}</text>
+          <text class="value">{{ currentScore.toFixed(2) }}</text>
         </view>
       </view>
     </view>
@@ -136,9 +138,9 @@ onLoad(() => {
               class="amount"
               :class="{ income: item.type === 'INCOME', expense: item.type === 'EXPENSE' }"
             >
-              {{ item.type === 'INCOME' ? '+' : '-' }}{{ (item.amount / 100).toFixed(2) }}
+              {{ item.type === 'INCOME' ? '+' : '-' }}{{ item.amount.toFixed(2) }}
             </view>
-            <view class="balance">余额: {{ (item.balance / 100).toFixed(2) }}</view>
+            <view class="balance">余额: {{ item.balance.toFixed(2) }}</view>
           </view>
         </view>
       </view>

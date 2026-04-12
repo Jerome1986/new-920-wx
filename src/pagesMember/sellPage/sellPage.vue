@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import type { CateItem } from '@/types/CateItem'
 import type { ProductItem } from '@/types/ProductItem'
 import { cateMoGetApi, subCategoryGetApi } from '@/api/cate.ts'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { onLoad } from '@dcloudio/uni-app'
 import { productListByCateIdGetApi, quickSellSearchModelsApi } from '@/api/product.ts'
-import { storeGetInventoryApi } from '@/api/store.ts'
-import type { StoreInventoryGetResult } from '@/types/StoreInventory'
+import { searchInventoryApi, storeGetInventoryApi } from '@/api/store.ts'
 import { useManagerStore } from '@/stores'
-import { searchProduct } from '@/pagesMember/sellPage/useProductSearch.ts'
+import {
+  isMatch,
+  normalize,
+  searchInventoryProduct,
+} from '@/pagesMember/sellPage/useProductSearch.ts'
 import { highlightKeyword } from '@/pagesMember/sellPage/useHighlightKeyword.ts'
 import { giftOrderApi, quickOrderApi } from '@/api/order.ts'
 import { useQueryMember } from '@/pagesMember/sellPage/useQueryMember.ts'
 import { deviceFindPhoneNameApi } from '@/api/device.ts'
+import type { StoreInventoryItem } from '@/types/StoreInventory'
 
 // 会员查询相关（每个页面实例独立状态）
 const {
@@ -27,17 +31,6 @@ const {
   initPrice,
 } = useQueryMember()
 
-// 获取本机设备
-const getPhoneModel = async () => {
-  console.log('系统信息', uni.getSystemInfoSync())
-  selectedModel.value = uni.getSystemInfoSync().model
-  const res = await deviceFindPhoneNameApi(selectedModel.value)
-  if (res.code === 200) {
-    selectedModel.value = res.data.phoneName
-  }
-}
-onLoad(() => getPhoneModel())
-
 // store
 const managerStore = useManagerStore()
 
@@ -50,163 +43,44 @@ const selectedModel = ref('')
 // 型号筛选开关
 const modelFilterEnabled = ref(false)
 
-// 搜索建议
-const showSuggestion = ref(false)
-const isSelecting = ref(false) // 标志：是否正在选择建议项
-const suggestionList = ref<string[]>([])
+// 搜索
+const handleSearch = async () => {
+  reset()
+  const result = await searchInventoryApi(
+    managerStore.managerStoreInfo?.id as string,
+    keyword.value.trim().toLocaleLowerCase(),
+    cateList.value[activeCateIndex.value].id,
+  )
+  console.log(result)
+  inventoryList.value = result.data
+}
 
 // 清空搜索
 const handleSearchClear = async () => {
   keyword.value = ''
-  showSuggestion.value = false
-  await productListGet(cateList.value[activeCateIndex.value]._id)
-}
-
-// 搜索框改变时
-const handleChangeSearch = (value: string | number) => {
-  // 如果是选择建议项触发的，跳过
-  if (isSelecting.value) {
-    isSelecting.value = false
-    return
-  }
-
-  setTimeout(async () => {
-    if (value === '苹果') keyword.value = 'iphone'
-    const res = await quickSellSearchModelsApi(value as string)
-    console.log('型号裂表', res)
-
-    suggestionList.value = res.data
-  }, 300)
-  // 有值显示列表，为空关闭列表
-  showSuggestion.value = !!value
-}
-
-// 选择建议项
-const handleSelectSuggestion = async (model: string) => {
-  console.log('选择型号:', model)
-  isSelecting.value = true
-  keyword.value = model
-  showSuggestion.value = false
-  modelFilterEnabled.value = false
   reset()
-  //  将选择的建议项搜索产品，调用接口
-  productList.value = await searchProduct(
-    model,
-    tagList.value,
-    activeTagIndex.value,
-    cateList.value,
-    activeCateIndex.value,
-  )
+  await productListGet(cateList.value[activeCateIndex.value].id)
 }
 
 // 分类标签数据
 const activeTagIndex = ref(0) // 标签激活索引
 const tagList = ref<CateItem[]>([])
 const tagListGet = async () => {
-  const res = await cateMoGetApi()
-  tagList.value = res.data
-  tagList.value.unshift({
-    _id: 'ALL',
-    name: '全部',
-    level: 2,
+  const res = await cateMoGetApi('TOB')
+
+  tagList.value = res.data.flatMap((item) => {
+    if (item.name === '手机膜' && item.children?.length) {
+      return item.children || []
+    } else {
+      return []
+    }
   })
-  // 首次加载--子级分类获取
-  await cateListGet(tagList.value[activeTagIndex.value]._id)
-}
-
-onLoad(() => tagListGet())
-
-// 左侧分类数据
-const activeCateIndex = ref(0)
-const cateList = ref<CateItem[]>([])
-const cateListGet = async (parentId: string) => {
-  const res = await subCategoryGetApi(parentId)
-  cateList.value = res.data
-  await productListGet(cateList.value[activeCateIndex.value]._id)
-}
-
-// 页码
-const params = ref({
-  pageNum: 1,
-  pageSize: 10,
-})
-
-// 商品列表数据
-const productList = ref<ProductItem[]>([])
-const finish = ref(false)
-const loading = ref(false)
-const productListGet = async (cateId: string) => {
-  if (finish.value || loading.value) return
-
-  loading.value = true
-
-  try {
-    const { pageNum, pageSize } = params.value
-    const res = await productListByCateIdGetApi(cateId, pageNum, pageSize)
-
-    // 如果是首页直接赋值否则追加更多
-    if (pageNum === 1) {
-      productList.value = res.data.list
-      console.log('产品', productList.value)
-    } else {
-      productList.value.push(...res.data.list)
-    }
-
-    if (pageNum < res.data.totalPage) {
-      params.value.pageNum++
-    } else {
-      finish.value = true
-    }
-  } catch (e) {
-    console.error('商品列表加载失败', e)
-  } finally {
-    loading.value = false
-  }
-}
-
-// 库存数据
-const inventoryList = ref<StoreInventoryGetResult[]>([])
-const inventoryListGet = async (storeId: string) => {
-  const res = await storeGetInventoryApi(storeId)
-  console.log('库存', res)
-  inventoryList.value = res.data
-}
-
-onShow(() => {
-  if (managerStore.managerStoreInfo?.storeId) {
-    console.log('请求')
-    inventoryListGet(managerStore.managerStoreInfo?.storeId)
-  }
-})
-
-/**
- * 获取商品剩余库存
- * ⚠️ 当前情况：inventoryList 中每个 product_id 只有一条记录
- */
-const getRemainingStock = (productId: string) => {
-  const inventory = inventoryList.value.find((item) => item.product_id === productId)
-  return inventory?.unit_count ?? 0
-}
-
-// 触底加载更多（仅分页模式下生效；关键词搜索/本机搜索无分页）
-const handleLoadMore = async () => {
-  // 搜索状态下不触发加载更多，因为搜索结果一次性返回
-  // - keyword 搜索：直接一次性返回
-  // - 本机搜索（modelFilterEnabled）：直接一次性返回
-  if (keyword.value || modelFilterEnabled.value) return
-
-  await productListGet(cateList.value[activeCateIndex.value]._id)
-}
-
-// 重置函数
-const reset = () => {
-  params.value.pageNum = 1
-  finish.value = false
-  productList.value = []
+  changeCateList(tagList.value[0].id)
+  productListGet(cateList.value[0].id)
 }
 
 // 切换标签
-const handleTagChange = async (index: number, cateId: string) => {
+const handleTagChange = async (index: number, cateId: number) => {
   activeTagIndex.value = index
   // 重置
   activeCateIndex.value = 0
@@ -214,8 +88,17 @@ const handleTagChange = async (index: number, cateId: string) => {
   modelFilterEnabled.value = false
   reset()
   // 根据标签筛选
-  await cateListGet(cateId)
-  await productListGet(cateList.value[activeCateIndex.value]._id)
+  changeCateList(cateId)
+  productListGet(cateList.value[0].id)
+}
+
+// 左侧分类数据
+const activeCateIndex = ref(0)
+const cateList = ref<CateItem[]>([])
+const changeCateList = (tagId: number) => {
+  cateList.value = tagList.value.flatMap(
+    (item) => item.children?.filter((c) => c.parentId === tagId) ?? [],
+  )
 }
 
 // 切换分类
@@ -225,25 +108,83 @@ const handleCateChange = async (index: number) => {
   modelFilterEnabled.value = false
   reset()
   //  根据分类筛选
-  await productListGet(cateList.value[activeCateIndex.value]._id)
+  productListGet(cateList.value[activeCateIndex.value].id)
+}
+
+onLoad(() => tagListGet())
+
+// 页码
+const params = ref({
+  pageNum: 1,
+  pageSize: 10,
+})
+
+// 商品列表数据
+const finish = ref(false)
+const loading = ref(false)
+// 库存数据
+const inventoryList = ref<StoreInventoryItem[]>([])
+const productListGet = async (cateId: number) => {
+  if (finish.value || loading.value) return
+
+  loading.value = true
+
+  try {
+    const { pageNum, pageSize } = params.value
+    const res = await storeGetInventoryApi(
+      managerStore.managerStoreInfo?.id as string,
+      cateId,
+      pageNum,
+      pageSize,
+    )
+
+    // 如果是首页直接赋值否则追加更多
+    if (pageNum === 1) {
+      inventoryList.value = res.data.list
+    } else {
+      inventoryList.value.push(...res.data.list)
+    }
+
+    if (pageNum < res.data.totalPage) {
+      params.value.pageNum++
+    } else {
+      finish.value = true
+    }
+  } catch {
+    /* 列表加载失败 */
+  } finally {
+    loading.value = false
+  }
+}
+
+// 触底加载更多（仅分页模式下生效；关键词搜索/本机搜索无分页）
+const handleLoadMore = async () => {
+  // 搜索状态下不触发加载更多，因为搜索结果一次性返回
+  // - keyword 搜索：直接一次性返回
+  // - 本机搜索（modelFilterEnabled）：直接一次性返回
+  if (keyword.value || modelFilterEnabled.value) return
+  productListGet(cateList.value[activeCateIndex.value].id)
+}
+
+// 重置函数
+const reset = () => {
+  params.value.pageNum = 1
+  finish.value = false
 }
 
 // 出单弹框相关
 const orderPopupRef = ref()
-const currentProduct = ref<ProductItem | null>(null)
+const currentProduct = ref<StoreInventoryItem | null>(null)
 const isMember = ref(false) // 是否会员
 const originalPrice = ref(0) // 原始价格（用于重置）
 const priceEditable = ref(false) // 价格是否可编辑
 
 // 打开出单弹框
-const handleCreateOrder = (product: ProductItem) => {
-  console.log(product)
+const handleCreateOrder = (product: StoreInventoryItem) => {
   currentProduct.value = product
-  originalPrice.value = product.currentPrice / 100
   isMember.value = false
   priceEditable.value = false
   resetQueryMember()
-  initPrice(product.currentPrice / 100)
   orderPopupRef.value?.open()
 }
 
@@ -262,27 +203,32 @@ const togglePriceEdit = () => {
 
 // 处理价格输入
 const handlePriceInput = (e: any) => {
-  console.log('键盘输入', e.detail.value)
   orderPrice.value = Number(e.detail.value) || 0
 }
+
+// 获取本机设备
+const getPhoneModel = async () => {
+  selectedModel.value = uni.getSystemInfoSync().model
+
+  const res = await deviceFindPhoneNameApi(selectedModel.value)
+
+  if (res.code === 200) {
+    selectedModel.value = res.data.phoneName
+  }
+}
+onLoad(() => getPhoneModel())
 
 // 搜索本机
 const handleSearchLocal = async (e: any) => {
   modelFilterEnabled.value = e.detail.value
-  isSelecting.value = true
   keyword.value = ''
   reset()
   // 开启搜索本机
   if (modelFilterEnabled.value) {
-    productList.value = await searchProduct(
-      selectedModel.value,
-      tagList.value,
-      activeTagIndex.value,
-      cateList.value,
-      activeCateIndex.value,
-    )
+    await productListGet(cateList.value[activeCateIndex.value].id)
+    inventoryList.value = searchInventoryProduct(selectedModel.value, inventoryList.value)
   } else {
-    await productListGet(cateList.value[activeCateIndex.value]._id)
+    await productListGet(cateList.value[activeCateIndex.value].id)
   }
 }
 
@@ -295,49 +241,16 @@ const handleConfirmOrder = async () => {
     await uni.showToast({ title: '请输入会员手机号', icon: 'none' })
     return
   }
-  const productId = currentProduct.value._id
+  const productId = currentProduct.value.id
 
   // 如果有会员免费次数---直接跳转会员免费订单页面
-  if (memberFreeCount.value > 0 && managerStore.managerStoreInfo?.storeId && productId) {
-    const result = await giftOrderApi(
-      managerStore.managerStoreInfo?.storeId,
-      productId,
-      orderPrice.value,
-      'WX',
-      '会员免费贴膜',
-      memberPhone.value,
-    )
-    if (result.code === 200) {
-      orderPopupRef.value?.close()
-      await uni.navigateTo({
-        url: `/pagesMember/quickOrder/giftOrder?out_trade_no=${result.data.out_trade_no}`,
-      })
-    } else {
-      await uni.showToast({ title: result.message || '操作失败', icon: 'none' })
-    }
-    return
+  if (memberFreeCount.value > 0 && managerStore.managerStoreInfo?.id && productId) {
+    // TODO: 跳转会员免费订单
   }
 
   // 没有免费次数，正常支付的情况
-  if (managerStore.managerStoreInfo?.storeId && productId) {
-    console.log('价格', orderPrice.value)
-
-    if (orderPrice.value < 4) return uni.showToast({ icon: 'none', title: '支付金额过低' })
-    const result = await quickOrderApi(
-      managerStore.managerStoreInfo?.storeId,
-      productId,
-      Number((orderPrice.value * 100).toFixed(2)), // 转换为分提交
-      'WX',
-      '门店贴膜',
-      memberPhone.value,
-    )
-    console.log('支付结果', result)
-    if (result.code === 200) {
-      orderPopupRef.value?.close()
-      await uni.navigateTo({
-        url: `/pagesMember/quickOrder/quickOrder?code_url=${result.data.code_url}&out_trade_no=${result.data.out_trade_no}`,
-      })
-    }
+  if (managerStore.managerStoreInfo?.id && productId) {
+    // TODO: 支付流程
   } else {
     await uni.showToast({ title: '参数错误', icon: 'none' })
   }
@@ -365,35 +278,9 @@ const handleCancelOrder = () => {
           bgColor="#fff"
           cancelButton="none"
           clearButton="auto"
-          @input="handleChangeSearch"
+          @confirm="handleSearch"
           @clear="handleSearchClear"
         />
-        <!-- 搜索建议列表（相对搜索框定位） -->
-        <view class="suggestion-panel" v-if="showSuggestion">
-          <!-- 有结果时显示列表 -->
-          <scroll-view
-            v-if="suggestionList.length > 0"
-            class="suggestion-list"
-            :scroll-y="true"
-            :show-scrollbar="false"
-          >
-            <view
-              class="suggestion-item"
-              v-for="(model, index) in suggestionList"
-              :key="index"
-              @click="handleSelectSuggestion(model)"
-            >
-              <text class="iconfont icon-sousuo"></text>
-              <rich-text class="model-text" :nodes="highlightKeyword(model, keyword)"></rich-text>
-              <text class="iconfont icon-zuoshang arrow-icon"></text>
-            </view>
-          </scroll-view>
-          <!-- 无结果时显示空状态 -->
-          <view v-else class="suggestion-empty">
-            <text class="iconfont icon-sousuo empty-icon"></text>
-            <text class="empty-text">无搜索结果</text>
-          </view>
-        </view>
       </view>
     </view>
 
@@ -421,9 +308,9 @@ const handleCancelOrder = () => {
           <view
             class="tag-item"
             v-for="(tag, index) in tagList"
-            :key="tag._id"
+            :key="tag.id"
             :class="{ active: activeTagIndex === index }"
-            @click="handleTagChange(index, tag._id)"
+            @click="handleTagChange(index, tag.id)"
           >
             {{ tag.name }}
           </view>
@@ -439,7 +326,7 @@ const handleCancelOrder = () => {
           <view
             class="cate-item"
             v-for="(cate, index) in cateList"
-            :key="cate._id"
+            :key="cate.id"
             :class="{ active: activeCateIndex === index }"
             @click="handleCateChange(index)"
           >
@@ -456,46 +343,60 @@ const handleCancelOrder = () => {
         :show-scrollbar="false"
         @scrolltolower="handleLoadMore"
       >
-        <view class="product-card" v-for="product in productList" :key="product._id">
-          <!-- 商品头部信息 -->
-          <view class="product-header">
-            <view class="sku-no">{{ product.skuNo }}</view>
-            <text class="product-name">{{ product.name }}</text>
-          </view>
-
-          <!-- 品牌和价格 -->
-          <view class="product-meta">
-            <text class="brand-name">{{ product.dec }}</text>
-            <text class="price">¥ {{ (product.currentPrice / 100).toFixed(2) }}</text>
-          </view>
-
-          <!-- 适配型号标签 -->
-          <view class="model-tags">
-            <view
-              class="model-tag"
-              v-for="(model, mIndex) in product.models"
-              :key="mIndex"
-              :class="{ active: model === keyword }"
-            >
-              {{ model }}
-            </view>
-          </view>
-
-          <!-- 底部操作区域 -->
-          <view class="product-footer">
-            <view class="stock-info">
-              <text class="label">库存</text>
-              <text class="value">{{ getRemainingStock(product._id!) }}</text>
-              <text class="unit">片</text>
-            </view>
-            <view class="order-btn" @click.stop="handleCreateOrder(product)">
-              <text>出单</text>
-            </view>
-          </view>
+        <view v-if="inventoryList.length === 0" class="list-empty">
+          <text v-if="loading" class="list-empty-tip">加载中...</text>
+          <template v-else>
+            <text class="list-empty-title">暂无商品</text>
+            <text class="list-empty-desc">试试切换分类或调整搜索条件</text>
+          </template>
         </view>
+        <template v-else>
+          <view class="product-card" v-for="product in inventoryList" :key="product.id">
+            <!-- 商品头部信息 -->
+            <view class="product-header">
+              <view class="sku-no">{{ product.skuNo }}</view>
+              <text class="product-name">{{ product.productName }}</text>
+            </view>
 
-        <!-- 底部安全区域 -->
-        <view class="safe-bottom"></view>
+            <!-- 品牌和价格 -->
+            <view class="product-meta">
+              <text class="brand-name">{{ product.productDec }}</text>
+              <text class="price">¥ {{ Number(product.salePrice).toFixed(2) }}</text>
+            </view>
+
+            <!-- 适配型号标签  -->
+            <view class="model-tags">
+              <view
+                class="model-tag"
+                v-for="(model, mIndex) in product.models"
+                :class="{
+                  modleActive:
+                    normalize(model.name) === normalize(selectedModel) ||
+                    normalize(model.name) === normalize(keyword) ||
+                    isMatch(normalize(keyword), model.name) ||
+                    isMatch(normalize(selectedModel), model.name),
+                }"
+                :key="mIndex"
+              >
+                {{ model.name }}
+              </view>
+            </view>
+
+            <!-- 底部操作区域 -->
+            <view class="product-footer">
+              <view class="stock-info">
+                <text class="label">库存</text>
+                <text class="value">{{ product.stock }}</text>
+                <text class="unit">片</text>
+              </view>
+              <view class="order-btn" @click.stop="handleCreateOrder(product)">
+                <text>出单</text>
+              </view>
+            </view>
+          </view>
+          <!-- 底部安全区域 -->
+          <view class="safe-bottom"></view>
+        </template>
       </scroll-view>
     </view>
 
@@ -646,71 +547,6 @@ const handleCancelOrder = () => {
   }
 }
 
-// 搜索建议面板（相对搜索框绝对定位）
-.suggestion-panel {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  margin-top: 16rpx;
-  z-index: 100;
-  background-color: #fff;
-  border-radius: 16rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
-  overflow: hidden;
-
-  .suggestion-list {
-    max-height: 50vh;
-
-    .suggestion-item {
-      display: flex;
-      align-items: center;
-      padding: 28rpx 32rpx;
-      border-bottom: 1rpx dashed $jel-border;
-
-      .icon-sousuo {
-        font-size: 32rpx;
-        color: $jel-font-dec;
-        margin-right: 24rpx;
-      }
-
-      .model-text {
-        flex: 1;
-        font-size: 30rpx;
-        color: $jel-font-title;
-      }
-
-      .arrow-icon {
-        font-size: 28rpx;
-        color: $jel-font-dec;
-      }
-
-      &:active {
-        background-color: $jel-pageBackGroundColor;
-      }
-    }
-  }
-
-  .suggestion-empty {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60rpx 32rpx;
-
-    .empty-icon {
-      font-size: 64rpx;
-      color: $jel-font-dec;
-      margin-bottom: 16rpx;
-    }
-
-    .empty-text {
-      font-size: 28rpx;
-      color: $jel-font-dec;
-    }
-  }
-}
-
 // 型号选择区域
 .model-section {
   flex-shrink: 0;
@@ -761,6 +597,7 @@ const handleCancelOrder = () => {
   height: 100rpx;
   background-color: #fff;
   border-bottom: 1rpx solid $jel-border;
+
   .tag-bar {
     padding: 20rpx 32rpx;
     width: 100%;
@@ -829,9 +666,9 @@ const handleCancelOrder = () => {
           top: 50%;
           transform: translateY(-50%);
           width: 8rpx;
-          height: 40rpx;
+          height: 30rpx;
           background-color: $jel-brandColor;
-          border-radius: 0 3rpx 3rpx 0;
+          border-radius: 4rpx;
         }
 
         &.active {
@@ -839,6 +676,10 @@ const handleCancelOrder = () => {
           font-weight: 500;
           background-color: $jel-pageBackGroundColor;
         }
+      }
+
+      .cate-name {
+        margin-left: 8rpx;
       }
     }
   }
@@ -849,6 +690,35 @@ const handleCancelOrder = () => {
     min-width: 0;
     height: 100%;
     padding: 20rpx;
+
+    .list-empty {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 280rpx;
+      padding: 48rpx 32rpx;
+      text-align: center;
+
+      .list-empty-tip {
+        font-size: 28rpx;
+        color: $jel-font-dec;
+      }
+
+      .list-empty-title {
+        display: block;
+        font-size: 30rpx;
+        color: $jel-font-dec2;
+        margin-bottom: 16rpx;
+      }
+
+      .list-empty-desc {
+        display: block;
+        font-size: 24rpx;
+        color: $jel-font-dec;
+        line-height: 1.5;
+      }
+    }
 
     .product-card {
       background-color: #fff;
@@ -875,7 +745,7 @@ const handleCancelOrder = () => {
           font-size: 30rpx;
           color: $jel-font-title;
           font-weight: 500;
-          @include ellipsis(2);
+          @include ellipsis(1);
         }
       }
 
@@ -903,7 +773,7 @@ const handleCancelOrder = () => {
         gap: 16rpx;
 
         .model-tag {
-          padding: 10rpx 20rpx;
+          padding: 6rpx 12rpx;
           font-size: 24rpx;
           color: $jel-font-dec2;
           background-color: $jel-pageBackGroundColor;
@@ -911,7 +781,7 @@ const handleCancelOrder = () => {
           border: 2rpx solid transparent;
           transition: all 0.2s;
 
-          &.active {
+          &.modleActive {
             color: $jel-brandColor;
             background-color: rgba($jel-brandColor, 0.08);
             border-color: $jel-brandColor;

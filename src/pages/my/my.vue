@@ -10,10 +10,13 @@ import { ref } from 'vue'
 import { checkedHireApi } from '@/api/hire.ts'
 import { cooperateCheckApi } from '@/api/cooperate.ts'
 import type { JelHotProductList } from '@/types/component'
-import { userAvatarChangeApi } from '@/api/user.ts'
+import { userAvatarChangeApi } from '@/api/user'
+import { onLoad } from '@dcloudio/uni-app'
 
 // 定义 store
 const userStore = useMemberStore()
+const defaultAvatar =
+  'https://objectstorageapi.gzg.sealos.run/erq1dfin-920/static/defaultAvatar.png'
 
 // 点击登录
 const login = () => {
@@ -22,50 +25,27 @@ const login = () => {
   })
 }
 
-// 更换头像
 const changeAvatar = () => {
-  console.log('changeAvatar')
-  // 1.先验证是否更换频率超出次数
-  if (userStore.profile.avatarUpdateCount && userStore.profile.avatarUpdateCount >= 3) {
-    uni.showToast({ icon: 'none', title: '操作太频繁，请稍后再试', duration: 2000, mask: true })
-    return
-  }
-
-  // 2.选择图片
   uni.chooseImage({
     count: 1,
-    success: (res) => {
-      console.log(res)
-      const name = 'avatar_' + Date.now()
-      // 3.上传图片等待服务器返回正确的链接
+    success: (res) =>
       uni.uploadFile({
-        url: 'https://i2dkfjxqvm.gzg.sealos.run/upload-images',
+        url: 'https://x08d6czkyi.sealosgzg.site/upload',
         filePath: res.tempFilePaths[0],
-        name,
-        success: async (uploadFileRes) => {
-          console.log(uploadFileRes.data)
-          // 4.  更新用户头像
-          const upRes = await userAvatarChangeApi(userStore.profile._id, uploadFileRes.data)
-          console.log('更新结果', upRes)
+        name: 'avatar',
+        success: async (r) => {
+          console.log(r)
+          // 成功调用接口
+          const res = await userAvatarChangeApi(userStore.profile?.id as string, r.data)
+          console.log(res)
 
-          if (upRes.code === 200) {
-            await uni.showToast({ icon: 'none', title: '头像更新成功', duration: 2000, mask: true })
-            // 同步STORE
-            userStore.setProfile({ avatarUrl: uploadFileRes.data })
-          } else {
-            await uni.showToast({
-              icon: 'none',
-              title: upRes.message || '请稍后再试',
-              duration: 2000,
-              mask: true,
-            })
+          if (res.code === 200) {
+            uni.showToast({ icon: 'none', title: '头像更新成功' })
+            userStore.setProfile({ avatarUrl: r.data })
           }
         },
-        fail: (err) => {
-          console.log(err)
-        },
-      })
-    },
+        fail: () => uni.showToast({ icon: 'none', title: '上传失败' }),
+      }),
   })
 }
 
@@ -77,6 +57,8 @@ const onLogout = () => {
     confirmColor: '#d62731',
     success: (result) => {
       if (result.confirm) {
+        console.log('退出')
+
         userStore.clearProfile()
         uni.showToast({
           icon: 'success',
@@ -90,22 +72,18 @@ const onLogout = () => {
 // 处理表单跳转
 const handleForm = async (fromType: string) => {
   console.log(fromType)
-  //  员工招聘跳转验证-如果用户提交过，则拒绝跳转
-  const hireRes = await checkedHireApi(userStore.profile?._id!)
-  let hireCheck = hireRes.data
-  //  合作申请验证
-  const cooperateRes = await cooperateCheckApi(userStore.profile?._id!)
-  let cooperateCheck = cooperateRes.data
+  const cooperateRes = await cooperateCheckApi(userStore.profile?.id!, 'BUSINESS')
+  const hireRes = await checkedHireApi(userStore.profile?.id!, 'JOB')
 
   switch (fromType) {
     // 员工招聘
     case 'hire':
-      if (hireCheck) return uni.showToast({ icon: 'none', title: hireRes.message })
+      if (hireRes.data) return uni.showToast({ icon: 'none', title: '请勿重复提交' })
       await uni.navigateTo({ url: '/pages/hireForm/hireForm' })
       break
     // 合作申请
     case 'cooperate':
-      if (cooperateCheck) return uni.showToast({ icon: 'none', title: cooperateRes.message })
+      if (cooperateRes.data) return uni.showToast({ icon: 'none', title: '请勿重复提交' })
       await uni.navigateTo({ url: '/pages/cooperateForm/cooperateForm' })
       break
   }
@@ -124,6 +102,12 @@ const handleScrolltolower = async () => {
     isLoading.value = false
   }
 }
+
+onLoad(() => {
+  if (userStore.profile?.id) {
+    userStore.userInfoGet(userStore.profile?.id as string)
+  }
+})
 </script>
 
 <template>
@@ -139,10 +123,10 @@ const handleScrolltolower = async () => {
       <!-- 信息区域 -->
       <view class="info">
         <view class="avatar" @click="changeAvatar">
-          <image :src="userStore.profile?.avatarUrl"></image>
+          <image :src="userStore.profile?.avatarUrl || defaultAvatar"></image>
         </view>
         <!--   未登录     -->
-        <view class="userText" v-if="!userStore.profile?._id" @click="login">
+        <view class="userText" v-if="!userStore.profile?.id" @click="login">
           <view class="mobile">点击登录</view>
         </view>
         <!--   已登录     -->
@@ -154,7 +138,7 @@ const handleScrolltolower = async () => {
         </view>
       </view>
       <!-- 设置按钮 -->
-      <view class="options" @click="onLogout" v-if="userStore.profile?._id">
+      <view class="options" @click="onLogout" v-if="userStore.profile?.id">
         <text class="iconfont icon-tuichudenglu" style="font-size: 28rpx"></text>
         <text style="font-size: 24rpx; margin-left: 8rpx">退出</text>
       </view>
@@ -163,7 +147,7 @@ const handleScrolltolower = async () => {
     <view class="content">
       <!-- 会员权益卡片 -->
       <navigator url="/pagesMember/myVip/myVip">
-        <VipCard v-if="userStore.profile?.role === 'vip'"></VipCard>
+        <VipCard v-if="userStore.profile?.role === 'VIP'"></VipCard>
       </navigator>
       <!-- 功能导航 -->
       <NavGrid></NavGrid>
@@ -173,14 +157,14 @@ const handleScrolltolower = async () => {
         <view class="item" @click="handleForm('hire')">
           <image
             class="img"
-            src="https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/images/yuanggong.png"
+            src="https://objectstorageapi.gzg.sealos.run/erq1dfin-920/static/yuanggong.png"
             mode="widthFix"
           ></image>
         </view>
         <view class="item" @click="handleForm('cooperate')">
           <image
             class="img"
-            src="https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/images/hezuo.png"
+            src="https://objectstorageapi.gzg.sealos.run/erq1dfin-920/static/hezuo.png"
             mode="widthFix"
           ></image>
         </view>
@@ -201,6 +185,7 @@ const handleScrolltolower = async () => {
   flex-direction: column;
   height: 100%; // 占满父容器高度
   box-sizing: border-box; // 边框和内边距计入总高度
+
   /*用户信息*/
   .user-info {
     display: flex;
@@ -210,6 +195,7 @@ const handleScrolltolower = async () => {
     height: 264rpx;
     background: url('../../static/images/backgroudImg.png') no-repeat center;
     background-size: cover;
+
     /*信息区域*/
     .info {
       display: flex;

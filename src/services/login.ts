@@ -1,5 +1,5 @@
 import { request } from '@/utils/http.ts'
-import type { UserItem } from '@/types/UserItem'
+import type { LoginResult } from '@/types/UserItem'
 
 /**
  * 微信手机号登录接口
@@ -16,17 +16,15 @@ export const wxLoginApi = (
   encryptedData: string,
   iv: string,
   inviterCode?: string,
-  inviter2Code?: string,
 ) => {
-  return request<UserItem>({
+  return request<LoginResult>({
     method: 'POST',
-    url: '/wx/login',
+    url: '/auth/wx-phone-login',
     data: {
       code,
       encryptedData,
       iv,
       inviterCode,
-      inviter2Code,
     },
   })
 }

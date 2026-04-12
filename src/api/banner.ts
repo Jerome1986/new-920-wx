@@ -7,6 +7,6 @@ import type { BannerItem } from '@/types/BannerItem.d.ts'
 export const bannerListGetApi = () => {
   return request<BannerItem[]>({
     method: 'GET',
-    url: '/banner/get',
+    url: '/banner',
   })
 }

@@ -7,6 +7,6 @@ import type { TeamItem } from '@/types/TeamItem'
 export const teamListGetApi = () => {
   return request<TeamItem[]>({
     method: 'GET',
-    url: '/team/get',
+    url: '/team-show',
   })
 }

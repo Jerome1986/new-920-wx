@@ -1,6 +1,8 @@
 // 注意：这里不要静态依赖 Pinia store（会导致 chunk 循环依赖告警）
 // token 从 persistedstate 的存储中读取即可。
 
+import { isArray } from 'wot-design-uni/components/common/util'
+
 /**
  * 添加拦截器:
  *   拦截 request 请求
@@ -14,7 +16,9 @@
  */
 
 // 基地址
-const baseURL = 'https://i2dkfjxqvm.gzg.sealos.run/web'
+// const baseURL = 'https://i2dkfjxqvm.gzg.sealos.run/web'
+// const baseUrl = 'http://localhost:3000/api'
+const baseUrl = 'https://47910e1e.r21.vip.cpolar.cn/api'
 
 /**
  * 从 pinia-plugin-persistedstate 读取 member store token
@@ -39,7 +43,7 @@ const httpInterceptor = {
   invoke(options: UniApp.RequestOptions) {
     // 1. 非 http 开头需拼接地址
     if (!options.url.startsWith('http')) {
-      options.url = baseURL + options.url
+      options.url = baseUrl + options.url
     }
     // 2. 请求超时, 默认 60s
     options.timeout = 10000
@@ -78,13 +82,12 @@ export type Data<T> = {
 }
 
 function safeShowToast(msg: string) {
-  if (!msg || msg.trim() === '') return
-  uni.showToast({
-    icon: 'none',
-    title: msg,
-    duration: 2000,
-    mask: true,
-  })
+  if (typeof msg === 'string') {
+    uni.showToast({ title: msg, icon: 'none', duration: 2000, mask: true })
+  } else {
+    console.warn('toast msg is not string:', msg)
+    uni.showToast({ title: '请求失败', icon: 'none', duration: 2000, mask: true })
+  }
 }
 
 // 2.2 添加类型，支持泛型
@@ -95,6 +98,7 @@ export const request = <T>(options: UniApp.RequestOptions) => {
       ...options,
       // 响应成功
       success(res) {
+        let message = (res.data as Data<T>).message
         // 状态码 2xx， axios 就是这样设计的
         if (res.statusCode >= 200 && res.statusCode < 300) {
           // 2.根据后端状态码来提示报错
@@ -103,6 +107,13 @@ export const request = <T>(options: UniApp.RequestOptions) => {
           }
           // 抛出服务器返回的结果
           resolve(res.data as Data<T>)
+        } else if (res.statusCode === 400) {
+          // 针对服务器的参数错误处理
+          if (isArray(message)) message = message.join(',')
+
+          safeShowToast(message)
+          // 抛出错误
+          reject(res)
         } else if (res.statusCode === 401) {
           // 401错误  -> 清理用户信息，跳转到登录页
           // 清理 persisted member store（pinia-plugin-persistedstate 默认 key 为 store id）

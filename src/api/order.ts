@@ -1,14 +1,12 @@
 import { request } from '@/utils/http.ts'
 import type {
   freeOrderStatus,
-  OrderAmount,
   OrderItem,
   OrderPageResult,
-  OrderProductItem,
   OrderStatus,
-  OrderUserInfo,
   QuickOrderGiftVipResult,
   QuickOrderResult,
+  sumbitOrderProduct,
   VipOrderItem,
 } from '@/types/Order'
 import type { AddressInfo } from '@/types/UserItem'
@@ -31,8 +29,8 @@ export const userOrderGetApi = (
 ) => {
   return request<OrderPageResult>({
     method: 'GET',
-    url: '/order/get',
-    data: { userId, status, pageNum, pageSize },
+    url: `/toc-order/${userId}`,
+    data: { status, pageNum, pageSize },
   })
 }
 
@@ -40,11 +38,10 @@ export const userOrderGetApi = (
  * 根据订单号获取详细订单信息详情
  * @param orderNo - 订单号
  */
-export const userOrderDetailGetApi = (orderNo: string) => {
+export const userOrderDetailGetApi = (outTradeNo: string) => {
   return request<OrderItem>({
     method: 'GET',
-    url: '/order/detail',
-    data: { orderNo },
+    url: `/toc-order/detail/${outTradeNo}`,
   })
 }
 
@@ -59,18 +56,40 @@ export const userOrderDetailGetApi = (orderNo: string) => {
  * @param remark - 订单备注：区分订单的类型 '商品购买' | '办理会员' | '店长进货'
  */
 export const proOrderPayApi = (
-  userInfo: OrderUserInfo,
+  openid: string,
+  userId: string,
+  nickname: string,
+  mobile: string,
+  avatarUrl: string,
   addressInfo: AddressInfo,
-  products: OrderProductItem[],
+  products: sumbitOrderProduct[],
   totalCount: number,
-  amount: OrderAmount,
+  totalPrice: number,
+  deductAmount: number,
+  actualPayment: number,
+  usedScore: number,
   paymentMethod: 'wechat' | 'alipay' | 'balance',
   remark: '商品购买' | '办理会员' | '店长进货',
 ) => {
   return request<WechatPayParams>({
     method: 'POST',
-    url: '/wx/proPay',
-    data: { userInfo, addressInfo, products, totalCount, amount, paymentMethod, remark },
+    url: '/toc-order/create',
+    data: {
+      openid,
+      userId,
+      nickname,
+      mobile,
+      avatarUrl,
+      addressInfo,
+      products,
+      totalCount,
+      totalPrice,
+      deductAmount,
+      actualPayment,
+      usedScore,
+      paymentMethod,
+      remark,
+    },
   })
 }
 
@@ -92,11 +111,11 @@ export const confirmOrderLogistics = (userId: string, orderNo: string) => {
  * @param outTradeNo - 订单ID
  * @param amount - 订单金额信息
  */
-export const proOrderCancelApi = (outTradeNo: string, amount: OrderAmount) => {
+export const proOrderCancelApi = (outTradeNo: string, actualPayment: number) => {
   return request<RefundResult>({
-    method: 'POST',
-    url: '/wx/refund',
-    data: { outTradeNo, amount },
+    method: 'Patch' as any,
+    url: `/toc-order/cancel/${outTradeNo}`,
+    data: { actualPayment },
   })
 }
 
@@ -128,33 +147,35 @@ export const orderLogisticsApi = (openid: string, transaction_id: string) => {
  * @param description
  */
 export const vipPayApi = (
+  openid: string,
   userId: string,
   userMobile: string,
   vipProId: string,
   vipLevel: number,
   vipLevelText: string,
+  amount: number,
   discount: number,
   limit: number,
   maxUsers: number,
   term: string,
-  totalFee: number,
-  description: string,
+  remark: string,
 ) => {
   return request<WechatPayParams>({
     method: 'POST',
-    url: '/wx/vipPay',
+    url: '/vip-order/add',
     data: {
+      openid,
       userId,
       userMobile,
       vipProId,
       vipLevel,
       vipLevelText,
+      amount,
       discount,
       limit,
       maxUsers,
       term,
-      totalFee,
-      description,
+      remark,
     },
   })
 }
@@ -179,8 +200,8 @@ export const vipOrderCancelledApi = (orderId: string) => {
 export const vipOrderGetApi = (userId: string, status: string) => {
   return request<VipOrderItem[]>({
     method: 'GET',
-    url: '/order/vip',
-    data: { userId, status },
+    url: `/vip-order/user/${userId}`,
+    data: { status },
   })
 }
 

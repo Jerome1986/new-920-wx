@@ -1,7 +1,4 @@
 <script setup lang="ts">
-import { withDefaults } from 'vue'
-
-// ts接收参数并设置默认值 -- withDefaults
 withDefaults(
   defineProps<{
     icCardFont: string

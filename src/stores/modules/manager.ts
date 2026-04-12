@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { StoreInfo } from '@/types/ManagerStore'
-import { managerStoreInfoGetApi } from '@/api/store.ts'
 import { useMemberStore } from '@/stores/modules/member'
+import { managerStoreInfoGetApi } from '@/api/store'
 
 export const useManagerStore = defineStore(
   'manager',
@@ -12,9 +12,20 @@ export const useManagerStore = defineStore(
     const managerStoreGet = async () => {
       // 在函数内部获取 store，确保 Pinia 已初始化
       const userStore = useMemberStore()
-      if (!userStore.profile._id)
-        return uni.showToast({ icon: 'none', title: '当前用户未登录，无法获取门店信息' })
-      const res = await managerStoreInfoGetApi(userStore.profile._id)
+
+      if (!userStore.profile.id) {
+        uni.showToast({ icon: 'none', title: '当前用户未登录，无法获取门店信息' })
+        return
+      }
+
+      if (!userStore.profile.storeId) {
+        uni.showToast({ icon: 'none', title: '门店信息错误' })
+        return
+      }
+
+      const res = await managerStoreInfoGetApi(userStore.profile.storeId, userStore.profile.id)
+      console.log('storeDetail', res.data)
+
       managerStoreInfo.value = res.data
     }
 

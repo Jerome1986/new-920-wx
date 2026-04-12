@@ -82,9 +82,9 @@ export const managerHandleClickGird = (val: string) => {
 export const configData = () => {
   // 在函数内部获取 store，确保 Pinia 已初始化
   const userStore = useMemberStore()
-  if (userStore.profile.role === 'user' || userStore.profile.role === 'vip') {
-    return userData
-  } else if (userStore.profile.role === 'manager') {
+  if (userStore.profile?.role === 'MANAGER') {
     return managerData
+  } else {
+    return userData
   }
 }

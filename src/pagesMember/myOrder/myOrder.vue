@@ -18,7 +18,8 @@ const tagList = ref([
   { id: 'tag3', text: 'PAID', label: '待发货' },
   { id: 'tag4', text: 'SHIPPED', label: '待收货' },
   { id: 'tag5', text: 'COMPLETED', label: '已完成' },
-  { id: 'tag5', text: 'PROCESSING', label: '退款中/已退款' },
+  { id: 'tag6', text: 'CANCELLED', label: '已取消' },
+  { id: 'tag7', text: 'PROCESSING', label: '退款中/已退款' },
 ])
 
 // 分页
@@ -41,7 +42,7 @@ const handleTag = (text: string, index: number) => {
   console.log('切换状态', text)
   activeIndex.value = index
   reset() // 重置订单页面信息
-  orderListGet(userStore.profile._id, text, params.value.pageNum, params.value.pageSize)
+  orderListGet(userStore.profile.id, text, params.value.pageNum, params.value.pageSize)
 }
 
 // 订单列表
@@ -78,7 +79,7 @@ const handleScrolltolower = async () => {
   if (finish.value || isLoading.value) return
   isLoading.value = true
   await orderListGet(
-    userStore.profile._id,
+    userStore.profile.id,
     tagList.value[activeIndex.value].text,
     params.value.pageNum,
     params.value.pageSize,
@@ -110,11 +111,11 @@ const handleConfirm = (orderNo: string, transaction_id: string) => {
         return uni.showToast({ icon: 'none', title: '已取消', mask: true })
 
       // 成功操作将订单状态更新入库已完成
-      await confirmOrderLogistics(userStore.profile._id, orderNo)
+      await confirmOrderLogistics(userStore.profile.id, orderNo)
 
       // 如果正常操作更新当前订单数组为已完成
       orderList.value.find((item) => {
-        if (item.out_trade_no === orderNo) {
+        if (item.outTradeNo === orderNo) {
           item.status = 'COMPLETED'
         }
       })
@@ -124,7 +125,7 @@ const handleConfirm = (orderNo: string, transaction_id: string) => {
       reset() // 重置订单页面信息
       // 重新拉取订单数据
       await orderListGet(
-        userStore.profile._id,
+        userStore.profile.id,
         tagList.value[activeIndex.value].text,
         params.value.pageNum,
         params.value.pageSize,
@@ -145,7 +146,8 @@ const handleConfirm = (orderNo: string, transaction_id: string) => {
 }
 
 // 取消订单并退款
-const handleCancel = (outTradeNo: string, amount: OrderAmount) => {
+const handleCancel = (outTradeNo: string, actualPayment: string) => {
+  const amount = Number(actualPayment)
   console.log('取消订单', outTradeNo, amount)
   uni.showModal({
     title: '提示',
@@ -161,7 +163,7 @@ const handleCancel = (outTradeNo: string, amount: OrderAmount) => {
           reset() // 重置订单页面信息
           // 重新拉取订单数据
           await orderListGet(
-            userStore.profile._id,
+            userStore.profile.id,
             tagList.value[activeIndex.value].text,
             params.value.pageNum,
             params.value.pageSize,
@@ -178,8 +180,8 @@ onShow((options) => {
 })
 
 onLoad(() => {
-  if (userStore.profile?._id) {
-    orderListGet(userStore.profile._id, 'ALL', params.value.pageNum, params.value.pageSize)
+  if (userStore.profile?.id) {
+    orderListGet(userStore.profile.id, 'ALL', params.value.pageNum, params.value.pageSize)
   }
 })
 </script>
@@ -208,12 +210,12 @@ onLoad(() => {
       @scrolltolower="handleScrolltolower"
       v-if="orderList.length > 0"
     >
-      <view class="order-card" v-for="item in orderList" :key="item._id">
+      <view class="order-card" v-for="item in orderList" :key="item.id">
         <!-- 头部：订单号 + 状态 -->
-        <view class="card-head" @click="handleGoDetail(item.out_trade_no)">
+        <view class="card-head" @click="handleGoDetail(item.outTradeNo)">
           <view class="order-no">
             <text class="label">订单号：</text>
-            <text class="value">{{ item.out_trade_no }}</text>
+            <text class="value">{{ item.outTradeNo }}</text>
           </view>
           <view
             class="status"
@@ -231,19 +233,22 @@ onLoad(() => {
         </view>
 
         <!-- 商品列表 -->
-        <view class="product-list" @click="handleGoDetail(item.out_trade_no)">
-          <view class="product-item" v-for="product in item.products" :key="product._id">
+        <view class="product-list" @click="handleGoDetail(item.outTradeNo)">
+          <view class="product-item" v-for="product in item.products" :key="product.id">
             <!-- 商品图片 -->
-            <image class="cover" :src="product.sku?.image || product.cover" mode="aspectFill" />
+            <image class="cover" :src="product.image" mode="aspectFill" />
 
             <!-- 商品信息 -->
             <view class="info">
               <view class="name">{{ product.skuNo }} {{ product.name }}</view>
-              <view class="spec" v-if="product.sku">
-                {{ product.sku.attrs.label }}: {{ product.sku.attrs.value }}
+              <view class="spec" v-if="product.model">
+                {{ product.model }}
+              </view>
+              <view class="spec" v-if="product.skuId">
+                {{ product.skuName }}
               </view>
               <view class="bottom">
-                <view class="price">￥{{ (product.currentPrice / 100).toFixed(2) }}</view>
+                <view class="price">￥{{ Number(product.price).toFixed(2) }}</view>
                 <view class="quantity">x{{ product.quantity }}</view>
               </view>
             </view>
@@ -251,18 +256,16 @@ onLoad(() => {
         </view>
 
         <!-- 订单金额和收货信息 -->
-        <view class="order-info" @click="handleGoDetail(item.out_trade_no)">
+        <view class="order-info" @click="handleGoDetail(item.outTradeNo)">
           <view class="info-row">
             <text class="label">收货人：</text>
-            <text class="value"
-              >{{ item.addressInfo.userName }} {{ item.addressInfo.telNumber }}</text
-            >
+            <text class="value">{{ item.address.name }} {{ item.address.mobile }}</text>
           </view>
           <view class="info-row">
             <text class="label">收货地址：</text>
             <text class="value">
-              {{ item.addressInfo.provinceName }} {{ item.addressInfo.cityName }}
-              {{ item.addressInfo.countyName }} {{ item.addressInfo.detailInfo }}
+              {{ item.address.province }} {{ item.address.city }} {{ item.address.county }}
+              {{ item.address.detail }}
             </text>
           </view>
           <view class="info-row">
@@ -275,41 +278,37 @@ onLoad(() => {
         <view class="card-foot">
           <view class="amount-info">
             <text class="label">共{{ item.totalCount }}件商品 合计：</text>
-            <text class="price">￥{{ (item.amount.actualPayment / 100).toFixed(2) }}</text>
+            <text class="price">￥{{ Number(item.actualPayment).toFixed(2) }}</text>
           </view>
 
           <view class="actions">
             <!-- 待发货：查看详情 -->
             <template v-if="item.status === 'PAID'">
-              <view class="btn ghost" @click.stop="handleCancel(item.out_trade_no, item.amount)"
+              <view
+                class="btn ghost"
+                @click.stop="handleCancel(item.outTradeNo, item.actualPayment)"
                 >取消订单</view
               >
-              <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
-                >查看详情</view
-              >
+              <view class="btn ghost" @click.stop="handleGoDetail(item.outTradeNo)">查看详情</view>
             </template>
 
             <!-- 待收货：查看物流、确认收货 -->
             <template v-if="item.status === 'SHIPPED'">
               <view
                 class="btn primary"
-                @click.stop="handleConfirm(item.out_trade_no, item.transaction_id)"
+                @click.stop="handleConfirm(item.outTradeNo, item.transactionId ?? '')"
                 >确认收货</view
               >
             </template>
 
             <!-- 已完成：查看详情 -->
             <template v-if="item.status === 'COMPLETED'">
-              <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
-                >查看详情</view
-              >
+              <view class="btn ghost" @click.stop="handleGoDetail(item.outTradeNo)">查看详情</view>
             </template>
 
             <!-- 已取消：查看详情  item.status === 'REFUNDED' -->
             <template v-if="item.status === 'CANCELLED'">
-              <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
-                >查看详情</view
-              >
+              <view class="btn ghost" @click.stop="handleGoDetail(item.outTradeNo)">查看详情</view>
             </template>
 
             <!-- 退款中/已退款：查看详情  item.status === 'REFUNDED' -->
@@ -317,7 +316,7 @@ onLoad(() => {
               <view
                 class="btn ghost"
                 :class="{ refunded: item.status === 'REFUNDED' }"
-                @click.stop="handleGoDetail(item.out_trade_no)"
+                @click.stop="handleGoDetail(item.outTradeNo)"
                 >{{ item.status === 'PROCESSING' ? '退款中' : '已退款' }}</view
               >
             </template>

@@ -5,7 +5,7 @@ import { ref } from 'vue'
 import NavTitle from '@/components/NavTitle.vue'
 import GuessBar from '@/pages/search/GuessBar.vue'
 import type { JelSearchBar } from '@/types/component'
-import { productListSearchToBGetApi } from '@/api/product.ts'
+// import { productListSearchToBGetApi } from '@/api/product.ts'
 import GlobalProductBar from '@/components/GlobalProductBar.vue'
 
 // 搜索组件
@@ -24,15 +24,15 @@ const params = ref({
 const finish = ref(false)
 const products = ref<ProductItem[]>([])
 const getProducts = async (val: string, pageNum: number, pageSize: number) => {
-  if (finish.value) return
-  const res = await productListSearchToBGetApi(val, pageNum, pageSize)
-  console.log('搜索结果', res.data)
-  products.value.push(...res.data.list)
-  if (params.value.pageNum < res.data.totalPage) {
-    params.value.pageNum++
-  } else {
-    finish.value = true
-  }
+  // if (finish.value) return
+  // const res = await productListSearchToBGetApi(val, pageNum, pageSize)
+  // console.log('搜索结果', res.data)
+  // products.value.push(...res.data.list)
+  // if (params.value.pageNum < res.data.totalPage) {
+  //   params.value.pageNum++
+  // } else {
+  //   finish.value = true
+  // }
 }
 
 // 选择猜你想搜事件

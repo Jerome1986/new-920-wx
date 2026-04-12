@@ -52,7 +52,7 @@ export const isVipExpired = (vipEndTime: string | Date): boolean => {
 
 // 验证登录
 export const checkLogin = () => {
-  if (!userStore.profile._id) {
+  if (!userStore.profile?.id) {
     uni.showModal({
       title: '提示',
       content: '购物前请先登录',

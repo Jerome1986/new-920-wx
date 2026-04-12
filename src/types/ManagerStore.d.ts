@@ -1,35 +1,33 @@
 // 门店信息
 export interface StoreInfo {
-  /** 唯一标识ID */
-  _id: string
-  /** 门店ID */
-  storeId: string
+  /** 门店唯一ID */
+  id: string
   /** 门店名称 */
-  storeName: string
+  name: string
   /** 门店地址 */
   address: string
-  /** 门店LOGO */
-  storeLogo: string
-  /** 店长ID--对应用户ID */
+  /** 门店负责人ID */
   managerId: string
-  /** 店长名字 */
+  /** 门店负责人名称 */
   managerName: string
-  /** 上级门店ID--对应当前店长上级的ID */
-  parentStoreId: string
-  /** 上级门店的上级ID */
-  parentStoreId2: string
-  /** 店长的手机号码 */
+  /** 门店联系电话 */
   phone: string
-  /** 门店收款码 */
-  qrCodeUrl: string
-  /** 门店激活状态，是否运营中 */
-  status: 'active' | 'inactive'
+  /** 门店编码（可空） */
+  storeCode: string | null
+  /** 上级门店ID（总店/分店结构，可空） */
+  parentStoreId: string | null
+  /** 库存模板ID */
+  inventoryTemplateId: number
+  /** 门店LOGO地址（可空） */
+  logo: string | null
+  /** 门店二维码地址（可空） */
+  qrCodeUrl: string | null
+  /** 门店状态：ACTIVE-正常营业 | INACTIVE-停业/禁用 */
+  status: 'ACTIVE' | 'INACTIVE'
   /** 创建时间 */
-  createdAt: Date
+  createdAt: string
   /** 更新时间 */
-  updatedAt: Date
-  /** 是否匹配了新手库存套餐 */
-  inventory_config: boolean
+  updatedAt: string
 }
 
 // 门店汇总报告数据类型

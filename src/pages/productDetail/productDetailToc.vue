@@ -18,18 +18,23 @@ const cartStore = useCartStore()
 
 // 获取产品列表
 const productData = ref<ProductItem>()
-const productDataGet = async (productId: string) => {
+const productDataGet = async (productId: number) => {
   const res = await productDetailGetApi(productId)
   console.log('商品详情', res)
+
   productData.value = res.data
   activeSkuCover.value = res.data.cover
+
+  // 取出SKU里的最低价格用于初次显示
+  let tempSku = res.data.skus.map((sku) => Number(sku.salePrice))
+  activeSkuPrice.value = String(Math.min(...tempSku))
 }
 
 // 商品类型--商品
 onLoad(async (options) => {
   console.log(options)
   if (options) {
-    await productDataGet(options.productId)
+    await productDataGet(Number(options.productId))
   }
 })
 
@@ -45,26 +50,26 @@ const handleSelectModels = (model: string, index: number) => {
 // 处理sku的选择
 const activeSkuIndex = ref<number | null>(null) // 当前选择的sku索引
 const activeSkuCover = ref('') // 当前选择的sku图片
-const activeSkuPrice = ref(0) // 当前选择的sku价格
+const activeSkuPrice = ref<string>('0') // 当前选择的sku价格
 const activeSkuName = ref('默认规格') // 当前选择的sku名称
 const selectSku = ref<SkuItem>() // 当前选择的sku对象
 const handleSelectSku = (item: SkuItem, index: number) => {
   activeSkuIndex.value = index
   activeSkuCover.value = item.image
-  activeSkuPrice.value = item.price
+  activeSkuPrice.value = item.salePrice
   activeSkuName.value = item.attrs.value
   selectSku.value = item
 }
 
 //  处理sku的确认
 const handleSkuConfrim = () => {
-  if (!selectSku.value || !selectModels.value) {
+  if (!selectSku.value && productData.value?.skus?.length) {
     return uni.showToast({
       icon: 'error',
       title: '请选择规格',
     })
   }
-  if (productData.value) productData.value.currentPrice = selectSku.value.price // 将当前选择的SKU价格同步到产品售价
+
   popup.value?.close()
 }
 
@@ -75,11 +80,11 @@ const handleAddCart = (val: string) => {
   // 检测用户是否登录
   checkLogin()
 
-  if (!productData.value?._id || isAdding.value) return
+  if (!productData.value?.id || isAdding.value) return
   isAdding.value = true
 
   // 如果没有选择sku，提示选择
-  if (selectSku.value === undefined) {
+  if (!selectSku.value && productData.value.skus?.length) {
     isAdding.value = false
     return uni.showToast({
       icon: 'error',
@@ -90,16 +95,15 @@ const handleAddCart = (val: string) => {
 
   try {
     const cart: CartItem = {
-      _id: generateId('cart_'),
+      id: generateId('cart_'),
       selected: true,
-      productId: productData.value?._id!,
+      productId: productData.value?.id as number,
       model: selectModels.value,
       skuNo: productData.value?.skuNo || '',
       name: productData.value?.name || '',
       dec: productData.value?.dec || '',
       cover: productData.value?.cover || '',
-      originalPrice: productData.value?.originalPrice || 0,
-      currentPrice: productData.value?.currentPrice || 0,
+      salePrice: selectSku.value?.salePrice || '0',
       quantity: 1,
       sku: selectSku.value,
       type: productData.value.type,
@@ -143,12 +147,8 @@ const handleAddCart = (val: string) => {
             <view class="price">
               <text class="symbol">￥</text>
               <!-- 默认显示最小的价格，如果选择了规格则显示规格价格 -->
-              <text class="number">{{ ((productData?.currentPrice ?? 0) / 100).toFixed(2) }}</text>
-              <text style="font-size: 24rpx"> 起</text>
+              <text class="number">{{ Number(activeSkuPrice).toFixed(2) }}</text>
             </view>
-            <view class="original-price">
-              ￥{{ ((productData?.originalPrice ?? 0) / 100).toFixed(2) }}</view
-            >
           </view>
         </view>
         <view class="views">
@@ -161,10 +161,14 @@ const handleAddCart = (val: string) => {
     </view>
 
     <!-- 选择规格 -->
-    <view class="spec-section" @click="popup?.open()">
+    <view
+      class="spec-section"
+      @click="popup?.open()"
+      v-if="productData?.skus?.length || productData?.models.length"
+    >
       <view class="section-title">选择规格</view>
       <view class="spec-content">
-        <text>{{ selectSku?.attrs.value || '请选择规格' }}</text>
+        <text>{{ selectSku?.attrs.value || selectModels || '请选择规格' }}</text>
         <text class="iconfont icon-arrow-right"></text>
       </view>
     </view>
@@ -174,9 +178,9 @@ const handleAddCart = (val: string) => {
       <view class="section-title">商品详情</view>
       <view class="detail-content">
         <image
-          v-for="(image, index) in productData?.proImages"
+          v-for="(image, index) in productData?.images"
           :key="index"
-          :src="image"
+          :src="image.url"
           mode="widthFix"
         ></image>
       </view>
@@ -196,38 +200,42 @@ const handleAddCart = (val: string) => {
             <view class="proDec">{{ productData?.dec }}</view>
             <view class="skuName">{{ activeSkuName }}</view>
             <!-- 价格 -->
-            <view class="skuPrice">
+            <view class="skuPrice" v-if="activeSkuPrice">
               <text class="skuPrice--text">¥</text>
-              <text class="skuPrice--text">{{ (activeSkuPrice / 100).toFixed(2) }}</text>
+              <text class="skuPrice--text">{{ Number(activeSkuPrice).toFixed(2) }}</text>
             </view>
           </view>
         </view>
         <!-- SKU选择区域 - 可滚动 -->
         <scroll-view class="scroll-area" :scroll-y="true">
           <!--  适配机型   -->
-          <view class="skuTitle">适配机型</view>
-          <view class="skuContent">
-            <view
-              class="skuItem"
-              :class="{ activeModels: index === activeModelsIndex }"
-              v-for="(item, index) in productData?.models"
-              :key="index"
-              @click="handleSelectModels(item, index)"
-            >
-              {{ item }}
+          <view class="modleList" v-if="productData?.models.length">
+            <view class="skuTitle">适配机型</view>
+            <view class="skuContent">
+              <view
+                class="skuItem"
+                :class="{ activeModels: index === activeModelsIndex }"
+                v-for="(item, index) in productData?.models"
+                :key="index"
+                @click="handleSelectModels(item.name, index)"
+              >
+                {{ item.name }}
+              </view>
             </view>
           </view>
           <!--  规格  -->
-          <view class="skuTitle">规格</view>
-          <view class="skuContent">
-            <view
-              class="skuItem"
-              :class="{ activeSku: index === activeSkuIndex }"
-              v-for="(item, index) in productData?.sku"
-              :key="index"
-              @click="handleSelectSku(item, index)"
-            >
-              {{ item.attrs.value }}
+          <view class="skusList" v-if="productData?.skus?.length">
+            <view class="skuTitle">规格</view>
+            <view class="skuContent">
+              <view
+                class="skuItem"
+                :class="{ activeSku: index === activeSkuIndex }"
+                v-for="(item, index) in productData?.skus"
+                :key="index"
+                @click="handleSelectSku(item, index)"
+              >
+                {{ item.attrs.value }}
+              </view>
             </view>
           </view>
           <!-- 选好了 -->
@@ -252,6 +260,7 @@ const handleAddCart = (val: string) => {
 <style scoped lang="scss">
 .product-detail {
   height: 100%;
+
   // 轮播图
   .swiper {
     width: 100%;
@@ -290,13 +299,6 @@ const handleAddCart = (val: string) => {
             font-size: 48rpx;
             font-weight: bold;
           }
-        }
-
-        .original-price {
-          margin-left: 16rpx;
-          color: $jel-font-dec;
-          font-size: 24rpx;
-          text-decoration: line-through;
         }
       }
 
@@ -379,6 +381,7 @@ const handleAddCart = (val: string) => {
   // 弹窗
   .uniPopup {
     width: 100%;
+
     :deep(.uni-popup) {
       z-index: 1000 !important; // 高于 FooterBar 的 z-index: 999
     }
@@ -398,9 +401,11 @@ const handleAddCart = (val: string) => {
         gap: 24rpx;
         margin-bottom: 24rpx;
         width: 100%;
+
         // sku图片
         .skuCover {
           flex: 0 0 200rpx; // 固定图片列宽，避免挤压
+
           image {
             width: 200rpx;
             height: 200rpx;
@@ -414,6 +419,7 @@ const handleAddCart = (val: string) => {
           min-width: 0; // 关键：允许内容在 flex 中收缩
           overflow: hidden; // 配合多行省略
           box-sizing: border-box;
+
           // 标题
           .proName {
             max-width: 100%;
@@ -478,6 +484,7 @@ const handleAddCart = (val: string) => {
           display: flex;
           flex-wrap: wrap;
           gap: 24rpx;
+
           // SKU每一项
           .skuItem {
             padding: 8rpx 16rpx;
@@ -496,6 +503,7 @@ const handleAddCart = (val: string) => {
             border: 1rpx solid $jel-brandColor;
             background-color: rgba(255, 242, 237);
           }
+
           // 选中的型号
           .activeModels {
             color: $jel-brandColor;

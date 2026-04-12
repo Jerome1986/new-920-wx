@@ -20,9 +20,26 @@ export type PaymentMethod = 'wechat' | 'alipay' | 'balance'
 
 /**
  * 订单商品项
- * 基于 CartItem，但移除了 selected 字段
  */
-export interface OrderProductItem extends Omit<CartItem, 'selected'> {}
+export interface OrderProductItem {
+  id: string
+  image: string
+  model?: string
+  name: string
+  orderId: string
+  price: string
+  productId: number
+  quantity: number
+  skuId?: number
+  skuName?: string
+  skuNo: string
+}
+
+/**
+ * 提交的订单参数
+ */
+
+export interface sumbitOrderProduct extends Omit<CartItem, 'selected', 'dec', 'cover'> {}
 
 /**
  * 订单金额明细
@@ -42,12 +59,11 @@ export interface OrderAmount {
  * 订单用户信息
  */
 export interface OrderUserInfo {
+  openid: string
   /** 用户ID */
   userId: string
   /** 用户昵称 */
   nickname: string
-  /** 用户角色 */
-  role: string
   /** 用户手机号 */
   mobile: string
   /** 用户头像 */
@@ -55,45 +71,38 @@ export interface OrderUserInfo {
 }
 
 /**
- * 订单物流信息
- */
-export interface OrderLogistics {
-  /** 物流公司 */
-  express_company?: string
-  /** 物流单号 */
-  tracking_no?: string
-  /** 物流信息备注 */
-  item_desc?: string
-}
-
-/**
  * 订单项（完整订单数据类型）
  */
 export interface OrderItem {
   /** 订单ID */
-  _id: string
+  id: string
   /** 订单编号（业务订单号） */
-  out_trade_no: string
+  outTradeNo: string
   /** 微信交易订单号 */
-  transaction_id: string
+  transactionId?: string
   /** 订单状态 */
   status: OrderStatus
+  openid: string
   /** 用户信息 */
-  userInfo: OrderUserInfo
+  userId: string
+  nickname: string
+  mobile: string
+  avatarUrl: string
   /** 收货地址信息 */
-  addressInfo: AddressInfo
+  address: AddressInfo
   /** 订单商品列表 */
   products: OrderProductItem[]
   /** 订单商品总件数 */
   totalCount: number
   /** 金额明细 */
-  amount: OrderAmount
+  totalPrice: string
+  deductAmount: string
+  actualPayment: string
+  usedScore: number
   /** 支付方式 */
   paymentMethod?: PaymentMethod
   /** 支付流水号 */
   paymentNo?: string
-  /** 物流信息 */
-  logistics?: OrderLogistics[]
   /** 订单备注 */
   remark?: string
   /** 创建时间 */
@@ -167,9 +176,11 @@ export interface OrderStatistics {
 // 会员订单类型
 export interface VipOrderItem {
   /** mongodb 唯一标识 */
-  _id: string
+  id: string
   /** 订单号*/
-  out_trade_no: string
+  outTradeNo: string
+  transactionId: string
+  openid: string
   /** 用户ID*/
   userId: string
   /** 用户电话*/
@@ -190,6 +201,7 @@ export interface VipOrderItem {
   maxUsers: number
   /** 会员周期 */
   term: string
+  remark?: string
   /** 当前订单状态*/
   status: VipOrderStatus
   /** 订单创建时间 */

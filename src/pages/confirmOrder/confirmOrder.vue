@@ -3,7 +3,12 @@ import { computed, ref } from 'vue'
 import { useCartStore, useMemberStore, useRateStore } from '@/stores'
 import type { AddressInfo } from '@/types/UserItem'
 import { proOrderCancelApi, proOrderPayApi } from '@/api/order.ts'
-import type { OrderAmount, OrderProductItem, OrderUserInfo } from '@/types/Order'
+import type {
+  OrderAmount,
+  OrderProductItem,
+  OrderUserInfo,
+  sumbitOrderProduct,
+} from '@/types/Order'
 
 // 安全距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
@@ -12,6 +17,7 @@ const { safeAreaInsets } = uni.getSystemInfoSync()
 const cartStore = useCartStore()
 const userStore = useMemberStore()
 const rateStore = useRateStore()
+const showAddress = ref(true)
 
 // 选择地址-直接调用微信的收货地址
 const addressInfo = ref<AddressInfo | null>(null)
@@ -20,12 +26,12 @@ const handleAddress = () => {
     success: (res: any) => {
       console.log('选择的地址信息:', res)
       addressInfo.value = {
-        userName: res.userName,
-        telNumber: res.telNumber,
-        provinceName: res.provinceName,
-        cityName: res.cityName,
-        countyName: res.countyName,
-        detailInfo: res.detailInfo,
+        name: res.userName,
+        mobile: res.telNumber, // res.telNumber
+        province: res.provinceName,
+        city: res.cityName,
+        county: res.countyName,
+        detail: res.detailInfo,
         postalCode: res.postalCode,
         nationalCode: res.nationalCode,
       }
@@ -53,7 +59,7 @@ const deductAmount = computed(() => {
     const userPointsValue = userScore * rules.useRate // 用户积分可兑换多少金额  剩余积分 * 兑换RMB的比例
 
     // 金额必须是 >=0
-    return Math.max(0, Math.min(maxDeductMoney, userPointsValue))
+    return Math.ceil(Math.max(0, Math.min(maxDeductMoney, userPointsValue)))
   }
 
   return 0
@@ -78,17 +84,25 @@ const submit = async () => {
 
   // 当前订单的用户信息
   const userInfo: OrderUserInfo = {
-    userId: userStore.profile._id,
+    openid: userStore.profile.openid as string,
+    userId: userStore.profile.id,
     nickname: userStore.profile.nickname || '',
-    role: userStore.profile.role,
     mobile: userStore.profile.mobile,
+    avatarUrl: userStore.profile.avatarUrl,
   }
 
   // 当前订单的商品
-  const products: OrderProductItem[] = cartStore.selectProduct.map((item) => {
-    const { selected, ...rest } = item
-    return rest
-  })
+  const products: sumbitOrderProduct[] = cartStore.selectProduct.map((item) => ({
+    productId: item.productId,
+    model: item.model,
+    skuNo: item.skuNo,
+    name: item.name,
+    price: item.salePrice,
+    quantity: item.quantity,
+    image: item.cover,
+    skuId: item.sku?.id,
+    skuName: item.sku?.attrs.value,
+  }))
 
   // 商品金额信息
   const amount: OrderAmount = {
@@ -100,11 +114,18 @@ const submit = async () => {
 
   // 调用API提交订单
   const orderRes = await proOrderPayApi(
-    userInfo,
+    userInfo.openid,
+    userInfo.userId,
+    userInfo.nickname,
+    userInfo.mobile,
+    userInfo.avatarUrl as string,
     addressInfo.value,
     products,
     cartStore.totalCount,
-    amount,
+    amount.totalPrice,
+    amount.deductAmount,
+    amount.actualPayment,
+    amount.usedScore ?? 0,
     'wechat',
     '商品购买',
   )
@@ -119,32 +140,18 @@ const submit = async () => {
     paySign: orderRes.data.paySign,
     async success(res) {
       console.log('支付结果', res)
+      showAddress.value = false
       // 重新拉取用户信息
-      await userStore.userInfoGet(userStore.profile._id)
+      await userStore.userInfoGet(userStore.profile.id)
       await uni.showToast({ icon: 'success', title: '支付成功' })
-
-      // 跳转到订单页
-      setTimeout(() => {
-        uni.redirectTo({
-          url: '/pagesMember/myOrder/myOrder',
-        })
-        // 清空购物车中已选中的商品
-        cartStore.clearSelectedCart()
-      }, 1500)
+      await uni.redirectTo({
+        url: '/pagesMember/myOrder/myOrder',
+      })
+      await cartStore.clearSelectedCart()
     },
-    async fail(err) {
+    fail(err) {
       console.error('支付失败', err)
-      // 如果是取消支付，则将当前订单状态更新为已取消
-      // const cannelRes = await proOrderCancelApi(orderRes.data.out_trade_no)
-      // if (cannelRes.code === 200) {
-      //   await uni.showToast({ icon: 'none', title: cannelRes.message })
-      // }
     },
-  })
-
-  await uni.showToast({
-    icon: 'success',
-    title: '下单成功',
   })
 }
 </script>
@@ -152,7 +159,7 @@ const submit = async () => {
 <template>
   <scroll-view class="confirmOrder" :scroll-y="true" :enhanced="true" :show-scrollbar="false">
     <!-- 收货地址 -->
-    <view class="address-info">
+    <view class="address-info" v-if="showAddress">
       <!-- 未选择地址 -->
       <view v-if="!addressInfo" class="no-address" @click="handleAddress">
         <text class="iconfont icon-add"></text>
@@ -164,14 +171,14 @@ const submit = async () => {
       <view v-else class="has-address" @click="handleAddress">
         <view class="address-header">
           <view class="user-info">
-            <text class="name">{{ addressInfo.userName }}</text>
-            <text class="phone">{{ addressInfo.telNumber }}</text>
+            <text class="name">{{ addressInfo.name }}</text>
+            <text class="phone">{{ addressInfo.mobile }}</text>
           </view>
           <text class="iconfont icon-arrow-right"></text>
         </view>
         <view class="address-detail">
-          {{ addressInfo.provinceName }} {{ addressInfo.cityName }} {{ addressInfo.countyName }}
-          {{ addressInfo.detailInfo }}
+          {{ addressInfo.province }} {{ addressInfo.city }} {{ addressInfo.county }}
+          {{ addressInfo.detail }}
         </view>
       </view>
     </view>
@@ -184,7 +191,7 @@ const submit = async () => {
         <text class="count">({{ cartStore.totalCount }}件)</text>
       </view>
 
-      <view class="product-item" v-for="item in cartStore.selectProduct" :key="item._id">
+      <view class="product-item" v-for="item in cartStore.selectProduct" :key="item.id">
         <!-- 封面图 -->
         <image class="cover" :src="item.sku?.image || item.cover" mode="aspectFill"></image>
 
@@ -205,7 +212,7 @@ const submit = async () => {
 
           <view class="right">
             <!-- 价格 -->
-            <view class="price">￥{{ (item.currentPrice / 100).toFixed(2) }}</view>
+            <view class="price">￥{{ Number(item.salePrice).toFixed(2) }}</view>
             <!-- 数量 -->
             <view class="quantity">x{{ item.quantity }}</view>
           </view>
@@ -218,20 +225,20 @@ const submit = async () => {
       <view class="title">金额明细</view>
       <view class="item">
         <text class="label">商品金额</text>
-        <text class="value">￥{{ (cartStore.totalPrice / 100).toFixed(2) }}</text>
+        <text class="value">￥{{ Number(cartStore.totalPrice).toFixed(2) }}</text>
       </view>
       <view class="item">
         <text class="label">剩余积分</text>
-        <text class="value">{{ (userStore.profile.score / 100).toFixed(2) }}</text>
+        <text class="value">{{ Number(userStore.profile.score).toFixed(2) }}</text>
       </view>
       <!-- 当前可抵扣的积分 -->
       <view class="item">
         <text class="label">可抵积分</text>
-        <text class="value" style="color: #d62731">{{ (deductAmount / 100).toFixed(2) }}</text>
+        <text class="value" style="color: #d62731">{{ Number(deductAmount).toFixed(2) }}</text>
       </view>
       <view class="item total">
         <text class="label">合计</text>
-        <text class="value">￥{{ (needPay / 100).toFixed(2) }}</text>
+        <text class="value">￥{{ Number(needPay).toFixed(2) }}</text>
       </view>
     </view>
 
@@ -247,7 +254,7 @@ const submit = async () => {
     <view class="toolbar-content">
       <view class="left">
         <text class="label">实际支付:</text>
-        <text class="amount">￥{{ (needPay / 100).toFixed(2) }}</text>
+        <text class="amount">￥{{ Number(needPay).toFixed(2) }}</text>
       </view>
       <button class="btn" @click="submit">结算</button>
     </view>

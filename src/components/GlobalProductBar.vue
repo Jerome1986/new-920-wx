@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProductItem } from '@/types/ProductItem'
+import type { ProductItem, SkuItem } from '@/types/ProductItem'
 import { ref, watch } from 'vue'
 import { autoLookNumApi } from '@/api/product.ts'
 
@@ -13,10 +13,18 @@ const props = defineProps<{
 const leftList = ref<ProductItem[]>([])
 const rightList = ref<ProductItem[]>([])
 
+//价格区间函数
+const mapPrice = (skus: SkuItem[]) => {
+  const minPirce = Math.min(...skus.map((item) => Number(item.salePrice))).toFixed(2)
+  const maxPrice = Math.max(...skus.map((item) => Number(item.salePrice))).toFixed(2)
+
+  return minPirce === maxPrice ? minPirce : minPirce + '~' + maxPrice
+}
+
 // 分配数据到左右两列的函数
 const distributeItems = (items: ProductItem[]) => {
   items.forEach((item) => {
-    if (leftList.value.length <= rightList.value.length) {
+    if (leftList.value?.length <= rightList.value?.length) {
       leftList.value.push(item)
     } else {
       rightList.value.push(item)
@@ -28,17 +36,17 @@ const distributeItems = (items: ProductItem[]) => {
 watch(
   () => props.list,
   (newList) => {
-    const currentTotal = leftList.value.length + rightList.value.length
+    const currentTotal = leftList.value?.length + rightList.value?.length
 
     // 场景1: 新列表为空，清空显示
-    if (newList.length === 0) {
+    if (newList?.length === 0) {
       leftList.value = []
       rightList.value = []
       return
     }
 
     // 场景2: 列表被重置（新列表长度小于当前显示的总数）
-    if (newList.length < currentTotal) {
+    if (newList?.length < currentTotal) {
       leftList.value = []
       rightList.value = []
       distributeItems(newList)
@@ -46,7 +54,7 @@ watch(
     }
 
     // 场景3: 首次加载或重新加载（当前为空但新列表有数据）
-    if (currentTotal === 0 && newList.length > 0) {
+    if (currentTotal === 0 && newList?.length > 0) {
       leftList.value = []
       rightList.value = []
       distributeItems(newList)
@@ -54,7 +62,7 @@ watch(
     }
 
     // 场景4: 增量追加（新列表长度大于当前总数）
-    if (newList.length > currentTotal) {
+    if (newList?.length > currentTotal) {
       const newItems = newList.slice(currentTotal)
       distributeItems(newItems)
       return
@@ -65,8 +73,9 @@ watch(
 
 const emits = defineEmits(['update:lookNum', 'update:loadMore'])
 // 点击跳转详情
-const handleItemDetail = async (productId: string) => {
+const handleItemDetail = async (productId: number) => {
   const updateLook = await autoLookNumApi(productId)
+
   if (props.models === 'toC') {
     await uni.navigateTo({
       url: `/pages/productDetail/productDetailToc?productId=${productId}`,
@@ -101,14 +110,14 @@ const handleScrollToLower = () => {
         <view
           class="item"
           v-for="item in leftList"
-          :key="item._id"
-          @click="handleItemDetail(item._id!)"
+          :key="item.id"
+          @click="handleItemDetail(item.id!)"
         >
           <image class="cover" :src="item.cover" mode="widthFix"></image>
           <view class="title">{{ item.skuNo }} {{ item.name }}</view>
           <view class="desc">{{ item.dec }}</view>
           <view class="footer">
-            <view class="price">{{ ((item.minPrice ?? 0) / 100).toFixed(2) }}</view>
+            <view class="price">{{ mapPrice(item.skus) }}</view>
             <view class="views">
               <text class="iconfont icon-zongliulanliang"></text>
               <text>{{ 'lookView' in item ? item.lookView : item.lookNum }}</text>
@@ -122,14 +131,14 @@ const handleScrollToLower = () => {
         <view
           class="item"
           v-for="item in rightList"
-          :key="item._id"
-          @click="handleItemDetail(item._id!)"
+          :key="item.id"
+          @click="handleItemDetail(item.id!)"
         >
           <image class="cover" :src="item.cover" mode="widthFix"></image>
           <view class="title">{{ item.skuNo }} {{ item.name }}</view>
           <view class="desc">{{ item.dec }}</view>
           <view class="footer">
-            <view class="price">{{ ((item.minPrice ?? 0) / 100).toFixed(2) }}</view>
+            <view class="price">{{ mapPrice(item.skus) }}</view>
             <view class="views">
               <text class="iconfont icon-zongliulanliang"></text>
               <text>{{ 'lookView' in item ? item.lookView : item.lookNum }}</text>
@@ -235,6 +244,7 @@ const handleScrollToLower = () => {
     }
   }
 }
+
 /* 加载见底提示 */
 .tips {
   margin-top: 24rpx;

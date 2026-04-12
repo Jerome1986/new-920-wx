@@ -43,14 +43,14 @@ const handleItem = async (productId: string) => {
   <view class="preview">
     <!-- 左列 -->
     <view class="column">
-      <view class="item" v-for="item in leftList" :key="item._id" @click="handleItem(item._id!)">
+      <view class="item" v-for="item in leftList" :key="item.id" @click="handleItem(item.id!)">
         <image class="coverImg" :src="item.cover" mode="widthFix"></image>
       </view>
     </view>
 
     <!-- 右列 -->
     <view class="column">
-      <view class="item" v-for="item in rightList" :key="item._id" @click="handleItem(item._id!)">
+      <view class="item" v-for="item in rightList" :key="item.id" @click="handleItem(item.id!)">
         <image class="coverImg" :src="item.cover" mode="widthFix"></image>
       </view>
     </view>

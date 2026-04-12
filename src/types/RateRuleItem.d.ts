@@ -1,7 +1,7 @@
 // 积分管理设置的数据类型
 export interface RateRulesItem {
   /** 唯一标识 */
-  _id?: string
+  id?: string
   /** 返积分比例：消费商品返回多少比例的积分，如10%，0.1等 */
   earnRate?: number
   /** 积分抵扣换算率：积分和人民币的换算比例，默认为 1：1 */

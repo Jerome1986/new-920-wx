@@ -29,7 +29,7 @@ const finish = ref(false)
 const products = ref<ProductItem[]>([])
 const getProducts = async (val: string, pageNum: number, pageSize: number) => {
   if (finish.value) return
-  const res = await productListSearchGetApi(val, 'both', pageNum, pageSize)
+  const res = await productListSearchGetApi(val, pageNum, pageSize)
   console.log('搜索结果', res.data)
   products.value.push(...res.data.list)
   if (params.value.pageNum < res.data.totalPage) {
@@ -110,7 +110,7 @@ const handleScrollToLower = async () => {
       @clear="handleClear"
     ></SearchBar>
     <!--  猜你想搜  -->
-    <GuessBar @selectGuess="selectGuess"></GuessBar>
+    <!-- <GuessBar @selectGuess="selectGuess"></GuessBar> -->
     <!-- 热门推荐 -->
     <view class="activityList" v-show="products.length === 0 && !currentSearchKeyword">
       <NavTitle title="热门推荐" :is-more="false"></NavTitle>

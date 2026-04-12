@@ -9,17 +9,15 @@ const userStore = useMemberStore()
 const handleGrid = (val: string) => {
   console.log('功能', val)
   // 检查用户是否登录
-  if (!userStore.profile._id)
+  if (!userStore.profile?.id)
     return uni.showToast({ icon: 'none', title: '登录后可查看', mask: true })
 
-  // 如果是用户操作，就使用用户的点击功能函数
-  if (userStore.profile.role === 'vip' || userStore.profile.role === 'user') {
-    userHandleClickGird(val)
-  }
-
   // 如果是店长，就是用店长对应的点击功能函数
-  if (userStore.profile.role === 'manager') {
+  if (userStore.profile?.role === 'MANAGER') {
     managerHandleClickGird(val)
+  } else {
+    // 如果是用户操作，就使用用户的点击功能函数
+    userHandleClickGird(val)
   }
 }
 </script>

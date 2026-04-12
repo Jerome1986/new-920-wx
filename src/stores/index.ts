@@ -10,7 +10,7 @@ pinia.use(persist)
 export default pinia
 
 // 模块统一导出
-export * from './modules/member'
+export * from './modules/member.ts'
 export * from './modules/history.ts'
 export * from './modules/cart.ts'
 export * from './modules/rate.ts'

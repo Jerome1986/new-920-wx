@@ -1,12 +1,12 @@
 import { request } from '@/utils/http.ts'
-import type { CateItem } from '@/types/CateItem'
+import type { CateItem, CatePageResult } from '@/types/CateItem'
 
 /**
  * 分类获取
  * @param level - 分类层级
  * @param parentId - 父级分类ID
  */
-export const cateListGetApi = (level: number, parentId: string = '') => {
+export const cateListGetApi = (level: number, parentId: number = 0) => {
   return request<CateItem[]>({
     method: 'GET',
     url: '/cate/get',
@@ -17,10 +17,11 @@ export const cateListGetApi = (level: number, parentId: string = '') => {
 /**
  * 获取手机膜单项分类的子级分类，用于快速下单、快速找膜、快速售卖等功能
  */
-export const cateMoGetApi = () => {
+export const cateMoGetApi = (target: 'TOC' | 'TOB') => {
   return request<CateItem[]>({
     method: 'GET',
-    url: '/cate/mo',
+    url: '/category/tree',
+    data: { target },
   })
 }
 
@@ -28,7 +29,7 @@ export const cateMoGetApi = () => {
  * 根据手机膜分类下的二级分类ID，请求三级分类
  * @param parentId
  */
-export const subCategoryGetApi = (parentId: string = 'ALL') => {
+export const subCategoryGetApi = (parentId: number) => {
   return request<CateItem[]>({
     method: 'POST',
     url: '/cate/getSubCategories',
@@ -41,10 +42,16 @@ export const subCategoryGetApi = (parentId: string = 'ALL') => {
  * @param level - 分类层级
  * @param parentId - 父级ID
  */
-export const cateListTocGetApi = (level: number, parentId: string = '') => {
-  return request<CateItem[]>({
+export const cateListTocGetApi = (
+  pageNum?: number,
+  pageSize?: number,
+  parentId?: number,
+  level?: number,
+  target: string = 'TOC',
+) => {
+  return request<CatePageResult>({
     method: 'GET',
-    url: '/cate/tocGet',
-    data: { level, parentId },
+    url: '/category',
+    data: { pageNum, pageSize, parentId, level, target },
   })
 }

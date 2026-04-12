@@ -10,7 +10,7 @@ export const updateImg = (form: FormItem, type: string) => {
 
       // 上传到后端
       uni.uploadFile({
-        url: 'https://i2dkfjxqvm.gzg.sealos.run/admin/upload', // 你后端的上传接口
+        url: 'https://x08d6czkyi.sealosgzg.site/upload', // 你后端的上传接口
         filePath: e.tempFilePaths[0],
         name: originalname,
         success: (res) => {

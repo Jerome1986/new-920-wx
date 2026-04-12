@@ -7,6 +7,6 @@ import type { RateRulesItem } from '@/types/RateRuleItem'
 export const rateRuleListGet = () => {
   return request<RateRulesItem[]>({
     method: 'GET',
-    url: '/rate/get',
+    url: '/rate-rule',
   })
 }

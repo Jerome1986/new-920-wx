@@ -46,20 +46,24 @@ const handleLogin = async (e: GetPhoneNumberEvent) => {
       e.detail.encryptedData!,
       e.detail.iv!,
       inviterCode.value,
-      inviter2Code.value,
     )
     console.log('wxMobileLoginApi 返回', wxRes)
 
     if (wxRes.code === 200 && wxRes.data) {
       const userRes = wxRes.data
-      console.log(userRes)
+      console.log('登录返回', userRes)
       // 检测会员是否过期
-      if (userRes.role === 'vip' && userRes.vipEndTime && isVipExpired(userRes.vipEndTime)) {
-        userRes.role = 'user'
+      if (
+        userRes.user.role === 'VIP' &&
+        userRes.user.vipEndTime &&
+        isVipExpired(userRes.user.vipEndTime)
+      ) {
+        userRes.user.role = 'USER'
         console.log('会员已过期')
       }
-
-      userStore.setProfile(userRes) // 将返回的用户信息存入store
+      // 将返回的用户信息存入store
+      userStore.setProfile(userRes.user)
+      userStore.setToken(userRes.token)
 
       await uni.showToast({
         icon: 'success',
@@ -87,7 +91,6 @@ const handleLogin = async (e: GetPhoneNumberEvent) => {
 const freshCode = ref('')
 // 获取参数-邀请码
 const inviterCode = ref('')
-const inviter2Code = ref('')
 onLoad(async (options: any) => {
   console.log('入参', options)
   // 进页面就重新获取code，防止过期
@@ -123,15 +126,6 @@ onLoad(async (options: any) => {
     console.log('无邀请码，正常进入')
     return
   }
-
-  // 查询上级的上级
-  const res = await userInviter2CodeGetApi(inviterCode.value)
-  inviter2Code.value = res.data.inviter2Code
-
-  console.log('最终生效的邀请链：', {
-    inviterCode: inviterCode.value,
-    inviter2Code: inviter2Code.value,
-  })
 })
 </script>
 

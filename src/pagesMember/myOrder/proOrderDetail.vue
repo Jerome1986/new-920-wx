@@ -44,7 +44,7 @@ const handleConfirm = (transaction_id: string) => {
       businessType: 'weappOrderConfirm',
       extraData: {
         merchant_id: MERCHANT_ID,
-        merchant_trade_no: orderDetail.value?.out_trade_no,
+        merchant_trade_no: orderDetail.value?.outTradeNo,
         transaction_id: transaction_id,
       },
       async success(res: BusinessSuccessResponse) {
@@ -53,7 +53,7 @@ const handleConfirm = (transaction_id: string) => {
         if (res.extraData.status === 'cancel')
           return uni.showToast({ icon: 'none', title: '已取消', mask: true })
         // 将订单状态更新入库已完成
-        await confirmOrderLogistics(userStore.profile._id, orderNo.value)
+        await confirmOrderLogistics(userStore.profile.id, orderNo.value)
         await getOrderDetail(orderNo.value)
         await uni.redirectTo({
           url: '//pagesMember/myOrder/myOrder',
@@ -130,12 +130,12 @@ onLoad((options: any) => {
         </view>
         <view class="address-content">
           <view class="user-info">
-            <text class="name">{{ orderDetail.addressInfo.userName }}</text>
-            <text class="phone">{{ orderDetail.addressInfo.telNumber }}</text>
+            <text class="name">{{ orderDetail.address.name }}</text>
+            <text class="phone">{{ orderDetail.address.mobile }}</text>
           </view>
           <view class="address-text">
-            {{ orderDetail.addressInfo.provinceName }} {{ orderDetail.addressInfo.cityName }}
-            {{ orderDetail.addressInfo.countyName }} {{ orderDetail.addressInfo.detailInfo }}
+            {{ orderDetail.address.province }} {{ orderDetail.address.city }}
+            {{ orderDetail.address.county }} {{ orderDetail.address.detail }}
           </view>
         </view>
       </view>
@@ -147,18 +147,18 @@ onLoad((options: any) => {
           <text class="title">商品清单</text>
         </view>
         <view class="product-list">
-          <view class="product-item" v-for="product in orderDetail.products" :key="product._id">
+          <view class="product-item" v-for="product in orderDetail.products" :key="product.id">
             <!-- 商品图片 -->
-            <image class="cover" :src="product.sku?.image || product.cover" mode="aspectFill" />
+            <image class="cover" :src="product.image" mode="aspectFill" />
 
             <!-- 商品信息 -->
             <view class="info">
               <view class="name">{{ product.skuNo }} {{ product.name }}</view>
-              <view class="spec" v-if="product.sku">
-                {{ product.sku.attrs.label }}: {{ product.sku.attrs.value }}
+              <view class="spec" v-if="product.skuId">
+                {{ product.skuName }}
               </view>
               <view class="bottom">
-                <view class="price">￥{{ (product.currentPrice / 100).toFixed(2) }}</view>
+                <view class="price">￥{{ Number(product.price).toFixed(2) }}</view>
                 <view class="quantity">x{{ product.quantity }}</view>
               </view>
             </view>
@@ -176,18 +176,19 @@ onLoad((options: any) => {
           <view class="info-item">
             <text class="label">订单号</text>
             <view class="value-wrapper">
-              <text class="value">{{ orderDetail.out_trade_no }}</text>
-              <text class="copy" @click="handleCopy(orderDetail.out_trade_no)">复制</text>
+              <text class="value">{{ orderDetail.outTradeNo }}</text>
+              <text class="copy" @click="handleCopy(orderDetail.outTradeNo)">复制</text>
             </view>
           </view>
-          <view class="info-item" v-if="orderDetail.transaction_id">
+          <view class="info-item" v-if="orderDetail.transactionId">
             <text class="label">微信订单号</text>
             <view class="value-wrapper">
-              <text class="value">{{ orderDetail.transaction_id }}</text>
-              <text class="copy" @click="handleCopy(orderDetail.transaction_id)">复制</text>
+              <text class="value">{{ orderDetail.transactionId }}</text>
+              <text class="copy" @click="handleCopy(orderDetail.transactionId)">复制</text>
             </view>
           </view>
-          <view
+          <!-- 快递物流 -->
+          <!-- <view
             class="info-item"
             v-if="orderDetail.logistics?.length && orderDetail.logistics[0].express_company"
           >
@@ -214,7 +215,7 @@ onLoad((options: any) => {
                 >复制</text
               >
             </view>
-          </view>
+          </view> -->
           <view class="info-item">
             <text class="label">下单时间</text>
             <text class="value">{{ formatTimestamp(orderDetail.createdAt, 2) }}</text>
@@ -249,21 +250,19 @@ onLoad((options: any) => {
         <view class="amount-list">
           <view class="amount-item">
             <text class="label">商品总额</text>
-            <text class="value">￥{{ (orderDetail.amount.totalPrice / 100).toFixed(2) }}</text>
+            <text class="value">￥{{ Number(orderDetail.totalPrice).toFixed(2) }}</text>
           </view>
-          <view class="amount-item" v-if="orderDetail.amount.deductAmount > 0">
+          <view class="amount-item" v-if="Number(orderDetail.deductAmount) > 0">
             <text class="label">积分抵扣</text>
-            <text class="value deduct"
-              >-￥{{ (orderDetail.amount.deductAmount / 100).toFixed(2) }}</text
-            >
+            <text class="value deduct">-￥{{ Number(orderDetail.deductAmount).toFixed(2) }}</text>
           </view>
-          <view class="amount-item" v-if="orderDetail.amount.usedScore">
+          <view class="amount-item" v-if="orderDetail.usedScore">
             <text class="label">使用积分</text>
-            <text class="value">{{ (orderDetail.amount.usedScore / 100).toFixed(2) }}</text>
+            <text class="value">{{ orderDetail.usedScore.toFixed(2) }}</text>
           </view>
           <view class="amount-item total">
             <text class="label">实付款</text>
-            <text class="value">￥{{ (orderDetail.amount.actualPayment / 100).toFixed(2) }}</text>
+            <text class="value">￥{{ Number(orderDetail.actualPayment).toFixed(2) }}</text>
           </view>
         </view>
       </view>
@@ -290,9 +289,7 @@ onLoad((options: any) => {
 
         <!-- 待收货 -->
         <template v-if="orderDetail.status === 'SHIPPED'">
-          <view class="btn primary" @click="handleConfirm(orderDetail.transaction_id)"
-            >确认收货</view
-          >
+          <view class="btn primary" @click="handleConfirm(orderDetail.outTradeNo)">确认收货</view>
         </template>
       </view>
       <view class="safe-area" :style="{ height: safeAreaInsets?.bottom + 'px' }"></view>

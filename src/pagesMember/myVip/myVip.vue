@@ -40,7 +40,7 @@ onLoad(() => vipListGet())
 
 // 当前支付的价格--暂时为所选择的价格，后期可根据积分、优惠券抵扣计算
 const currentPrice = (price?: number) => {
-  return price || vipList.value[activeIndex.value]?.price
+  return Number(price) || Number(vipList.value[activeIndex.value]?.price)
 }
 
 // 处理选择
@@ -52,8 +52,8 @@ const handleSelected = (item: vipProItem, index: number) => {
 
 // 点击立即购买
 const buyNow = async () => {
-  console.log('buyNow', currentVip.value)
-  if (currentVip.value?.status === 'disable') {
+  console.log('buyNow', currentVip.value, currentPrice())
+  if (currentVip.value?.status === 'INACTIVE') {
     await uni.showToast({
       icon: 'none',
       title: '暂未开放',
@@ -61,18 +61,19 @@ const buyNow = async () => {
     return
   }
   // 1.向后端发起支付请求
-  if (currentVip.value?._id) {
+  if (currentVip.value?.id) {
     const payRes = await vipPayApi(
-      userStore.profile._id,
+      userStore.profile.openid as string,
+      userStore.profile.id,
       userStore.profile.mobile,
-      currentVip.value._id,
+      currentVip.value.id,
       currentVip.value.level,
       currentVip.value.levelText,
+      currentPrice(),
       currentVip.value.discount,
       currentVip.value.limit,
       currentVip.value.maxUsers,
       currentVip.value.term,
-      currentPrice(),
       '办理会员',
     )
     console.log('开始支付', payRes)
@@ -85,7 +86,7 @@ const buyNow = async () => {
       paySign: payRes.data.paySign,
       async success(res) {
         // 3.支付成功后-重新获取更新的数据（实际的更新动作由后端完成）
-        const userRes = await userInfoGetApi(userStore.profile._id)
+        const userRes = await userInfoGetApi(userStore.profile.id)
         console.log('支付成功', res)
 
         userStore.setProfile(userRes.data)
@@ -134,7 +135,7 @@ const buyNow = async () => {
         class="item"
         :class="{ itemActive: activeIndex === index }"
         v-for="(item, index) in vipList"
-        :key="item._id"
+        :key="item.id"
         @click="handleSelected(item, index)"
       >
         <view class="head">{{ item.levelText }}</view>
@@ -144,7 +145,7 @@ const buyNow = async () => {
           >
           <view class="price">
             <text style="font-size: 28rpx">￥</text>
-            <text>{{ (item.price / 100).toFixed(2) }}/年</text>
+            <text>{{ Number(item.price).toFixed(2) }}/年</text>
           </view>
         </view>
         <view class="foot">{{ item.rights }}</view>
@@ -163,7 +164,7 @@ const buyNow = async () => {
       <view class="buyPrice">
         <text style="color: #333333">支付金额：</text>
         <text>￥</text>
-        <text style="font-size: 32rpx">{{ (currentPrice() / 100).toFixed(2) }}</text>
+        <text style="font-size: 32rpx">{{ Number(currentPrice()).toFixed(2) }}</text>
       </view>
       <view class="buyBtn" @click="buyNow">立即购买</view>
     </view>

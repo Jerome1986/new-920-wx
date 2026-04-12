@@ -29,7 +29,7 @@ const handleCheckout = () => {
 
   // 拿到所选择商品数组里的type并传递给订单页面
   const orderType = cartStore.selectProduct[0].type
-  if (orderType !== 'manager') {
+  if (orderType !== 'MANAGER') {
     uni.navigateTo({
       url: `/pages/confirmOrder/confirmOrder?orderType=${orderType}`,
     })
@@ -50,10 +50,10 @@ const handleCheckout = () => {
       </view>
 
       <view v-else class="list">
-        <view class="item" v-for="item in cartStore.cartList" :key="item._id">
+        <view class="item" v-for="item in cartStore.cartList" :key="item.id">
           <!-- 选择框 -->
           <text
-            @click="cartStore.toggleSelect(item._id)"
+            @click="cartStore.toggleSelect(item.id as string)"
             class="checkbox"
             :class="{ checked: item.selected }"
           ></text>
@@ -72,16 +72,14 @@ const handleCheckout = () => {
               <view class="spec" v-if="item.sku">
                 {{ item.sku.attrs.label }}: {{ item.sku.attrs.value }}
               </view>
+              <view class="spec" v-if="item.model">{{ item.model }} </view>
 
               <!-- 价格和数量 -->
               <view class="bottom">
                 <view class="price-box">
                   <view class="price">
                     <text class="symbol">￥</text>
-                    <text class="number">{{ (item.currentPrice / 100).toFixed(2) }}</text>
-                  </view>
-                  <view class="original-price" v-if="item.originalPrice > item.currentPrice">
-                    ￥{{ (item.originalPrice / 100).toFixed(2) }}
+                    <text class="number">{{ Number(item.salePrice).toFixed(2) }}</text>
                   </view>
                 </view>
 
@@ -90,7 +88,7 @@ const handleCheckout = () => {
                   <view
                     class="btn decrease"
                     :class="{ disabled: item.quantity <= 1 }"
-                    @click="cartStore.decreaseQuantity(item._id)"
+                    @click="cartStore.decreaseQuantity(item.id as string)"
                   >
                     <text>-</text>
                   </view>
@@ -100,11 +98,8 @@ const handleCheckout = () => {
                     :value="String(item.quantity)"
                     :disabled="true"
                   />
-                  <view
-                    class="btn increase"
-                    :class="{ disabled: item.sku && item.quantity >= item.sku.stock }"
-                    @click="cartStore.increaseQuantity(item._id)"
-                  >
+                  <!--  :class="{ disabled: item.sku && item.quantity >= item.sku.stock }" -->
+                  <view class="btn increase" @click="cartStore.increaseQuantity(item.id as string)">
                     <text>+</text>
                   </view>
                 </view>
@@ -112,7 +107,7 @@ const handleCheckout = () => {
             </view>
 
             <!-- 删除按钮 -->
-            <view class="delete" @click="cartStore.deleteItem(item._id)">
+            <view class="delete" @click="cartStore.deleteItem(item.id as string)">
               <text class="iconfont icon-shanchu"></text>
             </view>
           </view>
@@ -139,7 +134,7 @@ const handleCheckout = () => {
           <text class="label">合计:</text>
           <text class="price">
             <text class="symbol">￥</text>
-            <text class="number">{{ (cartStore.totalPrice / 100).toFixed(2) }}</text>
+            <text class="number">{{ Number(cartStore.totalPrice).toFixed(2) }}</text>
           </text>
         </view>
       </view>
@@ -306,12 +301,6 @@ const handleCheckout = () => {
                   .number {
                     font-size: 32rpx;
                   }
-                }
-
-                .original-price {
-                  font-size: 22rpx;
-                  color: $jel-font-dec;
-                  text-decoration: line-through;
                 }
               }
 

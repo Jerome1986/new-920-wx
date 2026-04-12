@@ -8,10 +8,10 @@ import type { ScoreDetailsPage } from '@/types/ScoreDetails'
  * @param pageNum - 页码
  * @param pageSize - 条数
  */
-export const scoreListGetApi = (userId: string, tag: string, pageNum: number, pageSize: number) => {
+export const scoreListGetApi = (userId: string, tab: string, pageNum: number, pageSize: number) => {
   return request<ScoreDetailsPage>({
     method: 'GET',
-    url: '/score/get',
-    data: { userId, tag, pageNum, pageSize },
+    url: `/points-flow/${userId}`,
+    data: { tab, pageNum, pageSize },
   })
 }

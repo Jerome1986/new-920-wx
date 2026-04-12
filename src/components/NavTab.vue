@@ -27,8 +27,8 @@ const handelChange = (cateId: string, index: number) => {
       <view
         class="item"
         v-for="(item, index) in list"
-        :key="item._id"
-        @click="handelChange(item._id, index)"
+        :key="item.id"
+        @click="handelChange(item.id, index)"
       >
         <!--  文字  -->
         <view class="text" :class="{ activeText: activeIndex === index }">{{ item.name }}</view>

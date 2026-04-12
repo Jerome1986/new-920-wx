@@ -14,11 +14,12 @@ const userStore = useMemberStore()
 
 // 基础表单数据
 const form = ref<FormItem>({
-  userId: userStore.profile._id,
+  userId: userStore.profile.id,
   name: '',
   mobile: '',
   icCardFont: '',
   icCardBack: '',
+  type: 'JOB',
 })
 
 // 处理子组件上传
@@ -64,6 +65,7 @@ const handleSubmit = async (): Promise<void> => {
       form.value.mobile,
       form.value.icCardFont,
       form.value.icCardBack,
+      form.value.type,
     )
 
     console.log('提交结果', res)
@@ -87,13 +89,6 @@ const handleSubmit = async (): Promise<void> => {
     }
   } catch (error: any) {
     console.error('提交错误:', error)
-    const errorMessage = error?.message || '网络错误，请重试'
-
-    await uni.showToast({
-      title: errorMessage,
-      icon: 'none',
-      duration: 3000,
-    })
   } finally {
     isSubmitting.value = false
     uni.hideLoading()

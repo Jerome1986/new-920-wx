@@ -18,26 +18,16 @@ export const productsHotGetApi = (pageNum: number, pageSize: number) => {
 }
 
 /**
- * 根据分类名称获取产品列表
- * @param cateName - 分类名称
+ * 根据分类ID获取商品
+ * @param cateId - 分类ID
+ * @param pageNum - 页码
+ * @param pageSize - 条数
  */
-export const productsListTobGetApi = (cateName: string) => {
-  return request<ProductItem[]>({
+export const productListByCateIdGetApi = (cateId: number, pageNum: number, pageSize: number) => {
+  return request<ProductPageResult>({
     method: 'GET',
-    url: '/product/getB',
-    data: { cateName },
-  })
-}
-
-/**
- * 根据分类名称获取产品列表
- * @param cateName - 分类名称
- */
-export const productsListTocGetApi = (cateName: string) => {
-  return request<ProductItem[]>({
-    method: 'GET',
-    url: '/product/getC',
-    data: { cateName },
+    url: `/product/${cateId}`,
+    data: { pageNum, pageSize },
   })
 }
 
@@ -47,43 +37,11 @@ export const productsListTocGetApi = (cateName: string) => {
  * @param pageNum - 页码
  * @param pageSize - 条数
  */
-export const productListByCateIdGetApi = (cateId: string, pageNum: number, pageSize: number) => {
+export const productListByCateIdTocGetApi = (cateId: number, pageNum: number, pageSize: number) => {
   return request<ProductPageResult>({
     method: 'GET',
-    url: '/product/cateId',
-    data: { cateId, pageNum, pageSize },
-  })
-}
-
-/**
- * 根据分类ID获取C端商品
- * @param cateId - 分类ID
- * @param pageNum - 页码
- * @param pageSize - 条数
- */
-export const productListByCateIdTocGetApi = (cateId: string, pageNum: number, pageSize: number) => {
-  return request<ProductPageResult>({
-    method: 'GET',
-    url: '/product/cateIdToc',
-    data: { cateId, pageNum, pageSize },
-  })
-}
-
-/**
- * 根据子级分类ID获取产品
- * @param subCateId - 子级分类ID
- * @param pageNum - 页码
- * @param pageSize - 条数
- */
-export const productListBySubCateIdGetApi = (
-  subCateId: string,
-  pageNum: number,
-  pageSize: number,
-) => {
-  return request<ProductPageResult>({
-    method: 'GET',
-    url: '/product/sub',
-    data: { subCateId, pageNum, pageSize },
+    url: `/product/${cateId}`,
+    data: { pageNum, pageSize },
   })
 }
 
@@ -96,32 +54,14 @@ export const productListBySubCateIdGetApi = (
  */
 export const productListSearchGetApi = (
   searchVal: string,
-  productType: 'user' | 'manager' | 'vip' | 'both',
   pageNum: number,
   pageSize: number,
+  target: string,
 ) => {
   return request<ProductPageResult>({
-    method: 'POST',
-    url: '/product/searchToC',
-    data: { searchVal, productType, pageNum, pageSize },
-  })
-}
-
-/**
- * 采购商品搜索接口
- * @param searchVal
- * @param pageNum
- * @param pageSize
- */
-export const productListSearchToBGetApi = (
-  searchVal: string,
-  pageNum: number,
-  pageSize: number,
-) => {
-  return request<ProductPageResult>({
-    method: 'POST',
-    url: '/product/searchToB',
-    data: { searchVal, pageNum, pageSize },
+    method: 'GET',
+    url: '/product/search',
+    data: { searchVal, pageNum, pageSize, target },
   })
 }
 
@@ -129,24 +69,22 @@ export const productListSearchToBGetApi = (
  * 获取商品详情
  * @param productId - 对应商品ID
  */
-export const productDetailGetApi = (productId: string) => {
+export const productDetailGetApi = (productId: number) => {
   return request<ProductItem>({
     method: 'GET',
-    url: '/product/detail',
-    data: { productId },
+    url: `/product/detail/${productId}`,
   })
 }
 
 /**
- * 自动更新阅读量
- * @param {string} productId - 当前产品的id
+ * 点击更新阅读量toc
+ * @param {number} productId - 当前产品的id
  */
 
-export const autoLookNumApi = (productId: string) => {
+export const autoLookNumApi = (productId: number) => {
   return request<LookNumItem>({
-    method: 'POST',
-    url: '/product/lookNum',
-    data: { productId },
+    method: 'PATCH' as any,
+    url: `/product/look/${productId}`,
   })
 }
 
@@ -156,7 +94,7 @@ export const autoLookNumApi = (productId: string) => {
 export const vipProductGetApi = () => {
   return request<vipProItem[]>({
     method: 'GET',
-    url: '/product/vip',
+    url: '/vip-plan',
   })
 }
 
@@ -169,23 +107,5 @@ export const quickSellSearchModelsApi = (searchVal: string) => {
     method: 'POST',
     url: '/quickSell/modelList',
     data: { searchVal },
-  })
-}
-
-/**
- * 根据搜索匹配产品列表
- * @param searchVal - 搜索内容
- * @param subCategoryId - 二级分类ID
- * @param thirdCategoryId - 三级分类ID
- */
-export const quickSellSearchProductApi = (
-  searchVal: string,
-  subCategoryId: string,
-  thirdCategoryId: string,
-) => {
-  return request<ProductItem[]>({
-    method: 'POST',
-    url: '/quickSell/productList',
-    data: { searchVal, subCategoryId, thirdCategoryId },
   })
 }

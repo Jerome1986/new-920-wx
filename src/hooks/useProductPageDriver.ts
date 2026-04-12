@@ -112,7 +112,7 @@ export function useProductPageDriver(options: {
     if (list1.length === 0) return
 
     // 选中第一个一级分类
-    const firstLevel1Id = list1[0]._id
+    const firstLevel1Id = list1[0].id
     currentLevel1.value = firstLevel1Id
 
     // 2. 加载二级分类
@@ -127,7 +127,7 @@ export function useProductPageDriver(options: {
     }
 
     // 选中第一个二级分类
-    const firstLevel2Id = list2[0]._id
+    const firstLevel2Id = list2[0].id
     currentLevel2.value = firstLevel2Id
 
     // 3. 加载三级分类

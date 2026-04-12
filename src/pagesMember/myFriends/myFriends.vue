@@ -4,7 +4,7 @@ import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { useMemberStore } from '@/stores'
 import { onShareAppMessage } from '@dcloudio/uni-app'
-import type { UserItem } from '@/types/UserItem'
+import type { childItems, UserItem } from '@/types/UserItem'
 import { formatTimestamp } from '@/utils/formatTimestamp.ts'
 import { addUserQrCodeApi, referralsUserListGetApi } from '@/api/user.ts'
 
@@ -12,18 +12,22 @@ const { safeAreaInsets } = uni.getSystemInfoSync()
 
 // 定义store
 const userStore = useMemberStore()
+const loadding = ref(false)
 
 // 点击生成邀请码
 const handleAddCode = () => {
   console.log('生成邀请码')
+  if (loadding.value) return
   uni.showModal({
     title: '提示',
     content: '点击确定生成你的专属邀请码',
     showCancel: false,
+    confirmColor: '#d62731',
     success: async (success) => {
       if (success.confirm) {
-        // todo 生成邀请码
+        // 生成邀请码
         const res = await addUserQrCodeApi(userStore.profile.referralCode)
+        loadding.value = true
         console.log('生成的邀请码', res)
         userStore.setProfile({
           ...userStore.profile,
@@ -43,27 +47,25 @@ const handleSaveCode = () => {
 }
 
 // 一级好友
-const firstFriends = ref<UserItem[]>([])
+const firstFriends = ref<childItems[]>([])
 // 二级好友
-const subFriends = ref<UserItem[]>([])
+const subFriends = ref<childItems[]>([])
 // 总好友数
 const totalFriends = computed(() => {
   return firstFriends.value.length + subFriends.value.length
 })
 
-// 根据自身邀请码查询好友
-const friendsListGet = async (referralCode: string) => {
-  const res = await referralsUserListGetApi(referralCode)
+// 获取当前用户下级
+const friendsListGet = async (userId: string) => {
+  const res = await referralsUserListGetApi(userId)
   console.log('好有结果', res.data)
-  if (res.code === 200) {
-    firstFriends.value = res.data.firstUsers
-    subFriends.value = res.data.secondUsers
-  }
+  firstFriends.value = res.data.filter((u) => u.level === 1)
+  subFriends.value = res.data.filter((u) => u.level === 2)
 }
 
 onLoad(() => {
   if (userStore.profile) {
-    friendsListGet(userStore.profile.referralCode)
+    friendsListGet(userStore.profile.id)
   }
 })
 
@@ -111,10 +113,14 @@ onShareAppMessage((res) => {
     <view class="head" v-if="totalFriends">
       <view class="total">我的好友：{{ totalFriends }}个</view>
     </view>
-    <scroll-view class="scroll-view" :scroll-y="true">
+    <scroll-view
+      class="scroll-view"
+      :scroll-y="true"
+      v-if="firstFriends.length || subFriends.length"
+    >
       <!-- 一级好友 -->
       <view class="friendsList" v-if="firstFriends.length > 0">
-        <view class="item" v-for="item in firstFriends" :key="item._id">
+        <view class="item" v-for="item in firstFriends" :key="item.id">
           <view class="userAvatar">
             <image class="url" :src="item.avatarUrl" mode="aspectFit"></image>
           </view>
@@ -127,13 +133,13 @@ onShareAppMessage((res) => {
                 mode="aspectFit"
               ></image>
             </view>
-            <view class="consumption">注册时间：{{ formatTimestamp(item.registerTime) }}</view>
+            <view class="consumption">注册时间：{{ formatTimestamp(item.createdAt) }}</view>
           </view>
         </view>
       </view>
       <!-- 二级好友 -->
       <view class="friendsList" v-if="subFriends.length > 0">
-        <view class="item" v-for="item in subFriends" :key="item._id">
+        <view class="item" v-for="item in subFriends" :key="item.id">
           <view class="userAvatar">
             <image class="url" :src="item.avatarUrl" mode="aspectFit"></image>
           </view>
@@ -146,7 +152,7 @@ onShareAppMessage((res) => {
                 mode="aspectFit"
               ></image>
             </view>
-            <view class="consumption">注册时间：{{ formatTimestamp(item.registerTime) }}</view>
+            <view class="consumption">注册时间：{{ formatTimestamp(item.createdAt) }}</view>
           </view>
         </view>
       </view>
@@ -198,6 +204,7 @@ onShareAppMessage((res) => {
         font-size: 26rpx;
         color: $jel-font-dec2;
       }
+
       .code {
         font-size: 30rpx;
         color: $jel-font-title;
@@ -216,11 +223,13 @@ onShareAppMessage((res) => {
         font-size: 24rpx;
         white-space: nowrap;
       }
+
       .ghost {
         color: $jel-brandColor;
         background: #fff;
         border: 1rpx solid $jel-brandColor;
       }
+
       .primary {
         color: #fff;
         background: $jel-brandColor;
@@ -249,9 +258,11 @@ onShareAppMessage((res) => {
     font-size: 28rpx;
     color: $jel-font-title;
   }
+
   .scroll-view {
     flex: 1;
     width: 100%;
+
     /*好友列表*/
     .friendsList {
       margin-top: 24rpx;
@@ -312,12 +323,14 @@ onShareAppMessage((res) => {
       border-radius: 8rpx;
     }
   }
+
   .zhanwei {
     margin-top: 80rpx;
     height: 100rpx;
     padding: 0 20rpx var(--window-bottom);
     box-sizing: content-box;
   }
+
   /*底部按钮*/
   .toolbar {
     position: fixed;

@@ -101,9 +101,9 @@ watch(
 )
 
 // 点击跳转详情
-const handleItemDetail = async (productId: string) => {
+const handleItemDetail = async (productId: number) => {
   const updateLook = await autoLookNumApi(productId)
-  const item = hotList.value.find((p) => p._id === productId)
+  const item = hotList.value.find((p) => p.id === productId)
   if (item) item.lookNum = updateLook.data.lookNum
   await uni.navigateTo({
     url: `/pages/productDetail/productDetailToc?productId=${productId}`,
@@ -118,14 +118,14 @@ const handleItemDetail = async (productId: string) => {
       <view
         class="item"
         v-for="item in leftList"
-        :key="item._id"
-        @click="handleItemDetail(item._id!)"
+        :key="item.id"
+        @click="handleItemDetail(item.id!)"
       >
         <image class="cover" :src="item.cover" mode="widthFix"></image>
         <view class="title">{{ item.skuNo }} {{ item.name }}</view>
         <view class="desc">{{ item.dec }}</view>
         <view class="footer">
-          <view class="price">{{ ((item.minPrice ?? 0) / 100).toFixed(2) }}</view>
+          <view class="price">{{ Number(item.currentPrice ?? 0).toFixed(2) }}</view>
           <view class="views">
             <text class="iconfont icon-zongliulanliang"></text>
             <text>{{ 'lookView' in item ? item.lookView : item.lookNum }}</text>
@@ -139,14 +139,14 @@ const handleItemDetail = async (productId: string) => {
       <view
         class="item"
         v-for="item in rightList"
-        :key="item._id"
-        @click="handleItemDetail(item._id!)"
+        :key="item.id"
+        @click="handleItemDetail(item.id!)"
       >
         <image class="cover" :src="item.cover" mode="widthFix"></image>
         <view class="title">{{ item.skuNo }} {{ item.name }}</view>
         <view class="desc">{{ item.dec }}</view>
         <view class="footer">
-          <view class="price">{{ ((item.minPrice ?? 0) / 100).toFixed(2) }}</view>
+          <view class="price">{{ Number(item.currentPrice ?? 0).toFixed(2) }}</view>
           <view class="views">
             <text class="iconfont icon-zongliulanliang"></text>
             <text>{{ 'lookView' in item ? item.lookView : item.lookNum }}</text>

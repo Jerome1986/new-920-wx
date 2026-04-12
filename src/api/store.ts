@@ -1,16 +1,36 @@
 import { request } from '@/utils/http.ts'
-import type { StoreInventoryGetResult } from '@/types/StoreInventory'
+import type { StoreInventoryItem, StoreInventoryListResponse } from '@/types/StoreInventory'
 import type { StoreInfo, StoreTotalReport } from '@/types/ManagerStore'
 
 /**
- * 根据门店ID获取门店的库存列表
+ * 根据门店ID 和 子分类ID 获取门店的库存列表
  * @param storeId - 门店ID
+ * @param categoryId - 分类ID
  */
-export const storeGetInventoryApi = (storeId: string) => {
-  return request<StoreInventoryGetResult[]>({
+export const storeGetInventoryApi = (
+  storeId: string,
+  categoryId?: number,
+  pageNum?: number,
+  pageSize?: number,
+) => {
+  return request<StoreInventoryListResponse>({
     method: 'GET',
-    url: '/store/getInventory',
-    data: { storeId },
+    url: `/store-inventory/sell/${storeId}`,
+    data: { categoryId, pageNum, pageSize },
+  })
+}
+
+/**
+ * 搜索库存列表的商品
+ * @param storeId
+ * @param keyword
+ * @param categoryId
+ */
+export const searchInventoryApi = (storeId: string, keyword: string, categoryId: number) => {
+  return request<StoreInventoryItem[]>({
+    method: 'POST',
+    url: '/store-inventory/sell/search',
+    data: { storeId, keyword, categoryId },
   })
 }
 
@@ -18,10 +38,10 @@ export const storeGetInventoryApi = (storeId: string) => {
  * 根据当前用户信息获取门店信息
  * @param userId - 当前用户ID
  */
-export const managerStoreInfoGetApi = (userId: string) => {
+export const managerStoreInfoGetApi = (storeId: string, userId: string) => {
   return request<StoreInfo>({
     method: 'GET',
-    url: '/store/info',
+    url: `/store/manager/${storeId}`,
     data: { userId },
   })
 }

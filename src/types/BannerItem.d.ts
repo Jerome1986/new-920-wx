@@ -1,5 +1,8 @@
 // 轮播图数据类型
 export interface BannerItem {
-  _id?: string
+  id: number
   url: string
+  sort: number
+  createdAt?: string
+  updatedAt?: string
 }

@@ -1,5 +1,6 @@
 import { request } from '@/utils/http.ts'
 import type { addResult } from '@/types/Gobal'
+import type { ApplyType } from '@/types/Apply'
 
 /**
  * 员工招聘表单提交
@@ -17,11 +18,12 @@ export const hireAddApi = (
   mobile: string,
   icCardFont: string,
   icCardBack: string,
+  type: ApplyType,
 ) => {
   return request<addResult>({
     method: 'POST',
-    url: '/hire/add',
-    data: { userId, name, mobile, icCardFont, icCardBack },
+    url: '/job-apply/add',
+    data: { userId, name, mobile, icCardFont, icCardBack, type },
   })
 }
 
@@ -30,10 +32,10 @@ export const hireAddApi = (
  * /hire/check
  */
 
-export const checkedHireApi = (userId: string) => {
+export const checkedHireApi = (userId: string, type: ApplyType) => {
   return request<boolean>({
     method: 'GET',
-    url: '/hire/check',
-    data: { userId },
+    url: `/job-apply/${userId}`,
+    data: { type },
   })
 }

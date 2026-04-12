@@ -15,12 +15,13 @@ const userStore = useMemberStore()
 
 // 基础表单数据
 const form = ref<FormItem>({
-  userId: userStore.profile._id,
+  userId: userStore.profile.id,
   name: '',
   mobile: '',
   icCardFont: '',
   icCardBack: '',
   business: '',
+  type: 'BUSINESS',
 })
 
 // 处理子组件上传
@@ -66,7 +67,8 @@ const handleSubmit = async () => {
       form.value.mobile,
       form.value.icCardFont,
       form.value.icCardBack,
-      form.value.business,
+      form.value.business as string,
+      form.value.type,
     )
 
     console.log('提交结果', res)

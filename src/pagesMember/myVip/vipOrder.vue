@@ -24,8 +24,8 @@ const activeIndex = ref(0)
 const handleTag = (text: string, index: number) => {
   console.log('切换状态', text)
   activeIndex.value = index
-  // TODO: 根据状态筛选订单
-  orderListGet(userStore.profile._id, text)
+  //  根据状态筛选订单
+  orderListGet(userStore.profile.id, text)
 }
 
 // 订单列表
@@ -34,7 +34,7 @@ const orderList = ref<VipOrderItem[]>([])
 // 获取订单列表
 const orderListGet = async (userId: string, status: string) => {
   console.log('获取会员订单列表', userId, status)
-  // TODO: 调用API获取会员订单列表
+  //  调用API获取会员订单列表
   const res = await vipOrderGetApi(userId, status)
   orderList.value = res.data
 }
@@ -51,8 +51,8 @@ const formatVipOrderState = (status: string) => {
 }
 
 onLoad(() => {
-  if (userStore.profile?._id) {
-    orderListGet(userStore.profile._id, 'ALL')
+  if (userStore.profile?.id) {
+    orderListGet(userStore.profile.id, 'ALL')
   }
 })
 </script>
@@ -80,7 +80,7 @@ onLoad(() => {
       :show-scrollbar="false"
       v-if="orderList.length > 0"
     >
-      <view class="order-card" v-for="item in orderList" :key="item._id">
+      <view class="order-card" v-for="item in orderList" :key="item.id">
         <!-- 头部：会员级别 + 状态 -->
         <view class="card-head">
           <view class="left">
@@ -120,7 +120,7 @@ onLoad(() => {
 
           <view class="price-row">
             <text class="symbol">￥</text>
-            <text class="price">{{ Number(item.amount / 100).toFixed(2) }}</text>
+            <text class="price">{{ Number(item.amount).toFixed(2) }}</text>
           </view>
         </view>
 
@@ -129,7 +129,7 @@ onLoad(() => {
           <view class="meta">
             <view class="row">
               <text class="label" style="width: fit-content">订单号</text>
-              <text class="value">{{ item.out_trade_no }}</text>
+              <text class="value">{{ item.outTradeNo }}</text>
             </view>
             <view class="row">
               <text class="label">下单时间</text>

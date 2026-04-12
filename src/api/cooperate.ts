@@ -1,9 +1,9 @@
 import { request } from '@/utils/http.ts'
 import type { addResult } from '@/types/Gobal'
+import type { ApplyType } from '@/types/Apply'
 
 /**
  * 提交合作申请
- * /cooperate/add
  * @param {string} userId - 当前用户id
  * @param {string} name - 表单人的姓名
  * @param {string} mobile - 当前用户联系方式
@@ -18,12 +18,13 @@ export const cooperateAddApi = (
   mobile: string,
   icCardFont: string,
   icCardBack: string,
-  business?: string,
+  business: string,
+  type: ApplyType,
 ) => {
   return request<addResult>({
     method: 'POST',
-    url: '/cooperate/add',
-    data: { userId, name, mobile, icCardFont, icCardBack, business },
+    url: '/job-apply/add',
+    data: { userId, name, mobile, icCardFont, icCardBack, business, type },
   })
 }
 
@@ -33,10 +34,10 @@ export const cooperateAddApi = (
  * @param {string} userId - 当前用户id
  */
 
-export const cooperateCheckApi = (userId: string) => {
+export const cooperateCheckApi = (userId: string, type: ApplyType) => {
   return request<boolean>({
     method: 'GET',
-    url: '/cooperate/check',
-    data: { userId },
+    url: `/job-apply/${userId}`,
+    data: { type },
   })
 }

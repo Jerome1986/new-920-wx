@@ -72,10 +72,10 @@ export const formatRole = (role: string, vipLevel: number = 0): string => {
     3: '至尊会员',
   }
 
-  if (role === 'user') return '普通用户'
-  if (role === 'vip') return vipMap[vipLevel] || '会员'
-  if (role === 'manager') return '店长'
-  if (role === 'admin') return '管理员'
+  if (role === 'USER') return '普通用户'
+  if (role === 'VIP') return vipMap[vipLevel] || '会员'
+  if (role === 'MANAGER') return '店长'
+  if (role === 'ADMIN') return '管理员'
 
   return '未知角色'
 }

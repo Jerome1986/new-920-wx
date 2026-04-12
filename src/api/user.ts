@@ -1,33 +1,26 @@
 import { request } from '@/utils/http.ts'
-import type {
-  fundsSettlementResult,
-  inviter2CodeResult,
-  referralsUserList,
-  UserItem,
-} from '@/types/UserItem'
+import type { childItems, fundsSettlementResult, InviterResult, UserItem } from '@/types/UserItem'
 import type { QrcodeItem } from '@/types/QrcodeItem.d.ts'
 
 /**
- * 根据邀请码获取用户的上上级
- * @param inviterCode - 用户邀请码
+ * 查询用户的上级
+ * @param userId - 用户ID
  */
-export const userInviter2CodeGetApi = (inviterCode: string) => {
-  return request<inviter2CodeResult>({
+export const userInviter2CodeGetApi = (userId: string) => {
+  return request<InviterResult>({
     method: 'GET',
-    url: '/user/invited',
-    data: { inviterCode },
+    url: `/user/parent/${userId}`,
   })
 }
 
 /**
  * 获取当前用户的所有下级好友
- * @param referralCode - 当前用户自身的邀请码
+ * @param userId - 用户ID
  */
-export const referralsUserListGetApi = (referralCode: string) => {
-  return request<referralsUserList>({
+export const referralsUserListGetApi = (userId: string) => {
+  return request<childItems[]>({
     method: 'GET',
-    url: '/user/referrals',
-    data: { referralCode },
+    url: `/user/friend/${userId}`,
   })
 }
 
@@ -37,9 +30,8 @@ export const referralsUserListGetApi = (referralCode: string) => {
  */
 export const addUserQrCodeApi = (referralCode: string) => {
   return request<QrcodeItem>({
-    method: 'POST',
-    url: '/qrCode/friends',
-    data: { referralCode },
+    method: 'GET',
+    url: `/user/friendCode/${referralCode}`,
   })
 }
 
@@ -50,8 +42,7 @@ export const addUserQrCodeApi = (referralCode: string) => {
 export const userInfoGetApi = (userId: string) => {
   return request<UserItem>({
     method: 'GET',
-    url: '/user/get',
-    data: { userId },
+    url: `/user/${userId}`,
   })
 }
 
@@ -73,10 +64,10 @@ export const fundsSettlementAPi = (userId: string, amount: number) => {
  * @param userId  -  用户ID
  * @param avatarUrl - 头像链接
  */
-export const userAvatarChangeApi = (userId: string, avatarUrl: string) => {
+export const userAvatarChangeApi = (userId: string, url: string) => {
   return request({
-    method: 'POST',
-    url: '/user/changeAvatar',
-    data: { userId, avatarUrl },
+    method: 'PATCH' as any,
+    url: `/user/avatar/${userId}`,
+    data: { url },
   })
 }

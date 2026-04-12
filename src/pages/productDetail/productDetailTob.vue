@@ -19,7 +19,7 @@ const cartTobStore = useCartTobStore()
 
 // 获取产品列表
 const productData = ref<ProductItem>()
-const productDataGet = async (productId: string) => {
+const productDataGet = async (productId: number) => {
   const res = await productDetailGetApi(productId)
   console.log('商品详情', res)
   productData.value = res.data
@@ -56,7 +56,7 @@ const handleSkuConfrim = () => {
       title: '请选择规格',
     })
   }
-  if (productData.value) productData.value.currentPrice = selectSku.value.price // 将当前选择的SKU价格同步到产品售价
+  if (productData.value) productData.value.currentPrice = String(selectSku.value.price) // 将当前选择的SKU价格同步到产品售价
   popup.value?.close()
 }
 
@@ -67,7 +67,7 @@ const handleAddCart = (val: string) => {
   // 检测用户是否登录
   checkLogin()
 
-  if (!productData.value?._id || isAdding.value) return
+  if (!productData.value?.id || isAdding.value) return
   isAdding.value = true
 
   // 如果没有选择sku，提示选择
@@ -82,15 +82,15 @@ const handleAddCart = (val: string) => {
 
   try {
     const cart: CartItem = {
-      _id: generateId('cart_'),
+      id: generateId('cart_'),
       selected: true,
-      productId: productData.value?._id!,
+      productId: productData.value?.id!,
       skuNo: productData.value?.skuNo || '',
       name: productData.value?.name || '',
       dec: productData.value?.dec || '',
       cover: productData.value?.cover || '',
-      originalPrice: productData.value?.originalPrice || 0,
-      currentPrice: productData.value?.currentPrice || 0,
+      originalPrice: Number(productData.value?.originalPrice) || 0,
+      currentPrice: Number(productData.value?.currentPrice) || 0,
       quantity: 1,
       sku: selectSku.value,
       type: productData.value.type,
@@ -144,11 +144,11 @@ const handleAddCart = (val: string) => {
           <view style="display: flex; align-items: center">
             <view class="price">
               <!-- 默认显示最小的价格，如果选择了规格则显示规格价格 -->
-              <text class="number">{{ formatAmount(productData?.minPrice ?? 0) }}</text>
+              <text class="number">{{ formatAmount(Number(productData?.minPrice) ?? 0) }}</text>
               <text style="font-size: 24rpx"> 起</text>
             </view>
             <view class="original-price">
-              ￥{{ formatAmount(productData?.originalPrice ?? 0) }}</view
+              ￥{{ formatAmount(Number(productData?.originalPrice) ?? 0) }}</view
             >
           </view>
         </view>
@@ -175,9 +175,9 @@ const handleAddCart = (val: string) => {
       <view class="section-title">商品详情</view>
       <view class="detail-content">
         <image
-          v-for="(image, index) in productData?.proImages"
+          v-for="(image, index) in productData?.images"
           :key="index"
-          :src="image"
+          :src="image.url"
           mode="widthFix"
         ></image>
       </view>
@@ -210,7 +210,7 @@ const handleAddCart = (val: string) => {
           <view
             class="skuItem"
             :class="{ activeSku: index === activeSkuIndex }"
-            v-for="(item, index) in productData?.sku"
+            v-for="(item, index) in productData?.skus"
             :key="index"
             @click="handleSelectSku(item, index)"
           >
