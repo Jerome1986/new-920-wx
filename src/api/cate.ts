@@ -38,7 +38,7 @@ export const subCategoryGetApi = (parentId: number) => {
 }
 
 /**
- * C端分类获取
+ * 分类获取
  * @param level - 分类层级
  * @param parentId - 父级ID
  */

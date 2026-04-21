@@ -3,10 +3,8 @@ import { ref } from 'vue'
 import { useMemberStore } from '@/stores'
 import { onLoad, onShow } from '@dcloudio/uni-app'
 import { formatOrderState, formatTimestamp } from '@/utils/formatTimestamp.ts'
-import type { OrderAmount, OrderItem } from '@/types/Order'
+import type { OrderItem } from '@/types/Order'
 import { confirmOrderLogistics, proOrderCancelApi, userOrderGetApi } from '@/api/order.ts'
-import { MERCHANT_ID } from '@/utils/config.ts'
-import type { BusinessSuccessResponse } from '@/types/Gobal'
 
 // 定义store
 const userStore = useMemberStore()
@@ -54,7 +52,7 @@ const orderListGet = async (userId: string, status: string, pageNum: number, pag
   loading.value = true
 
   // 发起请求
-  const res = await userOrderGetApi(userId, status, pageNum, pageSize)
+  const res = await userOrderGetApi(userId, status, 'TOC', pageNum, pageSize)
   console.log('订单', res.data)
   // 首页直接赋值，分页追加
   if (params.value.pageNum === 1) {
@@ -95,52 +93,85 @@ const handleGoDetail = (orderNo: string) => {
   })
 }
 
-// 处理确认收货
+// 处理确认收货 -- 调用物流组件
+// const handleConfirm = async (orderNo: string, transaction_id: string) => {
+//   ; (wx as any).openBusinessView({
+//     businessType: 'weappOrderConfirm', // 业务类型，根据微信文档
+//     extraData: {
+//       merchant_id: MERCHANT_ID,
+//       merchant_trade_no: orderNo,
+//       transaction_id,
+//     },
+//     async success(res: BusinessSuccessResponse) {
+//       console.log('打开成功', res)
+//       // 判断打开后是否取消
+//       if (res.extraData.status === 'cancel')
+//         return uni.showToast({ icon: 'none', title: '已取消', mask: true })
+
+//       // 成功操作将订单状态更新入库已完成
+//       await confirmOrderLogistics(userStore.profile.id, orderNo)
+
+//       // 如果正常操作更新当前订单数组为已完成
+//       orderList.value.find((item) => {
+//         if (item.outTradeNo === orderNo) {
+//           item.status = 'COMPLETED'
+//         }
+//       })
+
+//       // 将激活下标设定到更新项
+//       activeIndex.value = tagList.value.findIndex((item) => item.text === 'COMPLETED')
+//       reset() // 重置订单页面信息
+//       // 重新拉取订单数据
+//       await orderListGet(
+//         userStore.profile.id,
+//         tagList.value[activeIndex.value].text,
+//         params.value.pageNum,
+//         params.value.pageSize,
+//       )
+
+//       // 成功提示
+//       await uni.showToast({
+//         title: '订单已完成',
+//         icon: 'success',
+//         mask: true,
+//       })
+//     },
+
+//     fail(err: any) {
+//       console.error('打开失败', err)
+//     },
+//   })
+// }
+
+// 确认收货 -- 不调用物流组件
 const handleConfirm = (orderNo: string, transaction_id: string) => {
-  ;(wx as any).openBusinessView({
-    businessType: 'weappOrderConfirm', // 业务类型，根据微信文档
-    extraData: {
-      merchant_id: MERCHANT_ID,
-      merchant_trade_no: orderNo,
-      transaction_id,
-    },
-    async success(res: BusinessSuccessResponse) {
-      console.log('打开成功', res)
-      // 判断打开后是否取消
-      if (res.extraData.status === 'cancel')
-        return uni.showToast({ icon: 'none', title: '已取消', mask: true })
+  uni.showModal({
+    title: '提示',
+    content: '确认收货吗',
+    confirmColor: '#d62731',
+    success: async (success) => {
+      if (success.confirm) {
+        const result = await confirmOrderLogistics(userStore.profile.id, orderNo)
+        if (result.code === 200) {
+          // 将激活下标设定到更新项
+          activeIndex.value = tagList.value.findIndex((item) => item.text === 'COMPLETED')
+          // 重置订单页面信息
+          reset()
+          await orderListGet(
+            userStore.profile.id,
+            tagList.value[activeIndex.value].text,
+            params.value.pageNum,
+            params.value.pageSize,
+          )
 
-      // 成功操作将订单状态更新入库已完成
-      await confirmOrderLogistics(userStore.profile.id, orderNo)
-
-      // 如果正常操作更新当前订单数组为已完成
-      orderList.value.find((item) => {
-        if (item.outTradeNo === orderNo) {
-          item.status = 'COMPLETED'
+          // 成功提示
+          await uni.showToast({
+            title: '订单已完成',
+            icon: 'success',
+            mask: true,
+          })
         }
-      })
-
-      // 将激活下标设定到更新项
-      activeIndex.value = tagList.value.findIndex((item) => item.text === 'COMPLETED')
-      reset() // 重置订单页面信息
-      // 重新拉取订单数据
-      await orderListGet(
-        userStore.profile.id,
-        tagList.value[activeIndex.value].text,
-        params.value.pageNum,
-        params.value.pageSize,
-      )
-
-      // 成功提示
-      await uni.showToast({
-        title: '订单已完成',
-        icon: 'success',
-        mask: true,
-      })
-    },
-
-    fail(err: any) {
-      console.error('打开失败', err)
+      }
     },
   })
 }
@@ -160,7 +191,7 @@ const handleCancel = (outTradeNo: string, actualPayment: string) => {
           console.log('退款中')
           // 将激活下标设定到更新项
           activeIndex.value = tagList.value.findIndex((item) => item.text === 'PROCESSING')
-          reset() // 重置订单页面信息
+          reset()
           // 重新拉取订单数据
           await orderListGet(
             userStore.profile.id,
@@ -169,7 +200,11 @@ const handleCancel = (outTradeNo: string, actualPayment: string) => {
             params.value.pageSize,
           )
         }
+        uni.showToast({ icon: 'none', title: '申请已提交', mask: true })
       }
+    },
+    fail: (fail) => {
+      uni.showToast({ icon: 'none', title: '服务器繁忙', mask: true })
     },
   })
 }
@@ -297,8 +332,8 @@ onLoad(() => {
               <view
                 class="btn primary"
                 @click.stop="handleConfirm(item.outTradeNo, item.transactionId ?? '')"
-                >确认收货</view
-              >
+                >确认收货
+              </view>
             </template>
 
             <!-- 已完成：查看详情 -->

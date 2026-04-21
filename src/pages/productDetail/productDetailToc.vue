@@ -63,7 +63,10 @@ const handleSelectSku = (item: SkuItem, index: number) => {
 
 //  处理sku的确认
 const handleSkuConfrim = () => {
-  if (!selectSku.value && productData.value?.skus?.length) {
+  if (
+    (!selectSku.value && productData.value?.skus?.length) ||
+    (productData.value?.models.length && !selectModels.value)
+  ) {
     return uni.showToast({
       icon: 'error',
       title: '请选择规格',
@@ -100,6 +103,7 @@ const handleAddCart = (val: string) => {
       productId: productData.value?.id as number,
       model: selectModels.value,
       skuNo: productData.value?.skuNo || '',
+      skuId: selectSku.value?.id!,
       name: productData.value?.name || '',
       dec: productData.value?.dec || '',
       cover: productData.value?.cover || '',

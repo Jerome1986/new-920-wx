@@ -1,13 +1,13 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import type { StoreInfo } from '@/types/ManagerStore'
 import { useMemberStore } from '@/stores/modules/member'
 import { managerStoreInfoGetApi } from '@/api/store'
+import type { StoreDetail } from '@/types/ManagerStore'
 
 export const useManagerStore = defineStore(
   'manager',
   () => {
-    const managerStoreInfo = ref<StoreInfo>()
+    const managerStoreInfo = ref<StoreDetail>()
 
     const managerStoreGet = async () => {
       // 在函数内部获取 store，确保 Pinia 已初始化

@@ -53,12 +53,20 @@ export const formatOrderState = (state: string) => {
 // 进货订单状态转换
 export const formatPurchasedOrderState = (state: string) => {
   switch (state) {
+    case 'PENDING':
+      return '待支付'
     case 'PAID':
       return '待取货'
+    case 'SHIPPED':
+      return '待收货'
     case 'COMPLETED':
       return '已完成'
     case 'CANCELLED':
       return '已取消'
+    case 'PROCESSING':
+      return '退款中'
+    case 'REFUNDED':
+      return '已退款'
     default:
       return '全部'
   }
@@ -104,8 +112,8 @@ export const getRecentMonths = (n: number) => {
 }
 
 // 格式化金额--数据库存分，将分转换为元来显示
-export const formatAmount = (amount: number) => {
-  return `¥${(amount / 100).toFixed(2)}`
+export const formatAmount = (amount: string | number) => {
+  return Number(amount).toFixed(2) || '0.00'
 }
 
 // 格式化月份显示

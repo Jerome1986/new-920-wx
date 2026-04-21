@@ -5,7 +5,7 @@ import type {
   PurchaseOrderCancel,
   PurchasePageResult,
 } from '@/types/Purchase'
-import type { OrderAmount, OrderProductItem, OrderUserInfo } from '@/types/Order'
+import type { OrderAmount, OrderPageResult, OrderProductItem, OrderUserInfo } from '@/types/Order'
 
 /**
  * 新增进货订单接口
@@ -41,13 +41,14 @@ export const purchaseOrderAddApi = (
 export const purchaseOrderGetApi = (
   userId: string,
   status: string,
+  target: 'TOB' | 'TOC',
   pageNum: number,
   pageSize: number,
 ) => {
-  return request<PurchasePageResult>({
+  return request<OrderPageResult>({
     method: 'GET',
-    url: '/purchasedOrder/userId',
-    data: { userId, status, pageNum, pageSize },
+    url: `/order/${userId}`,
+    data: { status, target, pageNum, pageSize },
   })
 }
 
@@ -70,7 +71,7 @@ export const purchasedOrderCancelApi = (out_trade_no: string) => {
 export const purchaseOrderDetailApi = (orderNo: string) => {
   return request<PurchaseItem>({
     method: 'GET',
-    url: '/purchasedOrder/detail',
+    url: `/order/detail`,
     data: { orderNo },
   })
 }

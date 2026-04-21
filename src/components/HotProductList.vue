@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { ProductItem } from '@/types/ProductItem'
+import type { ProductItem, SkuItem } from '@/types/ProductItem'
 import { ref, watch } from 'vue'
 import { autoLookNumApi, productsHotGetApi } from '@/api/product.ts'
 import { onLoad } from '@dcloudio/uni-app'
@@ -36,6 +36,14 @@ const hotListGet = async () => {
   if (list.length < params.value.pageSize) {
     finish.value = true
   }
+}
+
+//价格区间函数
+const mapPrice = (skus: SkuItem[]) => {
+  const minPirce = Math.min(...skus.map((item) => Number(item.salePrice))).toFixed(2)
+  const maxPrice = Math.max(...skus.map((item) => Number(item.salePrice))).toFixed(2)
+
+  return minPirce === maxPrice ? minPirce : minPirce + '~' + maxPrice
 }
 
 // 暴露方法给父组件调用
@@ -125,7 +133,7 @@ const handleItemDetail = async (productId: number) => {
         <view class="title">{{ item.skuNo }} {{ item.name }}</view>
         <view class="desc">{{ item.dec }}</view>
         <view class="footer">
-          <view class="price">{{ Number(item.currentPrice ?? 0).toFixed(2) }}</view>
+          <view class="price">{{ mapPrice(item.skus ?? 0) }}</view>
           <view class="views">
             <text class="iconfont icon-zongliulanliang"></text>
             <text>{{ 'lookView' in item ? item.lookView : item.lookNum }}</text>
@@ -146,7 +154,7 @@ const handleItemDetail = async (productId: number) => {
         <view class="title">{{ item.skuNo }} {{ item.name }}</view>
         <view class="desc">{{ item.dec }}</view>
         <view class="footer">
-          <view class="price">{{ Number(item.currentPrice ?? 0).toFixed(2) }}</view>
+          <view class="price">{{ mapPrice(item.skus ?? 0) }}</view>
           <view class="views">
             <text class="iconfont icon-zongliulanliang"></text>
             <text>{{ 'lookView' in item ? item.lookView : item.lookNum }}</text>
@@ -245,6 +253,7 @@ const handleItemDetail = async (productId: number) => {
     }
   }
 }
+
 /* 加载见底提示 */
 .tips {
   margin-top: 24rpx;

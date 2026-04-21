@@ -13,7 +13,7 @@ const emits = defineEmits(['cateSelected'])
 // 激活下标
 const activeIndex = ref(0)
 // 处理分类点击
-const handelChange = (cateId: string, index: number) => {
+const handelChange = (cateId: number, index: number) => {
   activeIndex.value = index
   emits('cateSelected', cateId)
 }

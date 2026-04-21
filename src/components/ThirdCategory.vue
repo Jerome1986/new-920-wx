@@ -11,14 +11,14 @@ const props = defineProps({
 const emits = defineEmits(['selectedType'])
 
 // 点击选择手机型号
-const handleType = (typeId: string) => {
+const handleType = (typeId: number) => {
   emits('selectedType', typeId)
 }
 </script>
 
 <template>
   <view class="TypeList">
-    <view class="item" v-for="item in list" :key="item._id" @click="handleType(item._id)">
+    <view class="item" v-for="item in list" :key="item.id" @click="handleType(item.id)">
       <view class="cover">
         <image class="coverImg" src="/static/images/phone.png" mode="aspectFill"></image>
       </view>

@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useCartTobStore, useManagerStore, useMemberStore, useRateStore } from '@/stores'
-import type { OrderAmount, OrderProductItem, OrderUserInfo } from '@/types/Order'
-import { purchaseOrderAddApi } from '@/api/purchase.ts'
+import type { OrderAmount, OrderUserInfo, sumbitOrderProduct } from '@/types/Order'
 import { formatAmount } from '@/utils/formatTimestamp.ts'
+import type { AddressInfo } from '@/types/UserItem'
+import { proOrderPayApi } from '@/api/order'
 
 // 安全距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
@@ -13,26 +14,46 @@ const cartTobStore = useCartTobStore()
 const userStore = useMemberStore()
 const rateStore = useRateStore()
 const managerStore = useManagerStore()
+
+// 选择地址-直接调用微信的收货地址
+const showAddress = ref(true)
+const addressInfo = ref<AddressInfo | null>(null)
+const handleAddress = () => {
+  uni.chooseAddress({
+    success: (res: any) => {
+      console.log('选择的地址信息:', res)
+      addressInfo.value = {
+        name: res.userName,
+        mobile: res.telNumber, // res.telNumber
+        province: res.provinceName,
+        city: res.cityName,
+        county: res.countyName,
+        detail: res.detailInfo,
+        postalCode: res.postalCode,
+        nationalCode: res.nationalCode,
+      }
+    },
+    fail: (err: any) => {
+      console.log('选择地址失败:', err)
+      uni.showToast({
+        title: '获取地址失败',
+        icon: 'none',
+      })
+    },
+  })
+}
+
 // 可抵扣金额
 const deductAmount = computed(() => {
   const totalYuan = cartTobStore.totalPrice || 0
-  const totalCent = Math.floor(totalYuan * 100)
-
   const rules = rateStore.rateRules
   const userScore = Math.max(0, userStore.profile?.score || 0)
 
   if (rules && typeof rules.maxUsePercent === 'number' && typeof rules.useRate === 'number') {
-    // 最大可抵扣（分）
-    const maxDeductCent = Math.floor(totalCent * rules.maxUsePercent)
-
-    // 积分可抵扣（分）
-    const scoreDeductCent = Math.floor(userScore * rules.useRate * 100)
-
-    // 实际可用（分）
-    const canUseCent = Math.min(maxDeductCent, scoreDeductCent)
-
-    // ⚠️ 关键：直接取整元
-    return Math.floor(canUseCent / 100)
+    const maxDeductYuan = totalYuan * rules.maxUsePercent
+    const scoreDeductYuan = userScore * rules.useRate
+    const canUseYuan = Math.min(maxDeductYuan, scoreDeductYuan)
+    return Math.floor(canUseYuan)
   }
 
   return 0
@@ -46,20 +67,34 @@ const needPay = computed(() => {
 // 确认订单提交入库
 const submit = async () => {
   console.log('提交订单', cartTobStore.selectProduct)
+  if (!addressInfo.value) {
+    await uni.showToast({
+      icon: 'error',
+      title: '请填写地址',
+      mask: true,
+    })
+    return
+  }
 
   // 当前订单的用户信息
   const userInfo: OrderUserInfo = {
-    userId: userStore.profile._id,
+    openid: userStore.profile.openid as string,
+    userId: userStore.profile.id,
     nickname: userStore.profile.nickname || '',
-    role: userStore.profile.role,
     mobile: userStore.profile.mobile,
+    avatarUrl: userStore.profile.avatarUrl,
   }
 
   // 当前订单的商品
-  const products: OrderProductItem[] = cartTobStore.selectProduct.map((item) => {
-    const { selected, ...rest } = item
-    return rest
-  })
+  const products: sumbitOrderProduct[] = cartTobStore.selectProduct.map((item) => ({
+    productId: item.productId,
+    skuNo: item.skuNo,
+    name: item.name,
+    price: item.salePrice,
+    quantity: item.quantity,
+    image: item.cover,
+    skuId: item.skuId,
+  }))
 
   // 商品金额信息
   const amount: OrderAmount = {
@@ -69,47 +104,47 @@ const submit = async () => {
     usedScore: Number(deductAmount.value.toFixed(2)),
   }
 
-  // 提示下单
-  uni.showModal({
-    title: '提示',
-    content: '确定提交订单吗？',
-    confirmColor: '#d62731',
-    success: async (result) => {
-      // 用户点击取消，不做任何操作
-      if (!result.confirm) return
+  // 调用API提交订单
+  const orderRes = await proOrderPayApi(
+    userInfo.openid,
+    userInfo.userId,
+    'TOB',
+    userInfo.nickname,
+    userInfo.mobile,
+    userInfo.avatarUrl as string,
+    addressInfo.value,
+    products,
+    cartTobStore.totalCount,
+    amount.totalPrice,
+    amount.deductAmount,
+    amount.actualPayment,
+    amount.usedScore ?? 0,
+    'wechat',
+    '店长进货',
+  )
 
-      // 检查门店ID是否存在
-      if (!managerStore.managerStoreInfo?.storeId) {
-        await uni.showToast({ icon: 'none', title: '门店信息异常' })
-        await uni.reLaunch({ url: '/pagesMember/StoreManager/StoreManager' })
-        return
-      }
+  console.log('提交结果', orderRes)
 
-      //  调用API提交订单
-      const res = await purchaseOrderAddApi(
-        managerStore.managerStoreInfo.storeId,
-        userInfo,
-        products,
-        cartTobStore.totalCount,
-        amount,
-        '采购货物',
-      )
-
-      if (res.code === 200) {
-        // 更新运营资金余额
-        userStore.setProfile({ operating_balance: res.data.operating_balance })
-        // 提示
-        await uni.showToast({
-          icon: 'success',
-          title: '下单成功',
-        })
-
-        //  返回到门店管理页面
-        setTimeout(() => {
-          cartTobStore.clearSelectedCart() // 清空购物车
-          uni.reLaunch({ url: '/pagesMember/StoreManager/StoreManager' })
-        }, 800)
-      }
+  // 调起微信支付
+  wx.requestPayment({
+    timeStamp: orderRes.data.timeStamp,
+    nonceStr: orderRes.data.nonceStr,
+    package: orderRes.data.packageValue,
+    signType: orderRes.data.signType,
+    paySign: orderRes.data.paySign,
+    async success(res) {
+      console.log('支付结果', res)
+      showAddress.value = false
+      // 重新拉取用户信息
+      await userStore.userInfoGet(userStore.profile.id)
+      await uni.showToast({ icon: 'success', title: '支付成功' })
+      await uni.redirectTo({
+        url: '/pagesMember/storeOrders/storeOrders',
+      })
+      await cartTobStore.clearSelectedCart()
+    },
+    fail(err) {
+      console.error('支付失败', err)
     },
   })
 }
@@ -117,6 +152,30 @@ const submit = async () => {
 
 <template>
   <scroll-view class="confirmOrder" :scroll-y="true" :enhanced="true" :show-scrollbar="false">
+    <!-- 收货地址 -->
+    <view class="address-info" v-if="showAddress">
+      <!-- 未选择地址 -->
+      <view v-if="!addressInfo" class="no-address" @click="handleAddress">
+        <text class="iconfont icon-add"></text>
+        <text class="text">获取收货地址</text>
+        <text class="iconfont icon-bianzu" style="color: #aaaaaa; font-size: 24rpx"></text>
+      </view>
+
+      <!-- 已选择地址 -->
+      <view v-else class="has-address" @click="handleAddress">
+        <view class="address-header">
+          <view class="user-info">
+            <text class="name">{{ addressInfo.name }}</text>
+            <text class="phone">{{ addressInfo.mobile }}</text>
+          </view>
+          <text class="iconfont icon-arrow-right"></text>
+        </view>
+        <view class="address-detail">
+          {{ addressInfo.province }} {{ addressInfo.city }} {{ addressInfo.county }}
+          {{ addressInfo.detail }}
+        </view>
+      </view>
+    </view>
     <!-- 商品列表 -->
     <view class="product-list">
       <view class="list-header">
@@ -125,7 +184,7 @@ const submit = async () => {
         <text class="count">({{ cartTobStore.totalCount }}件)</text>
       </view>
 
-      <view class="product-item" v-for="item in cartTobStore.selectProduct" :key="item._id">
+      <view class="product-item" v-for="item in cartTobStore.selectProduct" :key="item.id">
         <!-- 封面图 -->
         <image class="cover" :src="item.sku?.image || item.cover" mode="aspectFill"></image>
 
@@ -134,19 +193,14 @@ const submit = async () => {
           <view class="left">
             <!-- 商品名称 -->
             <view class="name">{{ item.skuNo }} {{ item.name }}</view>
-
-            <!-- SKU规格 -->
-            <view class="spec" v-if="item.sku">
-              {{ item.sku.attrs.label }}: {{ item.sku.attrs.value }}
-            </view>
-
             <!-- 商品描述 -->
-            <view class="desc">型号：{{ item.dec }}</view>
+            <view class="desc">描述：{{ item.dec }}</view>
+            <!-- SKU规格 -->
+            <view class="spec"> 规格: 片 </view>
           </view>
-
           <view class="right">
             <!-- 价格 -->
-            <view class="price">{{ formatAmount(item.currentPrice) }}</view>
+            <view class="price">￥{{ formatAmount(item.salePrice) }}</view>
             <!-- 数量 -->
             <view class="quantity">x{{ item.quantity }}</view>
           </view>
@@ -167,12 +221,12 @@ const submit = async () => {
       </view>
       <view class="item">
         <text class="label">剩余积分</text>
-        <text class="value">{{ ((userStore.profile.score ?? 0) / 100).toFixed(2) }}</text>
+        <text class="value">{{ (userStore.profile.score ?? 0).toFixed(2) }}</text>
       </view>
       <!-- 当前可抵扣的积分 -->
       <view class="item">
         <text class="label">可抵积分</text>
-        <text class="value" style="color: #d62731">{{ (deductAmount / 100).toFixed(2) }}</text>
+        <text class="value" style="color: #d62731">{{ deductAmount.toFixed(2) }}</text>
       </view>
       <view class="item total">
         <text class="label">合计</text>
@@ -206,6 +260,78 @@ const submit = async () => {
   height: 100%;
   padding: 24rpx;
   background-color: $jel-pageBackGroundColor;
+
+  // 收货地址
+  .address-info {
+    margin-bottom: 24rpx;
+    background-color: #fff;
+    border-radius: 8rpx;
+
+    .no-address {
+      display: flex;
+      align-items: center;
+      padding: 32rpx 24rpx;
+      cursor: pointer;
+
+      .iconfont.icon-add {
+        font-size: 32rpx;
+        color: $jel-brandColor;
+        margin-right: 16rpx;
+      }
+
+      .text {
+        flex: 1;
+        font-size: 28rpx;
+        color: $jel-font-title;
+      }
+
+      .iconfont.icon-arrow-right {
+        font-size: 28rpx;
+        color: $jel-font-dec2;
+      }
+    }
+
+    .has-address {
+      padding: 24rpx;
+      cursor: pointer;
+
+      .address-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 16rpx;
+
+        .user-info {
+          display: flex;
+          align-items: center;
+          gap: 24rpx;
+
+          .name {
+            font-size: 32rpx;
+            font-weight: bold;
+            color: $jel-font-title;
+          }
+
+          .phone {
+            font-size: 28rpx;
+            color: $jel-font-dec2;
+          }
+        }
+
+        .iconfont.icon-arrow-right {
+          font-size: 28rpx;
+          color: $jel-font-dec2;
+        }
+      }
+
+      .address-detail {
+        font-size: 28rpx;
+        color: $jel-font-dec;
+        line-height: 1.6;
+        padding-right: 48rpx;
+      }
+    }
+  }
 
   // 商品列表
   .product-list {

@@ -11,7 +11,7 @@ import { checkedHireApi } from '@/api/hire.ts'
 import { cooperateCheckApi } from '@/api/cooperate.ts'
 import type { JelHotProductList } from '@/types/component'
 import { userAvatarChangeApi } from '@/api/user'
-import { onLoad } from '@dcloudio/uni-app'
+import { onLoad, onShow } from '@dcloudio/uni-app'
 
 // 定义 store
 const userStore = useMemberStore()
@@ -25,6 +25,7 @@ const login = () => {
   })
 }
 
+// 更改头像
 const changeAvatar = () => {
   uni.chooseImage({
     count: 1,
@@ -49,7 +50,7 @@ const changeAvatar = () => {
   })
 }
 
-// 点击个人设置
+//  退出登录
 const onLogout = () => {
   uni.showModal({
     title: '提示',
@@ -103,7 +104,7 @@ const handleScrolltolower = async () => {
   }
 }
 
-onLoad(() => {
+onShow(() => {
   if (userStore.profile?.id) {
     userStore.userInfoGet(userStore.profile?.id as string)
   }

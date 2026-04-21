@@ -28,7 +28,7 @@ onLoad(() => managerStore.managerStoreGet())
     <!-- 顶部信息卡片 -->
     <view class="header-card">
       <view class="store-info">
-        <text class="store-name">{{ managerStore.managerStoreInfo?.storeName }}</text>
+        <text class="store-name">{{ managerStore.managerStoreInfo?.name }}</text>
         <text class="store-desc">门店管理中心</text>
       </view>
     </view>

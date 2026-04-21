@@ -78,10 +78,10 @@ const handleCheckout = () => {
       </view>
 
       <view v-else class="list">
-        <view class="item" v-for="item in cartTobStore.cartTobList" :key="item._id">
+        <view class="item" v-for="item in cartTobStore.cartTobList" :key="item.id">
           <!-- 选择框 -->
           <text
-            @click="cartTobStore.toggleSelect(item._id)"
+            @click="cartTobStore.toggleSelect(item.id as string)"
             class="checkbox"
             :class="{ checked: item.selected }"
           ></text>
@@ -94,7 +94,10 @@ const handleCheckout = () => {
             <!-- 右侧信息 -->
             <view class="info">
               <!-- 商品名称 -->
-              <view class="name">{{ item.skuNo }} {{ item.name }}</view>
+              <view class="name">
+                <text class="name-sku-no">{{ item.skuNo }}</text>
+                <text class="name-title">{{ item.name }}</text>
+              </view>
 
               <!-- 规格 -->
               <view class="spec" v-if="item.sku">
@@ -106,10 +109,7 @@ const handleCheckout = () => {
                 <view class="price-box">
                   <view class="price">
                     <text class="symbol">￥</text>
-                    <text class="number">{{ formatAmount(item.currentPrice) }}</text>
-                  </view>
-                  <view class="original-price" v-if="item.originalPrice > item.currentPrice">
-                    ￥{{ formatAmount(item.originalPrice) }}
+                    <text class="number">{{ formatAmount(item.salePrice) }}</text>
                   </view>
                 </view>
 
@@ -118,7 +118,7 @@ const handleCheckout = () => {
                   <view
                     class="btn decrease"
                     :class="{ disabled: item.quantity <= 1 }"
-                    @click="cartTobStore.decreaseQuantity(item._id)"
+                    @click="cartTobStore.decreaseQuantity(item.id as string)"
                   >
                     <text>-</text>
                   </view>
@@ -131,7 +131,7 @@ const handleCheckout = () => {
                   <view
                     class="btn increase"
                     :class="{ disabled: item.sku && item.quantity >= item.sku.stock }"
-                    @click="cartTobStore.increaseQuantity(item._id)"
+                    @click="cartTobStore.increaseQuantity(item.id as string)"
                   >
                     <text>+</text>
                   </view>
@@ -140,7 +140,7 @@ const handleCheckout = () => {
             </view>
 
             <!-- 删除按钮 -->
-            <view class="delete" @click="cartTobStore.deleteItem(item._id)">
+            <view class="delete" @click="cartTobStore.deleteItem(item.id as string)">
               <text class="iconfont icon-shanchu"></text>
             </view>
           </view>
@@ -294,13 +294,24 @@ const handleCheckout = () => {
             padding-right: 48rpx; // 为删除按钮留出空间
 
             .name {
-              font-size: 28rpx;
-              color: $jel-font-title;
-              font-weight: 500;
               margin-bottom: 8rpx;
               word-break: break-all;
               overflow-wrap: anywhere;
               @include ellipsis(2);
+
+              .name-sku-no {
+                font-size: 32rpx;
+                font-weight: 600;
+                color: $jel-brandColor;
+                margin-right: 12rpx;
+                letter-spacing: 0.02em;
+              }
+
+              .name-title {
+                font-size: 24rpx;
+                color: $jel-font-dec;
+                font-weight: 400;
+              }
             }
 
             .spec {

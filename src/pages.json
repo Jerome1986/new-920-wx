@@ -250,6 +250,13 @@
           }
         },
         {
+          "path": "storeMembers/storeMembers",
+          "style": {
+            "navigationBarTitleText": "门店会员",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
           "path": "sellPage/sellPage",
           "style": {
             "navigationBarTitleText": "快速售卖",
@@ -273,7 +280,7 @@
         {
           "path": "storeReport/storeReport",
           "style": {
-            "navigationBarTitleText": "门店报表",
+            "navigationBarTitleText": "佣金管理",
             "enablePullDownRefresh": false
           }
         }

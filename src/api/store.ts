@@ -1,6 +1,7 @@
 import { request } from '@/utils/http.ts'
 import type { StoreInventoryItem, StoreInventoryListResponse } from '@/types/StoreInventory'
-import type { StoreInfo, StoreTotalReport } from '@/types/ManagerStore'
+import type { StoreDetail } from '@/types/ManagerStore'
+import type { CommissionRecordPage } from '@/types/CommissionRecord'
 
 /**
  * 根据门店ID 和 子分类ID 获取门店的库存列表
@@ -39,7 +40,7 @@ export const searchInventoryApi = (storeId: string, keyword: string, categoryId:
  * @param userId - 当前用户ID
  */
 export const managerStoreInfoGetApi = (storeId: string, userId: string) => {
-  return request<StoreInfo>({
+  return request<StoreDetail>({
     method: 'GET',
     url: `/store/manager/${storeId}`,
     data: { userId },
@@ -51,7 +52,7 @@ export const managerStoreInfoGetApi = (storeId: string, userId: string) => {
  * @param storeId - 门店ID
  */
 export const storeTotalReportApi = (storeId: string) => {
-  return request<StoreTotalReport>({
+  return request({
     method: 'GET',
     url: '/store/report',
     data: { storeId },
@@ -71,9 +72,32 @@ export const getTimeRangeReportApi = (
   year?: number,
   month?: number,
 ) => {
-  return request<StoreTotalReport>({
+  return request({
     method: 'POST',
     url: '/store/getTimeRange',
     data: { storeId, type, year, month },
+  })
+}
+
+/**
+ * 获取门店佣金流水
+ * @param userId
+ */
+export const findStoreCommissionRecord = (userId: string, pageNum: number, pageSize: number) => {
+  return request<CommissionRecordPage>({
+    method: 'GET',
+    url: `/commission-rule/detail/${userId}`,
+    data: { pageNum, pageSize },
+  })
+}
+
+/**
+ * 获取门店会员
+ * @param inviterId
+ */
+export const findStoreVipApi = (inviterId: string) => {
+  return request({
+    method: 'GET',
+    url: `/store/vip/${inviterId}`,
   })
 }

@@ -12,7 +12,7 @@ const props = defineProps({
 
 const activeIndex = ref(0)
 const emits = defineEmits(['changePhone'])
-const handleSelect = (phoneId: string, index: number) => {
+const handleSelect = (phoneId: number, index: number) => {
   activeIndex.value = index
   emits('changePhone', phoneId)
 }
@@ -33,10 +33,10 @@ defineExpose({
       <view class="scroll-content">
         <view
           v-for="(item, index) in list"
-          :key="item._id"
+          :key="item.id"
           class="category-item"
           :class="{ active: index === activeIndex }"
-          @click="handleSelect(item._id, index)"
+          @click="handleSelect(item.id, index)"
         >
           {{ item.name }}
         </view>
@@ -52,7 +52,8 @@ defineExpose({
 }
 
 .scroll-wrapper {
-  white-space: nowrap; /* 关键 */
+  white-space: nowrap;
+  /* 关键 */
 }
 
 .scroll-content {

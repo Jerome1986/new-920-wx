@@ -23,7 +23,11 @@ export const productsHotGetApi = (pageNum: number, pageSize: number) => {
  * @param pageNum - 页码
  * @param pageSize - 条数
  */
-export const productListByCateIdGetApi = (cateId: number, pageNum: number, pageSize: number) => {
+export const productListByCateIdGetApi = (
+  cateId: string | number,
+  pageNum: number,
+  pageSize: number,
+) => {
   return request<ProductPageResult>({
     method: 'GET',
     url: `/product/${cateId}`,

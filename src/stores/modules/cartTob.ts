@@ -11,7 +11,7 @@ export const useCartTobStore = defineStore(
     // 添加购物车
     const addCart = (cartData: CartItem) => {
       const findExist = cartTobList.value.find((item) => {
-        return item.productId === cartData.productId && item.sku?._id === cartData.sku?._id
+        return item.productId === cartData.productId && item.sku?.id === cartData.sku?.id
       })
 
       if (!findExist) {
@@ -32,7 +32,7 @@ export const useCartTobStore = defineStore(
 
     // 切换单个商品选中状态
     const toggleSelect = (id: string) => {
-      const item = cartTobList.value.find((item) => item._id === id)
+      const item = cartTobList.value.find((item) => item.id === id)
       if (item) {
         item.selected = !item.selected
       }
@@ -47,7 +47,7 @@ export const useCartTobStore = defineStore(
     const totalPrice = computed(() => {
       return cartTobList.value
         .filter((item) => item.selected)
-        .reduce((total, item) => total + item.currentPrice * item.quantity, 0)
+        .reduce((total, item) => total + Number(item.salePrice) * item.quantity, 0)
     })
 
     // 计算已选商品的总件数
@@ -59,7 +59,7 @@ export const useCartTobStore = defineStore(
 
     // 减少数量
     const decreaseQuantity = (id: string) => {
-      const item = cartTobList.value.find((item) => item._id === id)
+      const item = cartTobList.value.find((item) => item.id === id)
       if (item && item.quantity > 1) {
         item.quantity--
       }
@@ -67,7 +67,7 @@ export const useCartTobStore = defineStore(
 
     // 增加数量
     const increaseQuantity = (id: string) => {
-      const item = cartTobList.value.find((item) => item._id === id)
+      const item = cartTobList.value.find((item) => item.id === id)
       if (item && item.sku && item.quantity < item.sku.stock) {
         item.quantity++
       }
@@ -81,7 +81,7 @@ export const useCartTobStore = defineStore(
         confirmColor: '#d62731',
         success: (res) => {
           if (res.confirm) {
-            const index = cartTobList.value.findIndex((item) => item._id === id)
+            const index = cartTobList.value.findIndex((item) => item.id === id)
             if (index !== -1) {
               cartTobList.value.splice(index, 1)
             }

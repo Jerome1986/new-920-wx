@@ -108,6 +108,8 @@ const handleCateChange = async (index: number) => {
   modelFilterEnabled.value = false
   reset()
   //  根据分类筛选
+  console.log('cate', cateList.value[activeCateIndex.value].id)
+
   productListGet(cateList.value[activeCateIndex.value].id)
 }
 
@@ -125,6 +127,8 @@ const loading = ref(false)
 // 库存数据
 const inventoryList = ref<StoreInventoryItem[]>([])
 const productListGet = async (cateId: number) => {
+  console.log('cateId', cateId)
+
   if (finish.value || loading.value) return
 
   loading.value = true
@@ -176,15 +180,17 @@ const reset = () => {
 const orderPopupRef = ref()
 const currentProduct = ref<StoreInventoryItem | null>(null)
 const isMember = ref(false) // 是否会员
-const originalPrice = ref(0) // 原始价格（用于重置）
+const originalPrice = ref('0') // 原始价格（用于重置）
 const priceEditable = ref(false) // 价格是否可编辑
 
 // 打开出单弹框
 const handleCreateOrder = (product: StoreInventoryItem) => {
+  console.log(product)
   currentProduct.value = product
   isMember.value = false
   priceEditable.value = false
   resetQueryMember()
+  initPrice(product.salePrice)
   orderPopupRef.value?.open()
 }
 
@@ -203,7 +209,7 @@ const togglePriceEdit = () => {
 
 // 处理价格输入
 const handlePriceInput = (e: any) => {
-  orderPrice.value = Number(e.detail.value) || 0
+  orderPrice.value = e.detail.value || '0'
 }
 
 // 获取本机设备
@@ -235,6 +241,7 @@ const handleSearchLocal = async (e: any) => {
 // 确认出单
 const handleConfirmOrder = async () => {
   if (!currentProduct.value) return
+  console.log('product', currentProduct.value)
 
   // 校验会员手机号
   if (isMember.value && !memberPhone.value) {

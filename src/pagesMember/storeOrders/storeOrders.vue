@@ -7,8 +7,9 @@ import {
   formatPurchasedOrderState,
   formatTimestamp,
 } from '@/utils/formatTimestamp.ts'
-import { purchasedOrderCancelApi, purchaseOrderGetApi } from '@/api/purchase.ts'
-import type { PurchaseItem } from '@/types/Purchase'
+import { purchaseOrderGetApi } from '@/api/purchase.ts'
+import type { OrderItem } from '@/types/Order'
+import { confirmOrderLogistics, proOrderCancelApi } from '@/api/order'
 
 // 定义store
 const userStore = useMemberStore()
@@ -17,8 +18,10 @@ const userStore = useMemberStore()
 const tagList = ref([
   { id: 'tag1', text: 'ALL', label: '全部' },
   { id: 'tag2', text: 'PAID', label: '待取货' },
-  { id: 'tag3', text: 'COMPLETED', label: '已完成' },
-  { id: 'tag4', text: 'CANCELLED', label: '已取消' },
+  { id: 'tag3', text: 'SHIPPED', label: '待收货' },
+  { id: 'tag4', text: 'COMPLETED', label: '已完成' },
+  { id: 'tag5', text: 'CANCELLED', label: '已取消' },
+  { id: 'tag6', text: 'PROCESSING', label: '退款中/已退款' },
 ])
 
 // 分页
@@ -42,13 +45,13 @@ const handleTag = (text: string, index: number) => {
   activeIndex.value = index
   reset() // 重置订单页面信息
   //  请求进货单接口
-  purchaseOrderListGet(userStore.profile._id, text, params.value.pageNum, params.value.pageSize)
+  purchaseOrderListGet(userStore.profile.id, text, params.value.pageNum, params.value.pageSize)
 }
 
 // 订单列表
 const finish = ref(false)
 const loading = ref(false) // 防抖
-const purchaseOrderList = ref<PurchaseItem[]>([])
+const purchaseOrderList = ref<OrderItem[]>([])
 const purchaseOrderListGet = async (
   userId: string,
   status: string,
@@ -57,7 +60,7 @@ const purchaseOrderListGet = async (
 ) => {
   // 请求进货单
   if (finish.value) return // 退出分页
-  const res = await purchaseOrderGetApi(userId, status, pageNum, pageSize)
+  const res = await purchaseOrderGetApi(userId, status, 'TOB', pageNum, pageSize)
   console.log('结果', res)
   // 如果是第一页就直接赋值，否则就用数组添加
   if (params.value.pageNum === 1) {
@@ -80,7 +83,7 @@ const handleScrolltolower = async () => {
   if (finish.value || isLoading.value) return
   isLoading.value = true
   await purchaseOrderListGet(
-    userStore.profile._id,
+    userStore.profile.id,
     tagList.value[activeIndex.value].text,
     params.value.pageNum,
     params.value.pageSize,
@@ -96,44 +99,71 @@ const handleGoDetail = (orderNo: string) => {
   })
 }
 
-// 取消订单
-const handleCancelOrder = (orderNo: string) => {
-  console.log('取消订单', orderNo)
+// 确认收货（与 myOrder 一致）
+const handleConfirm = (orderNo: string, _transactionId: string) => {
   uni.showModal({
     title: '提示',
-    content: '确定要取消订单吗?',
+    content: '确认收货吗',
     confirmColor: '#d62731',
-    success: async (res) => {
-      if (res.confirm) {
-        // 实现取消订单逻辑
-        const res = await purchasedOrderCancelApi(orderNo)
-        if (res.code === 200) {
-          // 请求成功，同步一下STORE里的运营资金
-          userStore.setProfile({ operating_balance: res.data.operating_balance })
-          // 重置分页状态，从第1页重新加载
+    success: async (success) => {
+      if (success.confirm) {
+        const result = await confirmOrderLogistics(userStore.profile.id, orderNo)
+        if (result.code === 200) {
+          activeIndex.value = tagList.value.findIndex((item) => item.text === 'COMPLETED')
           reset()
           await purchaseOrderListGet(
-            userStore.profile._id,
+            userStore.profile.id,
             tagList.value[activeIndex.value].text,
             params.value.pageNum,
             params.value.pageSize,
           )
-          // 退款提示
           await uni.showToast({
+            title: '订单已完成',
             icon: 'success',
-            title: `订单已取消,运营资金退还${res.data.refunding}`,
+            mask: true,
           })
         }
-      } else {
-        console.log('已取消')
       }
     },
   })
 }
 
+// 取消订单并退款
+const handleCancel = (outTradeNo: string, actualPayment: string) => {
+  const amount = Number(actualPayment)
+  console.log('取消订单', outTradeNo, amount)
+  uni.showModal({
+    title: '提示',
+    content: '确定要取消该订单吗？',
+    async success(res) {
+      if (res.confirm) {
+        const res = await proOrderCancelApi(outTradeNo, amount)
+        console.log('退款接口', res.data)
+        if (res.data.status === 'PROCESSING') {
+          console.log('退款中')
+          // 将激活下标设定到更新项
+          activeIndex.value = tagList.value.findIndex((item) => item.text === 'PROCESSING')
+          reset()
+          // 重新拉取订单数据
+          await purchaseOrderListGet(
+            userStore.profile.id,
+            tagList.value[activeIndex.value]?.text,
+            params.value.pageNum,
+            params.value.pageSize,
+          )
+        }
+        uni.showToast({ icon: 'none', title: '申请已提交', mask: true })
+      }
+    },
+    fail: (fail) => {
+      uni.showToast({ icon: 'none', title: '服务器繁忙', mask: true })
+    },
+  })
+}
+
 onLoad(() => {
-  if (userStore.profile?._id) {
-    purchaseOrderListGet(userStore.profile._id, 'ALL', params.value.pageNum, params.value.pageSize)
+  if (userStore.profile?.id) {
+    purchaseOrderListGet(userStore.profile.id, 'ALL', params.value.pageNum, params.value.pageSize)
   }
 })
 </script>
@@ -162,20 +192,22 @@ onLoad(() => {
       @scrolltolower="handleScrolltolower"
       v-if="purchaseOrderList.length > 0"
     >
-      <view class="order-card" v-for="item in purchaseOrderList" :key="item._id">
+      <view class="order-card" v-for="item in purchaseOrderList" :key="item.id">
         <!-- 头部：订单号 + 状态 -->
-        <view class="card-head" @click="handleGoDetail(item.out_trade_no)">
+        <view class="card-head" @click="handleGoDetail(item.outTradeNo)">
           <view class="order-no">
             <text class="label">订单号：</text>
-            <text class="value">{{ item.out_trade_no }}</text>
+            <text class="value">{{ item.outTradeNo }}</text>
           </view>
           <view
             class="status"
             :class="{
               paid: item.status === 'PAID',
+              pending: item.status === 'PENDING',
               shipped: item.status === 'SHIPPED',
               completed: item.status === 'COMPLETED',
               cancelled: item.status === 'CANCELLED',
+              refunded: item.status === 'REFUNDED' || item.status === 'PROCESSING',
             }"
           >
             {{ formatPurchasedOrderState(item.status) }}
@@ -183,23 +215,22 @@ onLoad(() => {
         </view>
 
         <!-- 商品列表--列表只显示2条以内的商品，需要详情查看 -->
-        <view class="product-list" @click="handleGoDetail(item.out_trade_no)">
-          <view
-            class="product-item"
-            v-for="product in item.products.slice(0, 2)"
-            :key="product._id"
-          >
+        <view class="product-list" @click="handleGoDetail(item.outTradeNo)">
+          <view class="product-item" v-for="product in item.products.slice(0, 2)" :key="product.id">
             <!-- 商品图片 -->
-            <image class="cover" :src="product.sku?.image || product.cover" mode="aspectFill" />
+            <image class="cover" :src="product.image" mode="aspectFill" />
 
             <!-- 商品信息 -->
             <view class="info">
               <view class="name">{{ product.skuNo }} {{ product.name }}</view>
-              <view class="spec" v-if="product.sku">
-                {{ product.sku.attrs.label }}: {{ product.sku.attrs.value }}
+              <view class="spec" v-if="product.model">
+                {{ product.model }}
+              </view>
+              <view class="spec" v-if="product.skuId">
+                {{ product.skuName }}
               </view>
               <view class="bottom">
-                <view class="price">{{ formatAmount(product.currentPrice) }}</view>
+                <view class="price">￥{{ formatAmount(product.price) }}</view>
                 <view class="quantity">x{{ product.quantity }}</view>
               </view>
             </view>
@@ -207,7 +238,7 @@ onLoad(() => {
         </view>
 
         <!-- 订单金额和收货信息 -->
-        <view class="order-info" @click="handleGoDetail(item.out_trade_no)">
+        <view class="order-info" @click="handleGoDetail(item.outTradeNo)">
           <view class="info-row">
             <text class="label">下单时间：</text>
             <text class="value">{{ formatTimestamp(item.createdAt, 2) }}</text>
@@ -218,24 +249,47 @@ onLoad(() => {
         <view class="card-foot">
           <view class="amount-info">
             <text class="label">共{{ item.totalCount }}件商品 合计：</text>
-            <text class="price">{{ formatAmount(item.amount.actualPayment) }}</text>
+            <text class="price">￥{{ formatAmount(item.actualPayment) }}</text>
           </view>
 
           <view class="actions">
             <!-- 待取货：取消订单 + 查看详情 -->
             <template v-if="item.status === 'PAID'">
-              <view class="btn ghost" @click.stop="handleCancelOrder(item.out_trade_no)"
+              <view
+                class="btn ghost"
+                @click.stop="handleCancel(item.outTradeNo, item.actualPayment)"
                 >取消订单</view
               >
-              <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
-                >查看详情</view
+              <view class="btn ghost" @click.stop="handleGoDetail(item.outTradeNo)">查看详情</view>
+            </template>
+
+            <!-- 待收货：确认收货 -->
+            <template v-if="item.status === 'SHIPPED'">
+              <view
+                class="btn primary"
+                @click.stop="handleConfirm(item.outTradeNo, item.transactionId ?? '')"
               >
+                确认收货
+              </view>
             </template>
 
             <!-- 已完成：查看详情 -->
             <template v-if="item.status === 'COMPLETED'">
-              <view class="btn ghost" @click.stop="handleGoDetail(item.out_trade_no)"
-                >查看详情</view
+              <view class="btn ghost" @click.stop="handleGoDetail(item.outTradeNo)">查看详情</view>
+            </template>
+
+            <!-- 已取消：查看详情 -->
+            <template v-if="item.status === 'CANCELLED'">
+              <view class="btn ghost" @click.stop="handleGoDetail(item.outTradeNo)">查看详情</view>
+            </template>
+
+            <!-- 退款中/已退款：查看详情 -->
+            <template v-if="item.status === 'PROCESSING' || item.status === 'REFUNDED'">
+              <view
+                class="btn ghost"
+                :class="{ refunded: item.status === 'REFUNDED' }"
+                @click.stop="handleGoDetail(item.outTradeNo)"
+                >{{ item.status === 'PROCESSING' ? '退款中' : '已退款' }}</view
               >
             </template>
           </view>
@@ -503,6 +557,11 @@ onLoad(() => {
             color: $jel-font-title;
             border: 1rpx solid $jel-border;
             background-color: #fff;
+          }
+
+          &.refunded {
+            color: #ffffff;
+            background-color: $jel-font-success;
           }
 
           &.primary {

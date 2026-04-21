@@ -24,13 +24,14 @@ import type { CheckVipResponse } from '@/types/VipItem'
 export const userOrderGetApi = (
   userId: string,
   status: string,
+  target: 'TOB' | 'TOC',
   pageNum: number,
   pageSize: number,
 ) => {
   return request<OrderPageResult>({
     method: 'GET',
-    url: `/toc-order/${userId}`,
-    data: { status, pageNum, pageSize },
+    url: `/order/${userId}`,
+    data: { status, target, pageNum, pageSize },
   })
 }
 
@@ -41,7 +42,7 @@ export const userOrderGetApi = (
 export const userOrderDetailGetApi = (outTradeNo: string) => {
   return request<OrderItem>({
     method: 'GET',
-    url: `/toc-order/detail/${outTradeNo}`,
+    url: `/order/detail/${outTradeNo}`,
   })
 }
 
@@ -58,6 +59,7 @@ export const userOrderDetailGetApi = (outTradeNo: string) => {
 export const proOrderPayApi = (
   openid: string,
   userId: string,
+  target: 'TOB' | 'TOC',
   nickname: string,
   mobile: string,
   avatarUrl: string,
@@ -73,10 +75,11 @@ export const proOrderPayApi = (
 ) => {
   return request<WechatPayParams>({
     method: 'POST',
-    url: '/toc-order/create',
+    url: '/order/create',
     data: {
       openid,
       userId,
+      target,
       nickname,
       mobile,
       avatarUrl,
@@ -98,11 +101,11 @@ export const proOrderPayApi = (
  * @param userId - 用户ID
  * @param orderNo - 订单ID
  */
-export const confirmOrderLogistics = (userId: string, orderNo: string) => {
-  return request<updateResult>({
-    method: 'POST',
-    url: '/order/upLogistics',
-    data: { userId, orderNo },
+export const confirmOrderLogistics = (userId: string, outTradeNo: string) => {
+  return request<OrderItem>({
+    method: 'PATCH' as any,
+    url: `/order/completed/${outTradeNo}`,
+    data: { userId },
   })
 }
 
@@ -114,7 +117,7 @@ export const confirmOrderLogistics = (userId: string, orderNo: string) => {
 export const proOrderCancelApi = (outTradeNo: string, actualPayment: number) => {
   return request<RefundResult>({
     method: 'Patch' as any,
-    url: `/toc-order/cancel/${outTradeNo}`,
+    url: `/order/cancel/${outTradeNo}`,
     data: { actualPayment },
   })
 }

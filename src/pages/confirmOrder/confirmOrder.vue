@@ -116,6 +116,7 @@ const submit = async () => {
   const orderRes = await proOrderPayApi(
     userInfo.openid,
     userInfo.userId,
+    'TOC',
     userInfo.nickname,
     userInfo.mobile,
     userInfo.avatarUrl as string,

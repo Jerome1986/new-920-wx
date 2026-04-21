@@ -22,6 +22,8 @@ export interface CartItem {
   salePrice: string
   /** 购买数量 */
   quantity: number
+  /** skuId */
+  skuId: number
   /** 选中的SKU信息（如果有） */
   sku?: SkuItem
   /** 商品类型--设置某些角色可见，区分店长产品和用户产品 */

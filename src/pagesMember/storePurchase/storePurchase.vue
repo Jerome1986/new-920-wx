@@ -3,80 +3,92 @@ import NavTab from '@/components/NavTab.vue'
 import SubCategory from '@/components/SubCategory.vue'
 import ThirdCategory from '@/components/ThirdCategory.vue'
 import { onLoad } from '@dcloudio/uni-app'
-import { cateListGetApi } from '@/api/cate.ts'
-import GlobalProductBar from '@/components/GlobalProductBar.vue'
-import { useProductPageDriver } from '@/hooks/useProductPageDriver.ts'
-import { productListByCateIdGetApi } from '@/api/product.ts'
+import { nextTick, ref } from 'vue'
+import { cateMoGetApi } from '@/api/cate'
+import type { CateItem } from '@/types/CateItem'
 
-// 商品列表驱动器（解构使 ref 成为顶层变量，模板自动解包）
-const {
-  level1List,
-  level2List,
-  level3List,
-  selectLevel1,
-  selectLevel2,
-  selectLevel3,
-  showProductList,
-  productList,
-  finish,
-  loadMore,
-  init,
-} = useProductPageDriver({
-  fetchCategory: cateListGetApi,
-  fetchProductList: productListByCateIdGetApi,
-  // 点击三级分类时跳转到商品列表页
-  onNavigateToThirdCategory: (thirdCategoryId: string) => {
-    uni.navigateTo({
-      url: `/pages/managerProduct/managerProduct?thirdCategoryId=${thirdCategoryId}`,
-    })
-  },
-})
-
-// 处理搜索
 const handleSearch = () => {
   uni.navigateTo({
     url: '/pages/search/searchToB',
   })
 }
 
+// 一级：接口树根；二、三级：当前选中节点的 children
+const level1List = ref<CateItem[]>([])
+const level2List = ref<CateItem[]>([])
+const level3List = ref<CateItem[]>([])
+
+const subCategoryRef = ref<{ resetActive: () => void } | null>(null)
+
+const applyLevel2 = (cateId: number) => {
+  const node = level2List.value.find((c) => c.id === cateId)
+  level3List.value = node?.children ?? []
+}
+
+const applyLevel1 = async (cateId: number) => {
+  const node = level1List.value.find((c) => c.id === cateId)
+  level2List.value = node?.children ?? []
+  await nextTick()
+  subCategoryRef.value?.resetActive()
+  const firstL2 = level2List.value[0]
+  if (firstL2) {
+    applyLevel2(firstL2.id)
+  } else {
+    level3List.value = []
+  }
+}
+
+const categoryTreeGet = async () => {
+  const res = await cateMoGetApi('TOB')
+  level1List.value = res.data ?? []
+  if (level1List.value.length) {
+    await applyLevel1(level1List.value[0].id)
+  } else {
+    level2List.value = []
+    level3List.value = []
+  }
+}
+
+const selectLevel1 = (cateId: number) => {
+  void applyLevel1(cateId)
+}
+
+const selectLevel2 = (phoneId: number) => {
+  applyLevel2(phoneId)
+}
+
+const selectLevel3 = (thirdCategoryId: number) => {
+  uni.navigateTo({
+    url: `/pages/managerProduct/managerProduct?thirdCategoryId=${thirdCategoryId}`,
+  })
+}
+
 onLoad(async () => {
-  await init()
+  await categoryTreeGet()
 })
 </script>
+
 <template>
   <view class="shopPage">
-    <!-- 搜索 -->
-    <div class="search" style="margin-bottom: 24rpx" @click="handleSearch">
+    <view class="search" style="margin-bottom: 24rpx" @click="handleSearch">
       <uni-search-bar :readonly="true" placeholder="根据商品名称或货号来搜索" bgColor="#EEEEEE" />
-    </div>
-    <!-- 一级分类 -->
-    <NavTab :list="level1List" @cateSelected="selectLevel1"></NavTab>
-    <!-- 二级分类 -->
-    <SubCategory :list="level2List" @changePhone="selectLevel2"></SubCategory>
-    <!-- 三级分类 -->
-    <ThirdCategory :list="level3List" @selectedType="selectLevel3"></ThirdCategory>
-    <!-- 商品列表（只有没有三级分类时显示） -->
-    <view class="list" v-if="showProductList">
-      <GlobalProductBar
-        :models="'toB'"
-        :list="productList"
-        :finish="finish"
-        @update:loadMore="loadMore"
-      ></GlobalProductBar>
     </view>
+
+    <NavTab v-if="level1List.length" :list="level1List" @cateSelected="selectLevel1" />
+    <SubCategory
+      v-if="level2List.length"
+      ref="subCategoryRef"
+      :list="level2List"
+      @changePhone="selectLevel2"
+    />
+    <ThirdCategory v-if="level3List.length" :list="level3List" @selectedType="selectLevel3" />
   </view>
 </template>
 
 <style scoped lang="scss">
 .shopPage {
-  height: 100%;
+  min-height: 100%;
   padding: 24rpx;
-  display: flex;
-  flex-direction: column;
-
-  .list {
-    flex: 1;
-    overflow: hidden;
-  }
+  box-sizing: border-box;
 }
 </style>

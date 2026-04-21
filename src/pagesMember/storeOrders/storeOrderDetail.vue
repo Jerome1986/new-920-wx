@@ -6,8 +6,8 @@ import {
   formatPurchasedOrderState,
   formatTimestamp,
 } from '@/utils/formatTimestamp.ts'
-import { purchaseOrderDetailApi } from '@/api/purchase.ts'
-import type { PurchaseItem } from '@/types/Purchase'
+import { userOrderDetailGetApi } from '@/api/order'
+import type { OrderItem } from '@/types/Order'
 
 // 安全距离
 const { safeAreaInsets } = uni.getSystemInfoSync()
@@ -16,13 +16,15 @@ const { safeAreaInsets } = uni.getSystemInfoSync()
 const orderNo = ref('')
 
 // 订单详情
-const orderDetail = ref<PurchaseItem | null>(null)
+const orderDetail = ref<OrderItem | null>(null)
 
 // 获取订单详情
-const getOrderDetail = async (out_trade_no: string) => {
+const getOrderDetail = async (outTradeNo: string) => {
   try {
     //  调用API获取订单详情
-    const res = await purchaseOrderDetailApi(out_trade_no)
+    const res = await userOrderDetailGetApi(outTradeNo)
+    console.log('detail', res)
+
     orderDetail.value = res.data
   } catch (error) {
     console.error('获取订单详情失败', error)
@@ -64,16 +66,41 @@ onLoad((options: any) => {
             class="iconfont"
             :class="{
               'icon-success': orderDetail.status === 'COMPLETED',
+              'icon-time': orderDetail.status === 'PENDING',
               'icon-logistics': orderDetail.status === 'SHIPPED',
               'icon-check': orderDetail.status === 'PAID',
-              'icon-close': orderDetail.status === 'CANCELLED',
+              'icon-close':
+                orderDetail.status === 'CANCELLED' ||
+                orderDetail.status === 'REFUNDED' ||
+                orderDetail.status === 'PROCESSING',
             }"
           ></text>
         </view>
         <view class="status-text">{{ formatPurchasedOrderState(orderDetail.status) }}</view>
         <view class="status-desc" v-if="orderDetail.status === 'PAID'">请前往公司签到补货</view>
+        <view class="status-desc" v-if="orderDetail.status === 'SHIPPED'">
+          商品正在配送中，请耐心等待
+        </view>
         <view class="status-desc" v-if="orderDetail.status === 'COMPLETED'">
           订单已完成，感谢您的购买
+        </view>
+      </view>
+
+      <!-- 收货地址（与 C 端结构一致；无地址时不展示） -->
+      <view class="address-section" v-if="orderDetail.address">
+        <view class="section-header">
+          <text class="iconfont icon-location"></text>
+          <text class="title">收货地址</text>
+        </view>
+        <view class="address-content">
+          <view class="user-info">
+            <text class="name">{{ orderDetail.address.name }}</text>
+            <text class="phone">{{ orderDetail.address.mobile }}</text>
+          </view>
+          <view class="address-text">
+            {{ orderDetail.address.province }} {{ orderDetail.address.city }}
+            {{ orderDetail.address.county }} {{ orderDetail.address.detail }}
+          </view>
         </view>
       </view>
 
@@ -81,21 +108,22 @@ onLoad((options: any) => {
       <view class="product-section">
         <view class="section-header">
           <text class="iconfont icon-a-ziyuan1"></text>
-          <text class="title">采购清单</text>
+          <text class="title">商品清单</text>
         </view>
         <view class="product-list">
-          <view class="product-item" v-for="product in orderDetail.products" :key="product._id">
-            <!-- 商品图片 -->
-            <image class="cover" :src="product.sku?.image || product.cover" mode="aspectFill" />
+          <view class="product-item" v-for="product in orderDetail.products" :key="product.id">
+            <image class="cover" :src="product.image" mode="aspectFill" />
 
-            <!-- 商品信息 -->
             <view class="info">
               <view class="name">{{ product.skuNo }} {{ product.name }}</view>
-              <view class="spec" v-if="product.sku">
-                {{ product.sku.attrs.label }}: {{ product.sku.attrs.value }}
+              <view class="spec" v-if="product.model">
+                {{ product.model }}
+              </view>
+              <view class="spec" v-if="product.skuId">
+                {{ product.skuName }}
               </view>
               <view class="bottom">
-                <view class="price">{{ formatAmount(product.currentPrice) }}</view>
+                <view class="price">￥{{ formatAmount(product.price) }}</view>
                 <view class="quantity">x{{ product.quantity }}</view>
               </view>
             </view>
@@ -113,19 +141,38 @@ onLoad((options: any) => {
           <view class="info-item">
             <text class="label">订单号</text>
             <view class="value-wrapper">
-              <text class="value">{{ orderDetail.out_trade_no }}</text>
-              <text class="copy" @click="handleCopy(orderDetail.out_trade_no)">复制</text>
+              <text class="value">{{ orderDetail.outTradeNo }}</text>
+              <text class="copy" @click="handleCopy(orderDetail.outTradeNo)">复制</text>
             </view>
           </view>
-
+          <view class="info-item" v-if="orderDetail.transactionId">
+            <text class="label">微信订单号</text>
+            <view class="value-wrapper">
+              <text class="value">{{ orderDetail.transactionId }}</text>
+              <text class="copy" @click="handleCopy(orderDetail.transactionId)">复制</text>
+            </view>
+          </view>
           <view class="info-item">
             <text class="label">下单时间</text>
             <text class="value">{{ formatTimestamp(orderDetail.createdAt, 2) }}</text>
           </view>
-
+          <view class="info-item" v-if="orderDetail.paidAt">
+            <text class="label">支付时间</text>
+            <text class="value">{{ formatTimestamp(orderDetail.paidAt, 2) }}</text>
+          </view>
+          <view class="info-item" v-if="orderDetail.shippedAt">
+            <text class="label">发货时间</text>
+            <text class="value">{{ formatTimestamp(orderDetail.shippedAt, 2) }}</text>
+          </view>
           <view class="info-item" v-if="orderDetail.completedAt">
             <text class="label">完成时间</text>
             <text class="value">{{ formatTimestamp(orderDetail.completedAt, 2) }}</text>
+          </view>
+          <view class="info-item">
+            <text class="label">支付方式</text>
+            <text class="value">{{
+              orderDetail.paymentMethod === 'wechat' ? '微信支付' : '其他'
+            }}</text>
           </view>
         </view>
       </view>
@@ -139,19 +186,19 @@ onLoad((options: any) => {
         <view class="amount-list">
           <view class="amount-item">
             <text class="label">商品总额</text>
-            <text class="value">{{ formatAmount(orderDetail.amount.totalPrice) }}</text>
+            <text class="value">￥{{ formatAmount(orderDetail.totalPrice) }}</text>
           </view>
-          <view class="amount-item" v-if="orderDetail.amount.deductAmount > 0">
+          <view class="amount-item" v-if="Number(orderDetail.deductAmount) > 0">
             <text class="label">积分抵扣</text>
-            <text class="value deduct">-{{ formatAmount(orderDetail.amount.deductAmount) }}</text>
+            <text class="value deduct">-￥{{ formatAmount(orderDetail.deductAmount) }}</text>
           </view>
-          <view class="amount-item" v-if="orderDetail.amount.usedScore">
+          <view class="amount-item" v-if="orderDetail.usedScore">
             <text class="label">使用积分</text>
-            <text class="value">{{ (orderDetail.amount.usedScore / 100).toFixed(2) }}</text>
+            <text class="value">{{ orderDetail.usedScore.toFixed(2) }}</text>
           </view>
           <view class="amount-item total">
             <text class="label">实付款</text>
-            <text class="value">{{ formatAmount(orderDetail.amount.actualPayment) }}</text>
+            <text class="value">￥{{ formatAmount(orderDetail.actualPayment) }}</text>
           </view>
         </view>
       </view>
@@ -168,12 +215,14 @@ onLoad((options: any) => {
       ></view>
     </scroll-view>
 
-    <!-- 底部操作栏 -->
+    <!-- 底部操作栏：B 端无微信确认收货，仅提示 -->
     <view class="footer" v-if="orderDetail.status === 'SHIPPED' || orderDetail.status === 'PAID'">
       <view class="footer-content">
-        <!-- 待取货 -->
         <template v-if="orderDetail.status === 'PAID'">
           <view class="tips">请尽快前往公司取货</view>
+        </template>
+        <template v-if="orderDetail.status === 'SHIPPED'">
+          <view class="tips">到货后请到店确认签收，库存将随后更新</view>
         </template>
       </view>
       <view class="safe-area" :style="{ height: safeAreaInsets?.bottom + 'px' }"></view>

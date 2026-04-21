@@ -1,15 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import type { StoreInventoryGetResult } from '@/types/StoreInventory'
 import { storeGetInventoryApi } from '@/api/store.ts'
-import { useManagerStore } from '@/stores'
+import { useCartTobStore, useManagerStore } from '@/stores'
 import { onLoad } from '@dcloudio/uni-app'
+import type { StoreInventoryItem } from '@/types/StoreInventory'
 
 // store
 const managerStore = useManagerStore()
-
-// 低库存阈值（片数）
-const lowStockThreshold = ref(15)
+const cartTobStore = useCartTobStore()
 
 // 搜索关键词
 const searchKeyword = ref('')
@@ -17,24 +15,36 @@ const searchKeyword = ref('')
 // 滚动区域高度
 const scrollHeight = ref(0)
 
+const pageNum = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const finish = ref(false)
 // 库存数据
-const inventoryList = ref<StoreInventoryGetResult[]>([])
+const inventoryList = ref<StoreInventoryItem[]>([])
 const inventoryListGet = async (storeId: string) => {
-  const res = await storeGetInventoryApi(storeId)
+  if (finish.value) return
+  const res = await storeGetInventoryApi(storeId, 0, pageNum.value, pageSize.value)
   console.log(res)
-  inventoryList.value = res.data
+  inventoryList.value.push(...res.data.list)
+  total.value = res.data.total
+
+  if (pageNum.value < res.data.totalPage) {
+    pageNum.value++
+  } else {
+    finish.value = true
+  }
+}
+
+// 加载更多
+const handleMore = () => {
+  if (finish.value) return
+  inventoryListGet(managerStore.managerStoreInfo?.id as string)
 }
 
 onLoad(() => {
-  if (managerStore.managerStoreInfo?.storeId) {
-    console.log('请求')
-    inventoryListGet(managerStore.managerStoreInfo?.storeId)
+  if (managerStore.managerStoreInfo?.id) {
+    inventoryListGet(managerStore.managerStoreInfo?.id)
   }
-})
-
-// 低库存数量统计（基于片数）
-const lowStockCount = computed(() => {
-  return inventoryList.value.filter((item) => item.unit_count <= lowStockThreshold.value).length
 })
 
 // 过滤后的列表
@@ -46,7 +56,7 @@ const filteredList = computed(() => {
   return inventoryList.value.filter(
     (item) =>
       item.productName.toLowerCase().includes(keyword) ||
-      item.productSkuNo.toLowerCase().includes(keyword),
+      item.skuNo.toLowerCase().includes(keyword),
   )
 })
 
@@ -58,6 +68,44 @@ const initScrollHeight = () => {
 }
 // 页面加载
 initScrollHeight()
+
+// 一键补货
+const handleOneClickRestock = async () => {
+  // 1.扫描当前所有库存所有商品，找到库存不足的商品
+  const res = await storeGetInventoryApi(managerStore.managerStoreInfo?.id as string, 0, 1, 1000)
+  const allProduct = res.data.list
+  const lowProduct = allProduct.filter((a) => a.stock < a.minStock)
+  if (!lowProduct.length) {
+    uni.showToast({ icon: 'none', title: '当前库存充足' })
+    return
+  }
+  uni.showModal({
+    title: '提示',
+    content: '是否一次补足库存',
+    confirmColor: '#d62731',
+    success: (success) => {
+      if (success.confirm) {
+        // 2.将需要补充的数量提交到采购车
+        const cartData = lowProduct.map((low) => ({
+          id: low.id,
+          selected: true,
+          productId: low.productId,
+          skuNo: low.skuNo,
+          skuId: low.skuId,
+          name: low.productName,
+          dec: low.productDec,
+          cover: low.cover,
+          salePrice: low.costPrice,
+          quantity: low.minStock - low.stock,
+        }))
+        cartTobStore.cartTobList = cartData
+        setTimeout(() => {
+          uni.redirectTo({ url: '/pagesMember/purchaseCart/purchaseCart' })
+        }, 500)
+      }
+    },
+  })
+}
 </script>
 
 <template>
@@ -65,13 +113,14 @@ initScrollHeight()
     <!-- 顶部统计卡片 -->
     <view class="stat-card">
       <view class="stat-item">
-        <text class="stat-value">{{ inventoryList.length }}</text>
+        <text class="stat-value">{{ total }}</text>
         <text class="stat-label">库存商品</text>
       </view>
       <view class="divider"></view>
-      <view class="stat-item warning">
-        <text class="stat-value">{{ lowStockCount }}</text>
-        <text class="stat-label">补货提醒</text>
+      <view class="stat-item stat-item--restock">
+        <view class="stat-restock-btn" @click="handleOneClickRestock">
+          <text class="stat-restock-btn__text">一键补货</text>
+        </view>
       </view>
     </view>
 
@@ -87,15 +136,20 @@ initScrollHeight()
     </view>
 
     <!-- 库存列表 -->
-    <scroll-view :scroll-y="true" class="inventory-list" :style="{ height: scrollHeight + 'px' }">
-      <view class="inventory-item" v-for="item in filteredList" :key="item.product_id">
+    <scroll-view
+      @scrolltolower="handleMore"
+      :scroll-y="true"
+      class="inventory-list"
+      :style="{ height: scrollHeight + 'px' }"
+    >
+      <view class="inventory-item" v-for="item in filteredList" :key="item.id">
         <!-- 低库存标记（基于片数） -->
-        <view class="low-stock-tag" v-if="item.unit_count <= lowStockThreshold">
+        <view class="low-stock-tag" v-if="item.stock < item.minStock">
           <text>补货</text>
         </view>
 
         <!-- 商品图片 -->
-        <image class="product-cover" :src="item.productCover" mode="aspectFill"></image>
+        <image class="product-cover" :src="item.cover" mode="aspectFill"></image>
 
         <!-- 商品信息 -->
         <view class="product-info">
@@ -105,20 +159,24 @@ initScrollHeight()
 
           <view class="product-sku-no">
             <text class="sku-label">货号：</text>
-            <text class="sku-value">{{ item.productSkuNo }}</text>
+            <text class="sku-value">{{ item.skuNo }}</text>
           </view>
 
           <view class="product-bottom">
             <view class="price-info">
               <view class="price-row">
+                <text class="price-label">进货价</text>
+                <text class="price-value retail">¥{{ Number(item.costPrice).toFixed(2) }}</text>
+              </view>
+              <view class="price-row">
                 <text class="price-label">零售价</text>
-                <text class="price-value retail">¥{{ item.currentPrice.toFixed(2) }}</text>
+                <text class="price-value retail">¥{{ Number(item.salePrice).toFixed(2) }}</text>
               </view>
             </view>
 
             <view class="stock-info">
-              <view class="stock-box" :class="{ low: item.unit_count <= lowStockThreshold }">
-                <text class="stock-quantity">{{ item.unit_count }}</text>
+              <view class="stock-box" :class="{ low: item.stock < item.minStock }">
+                <text class="stock-quantity">{{ item.stock }}</text>
                 <text class="stock-unit">片</text>
               </view>
             </view>
@@ -173,8 +231,25 @@ initScrollHeight()
       color: rgba(255, 255, 255, 0.85);
     }
 
-    &.warning .stat-value {
-      color: #ffe066;
+    &.stat-item--restock {
+      justify-content: center;
+    }
+
+    .stat-restock-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 14rpx 36rpx;
+      border-radius: 32rpx;
+      background-color: rgba(255, 255, 255, 0.95);
+      box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.12);
+
+      .stat-restock-btn__text {
+        font-size: 26rpx;
+        font-weight: 600;
+        color: $jel-brandColor;
+        line-height: 1.2;
+      }
     }
   }
 

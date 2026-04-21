@@ -30,6 +30,9 @@ export interface StoreInventoryItem {
   productName: string
   /** 商品描述/备注 */
   productDec: string
+  productId: number
+  /** sku封面图 */
+  cover: string
   /** 商品货号 */
   skuNo: string
   /** 最低库存预警值 */

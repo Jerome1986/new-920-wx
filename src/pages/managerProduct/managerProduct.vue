@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import type { ProductItem } from '@/types/ProductItem.d.ts'
 import GlobalProductBar from '@/components/GlobalProductBar.vue'
 import { onLoad } from '@dcloudio/uni-app'
+import { productListByCateIdGetApi } from '@/api/product'
 
 const params = ref({
   pageNum: 1,
@@ -15,13 +16,13 @@ const finish = ref(false) // 标记退出分页
 const productList = ref<ProductItem[]>([])
 const productListGet = async (subCateId: string, pageNum: number, pageSize: number) => {
   if (finish.value) return
-  // const res = await productListBySubCateIdGetApi(subCateId, pageNum, pageSize)
-  // productList.value.push(...res.data.list)
-  // if (params.value.pageNum < res.data.totalPage) {
-  //   params.value.pageNum++
-  // } else {
-  //   finish.value = true
-  // }
+  const res = await productListByCateIdGetApi(subCateId, pageNum, pageSize)
+  productList.value.push(...res.data.list)
+  if (params.value.pageNum < res.data.totalPage) {
+    params.value.pageNum++
+  } else {
+    finish.value = true
+  }
 }
 // 触底加载更多
 const handleScrolltolower = () => {
@@ -35,10 +36,10 @@ const handleScrolltolower = () => {
  * @param newLook - 更新后从服务端返回的阅读量
  * @param productId - 点击当前项的id
  */
-const handleNewLook = (newLook: number, productId: string) => {
+const handleNewLook = (newLook: number, productId: string | number) => {
   console.log('更新后的阅读量', newLook, productId)
-  // const item = productList.value.find((p) => p._id === productId)
-  // if (item) item.lookNum = newLook
+  const item = productList.value.find((p) => p.id === productId)
+  if (item) item.lookNum = newLook
 }
 
 onLoad((options: any) => {

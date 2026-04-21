@@ -1,411 +1,372 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { onLoad, onShow } from '@dcloudio/uni-app'
-import { formatAmount, formatMonth } from '@/utils/formatTimestamp.ts'
-import { getTimeRangeReportApi, storeTotalReportApi } from '@/api/store.ts'
-import { useManagerStore } from '@/stores'
-import type { StoreTotalReport } from '@/types/ManagerStore'
+import { onLoad } from '@dcloudio/uni-app'
+import { formatAmount, formatRole, formatTimestamp } from '@/utils/formatTimestamp.ts'
+import { maskMiddle } from '@/utils/maskMiddle.ts'
+import type { CommissionRecordItem } from '@/types/CommissionRecord'
+import { findStoreCommissionRecord } from '@/api/store'
+import { useMemberStore } from '@/stores'
+import type { StoreBizType } from '@/types/ManagerStore'
 
-// 获取安全区域
-const { safeAreaInsets } = uni.getSystemInfoSync()
+const userStore = useMemberStore()
 
-// store
-const managerStore = useManagerStore()
+// 累计佣金（元），概览区展示（由全量明细汇总）
+const totalCommission = ref(0)
+// 本月佣金（元），概览区展示（当前自然月）
+const monthCommission = ref(0)
 
-// 统计卡片数据
-const statCards = ref<StoreTotalReport>()
+const toAmountNumber = (v: number | string) => {
+  const n = Number(v)
+  return Number.isFinite(n) ? n : 0
+}
 
-// 时间筛选
-const timeActive = ref('today')
-const timeFilters = ref([
-  { id: 'today', label: '今日', active: true },
-  { id: 'week', label: '本周', active: false },
-  { id: 'month', label: '本月', active: false },
-])
+const isInCurrentMonth = (createdAt: Date | string) => {
+  const d = typeof createdAt === 'string' ? new Date(createdAt) : createdAt
+  if (Number.isNaN(d.getTime())) return false
+  const now = new Date()
+  return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth()
+}
 
-// 月份选择
-const selectedMonth = ref('')
+const applyCommissionSummary = (list: CommissionRecordItem[]) => {
+  totalCommission.value = list.reduce((sum, row) => sum + toAmountNumber(row.amount), 0)
+  monthCommission.value = list
+    .filter((row) => isInCurrentMonth(row.createdAt as Date | string))
+    .reduce((sum, row) => sum + toAmountNumber(row.amount), 0)
+}
 
-// 财务流水数据
-const financeFlowData = ref<StoreTotalReport>()
-const financeFlowDataGet = async () => {
-  if (managerStore.managerStoreInfo?.storeId) {
-    const res = await storeTotalReportApi(managerStore.managerStoreInfo?.storeId)
-    console.log(res.data)
-    financeFlowData.value = res.data
+// 下级手机号脱敏展示
+const displaySubordinateMobile = (m?: string | null) => {
+  if (m == null || m === '') return '—'
+  return maskMiddle(m)
+}
+
+// 下级角色转为中文文案
+const roleDisplay = (role: string) => formatRole(role, 0)
+
+// 是否为店长角色（样式区分）
+const isManagerRole = (role: string) => role === 'MANAGER'
+
+// 佣金类型转换中文
+const bizLabelLabel: Record<StoreBizType, string> = {
+  PRODUCT: '购买商品',
+  SERVICE: '线下贴膜',
+  PURCHASE: '个人进货',
+}
+
+// 佣金明细列表
+const commissionRecordList = ref<CommissionRecordItem[]>([])
+
+// 明细列表加载中
+const listLoading = ref(false)
+// 明细是否已加载完全部（分页结束）
+const listFinished = ref(false)
+// 明细分页参数
+const listParams = ref({ pageNum: 1, pageSize: 10 })
+
+// 拉取顶部累计/本月佣金概览（一次取大页全量用于汇总）
+const fetchCommissionOverview = async () => {
+  const userId = userStore.profile?.id
+  if (!userId) return
+  try {
+    const res = await findStoreCommissionRecord(userId, 1, 1000)
+    applyCommissionSummary(res.data.list)
+  } catch (err) {
+    console.error(err)
   }
 }
 
-onLoad(() => financeFlowDataGet())
+// 拉取佣金明细分页
+const fetchCommissionRecordList = async (pageNum: number, pageSize: number) => {
+  listLoading.value = true
+  if (listFinished.value || !listLoading.value) return
+  try {
+    const res = await findStoreCommissionRecord(userStore.profile.id, pageNum, pageSize)
+    commissionRecordList.value = res.data.list
+    console.log(res)
 
-// 根据时间筛选数据
-const getTimeRangeReportGet = async (type: string) => {
-  if (managerStore.managerStoreInfo?.storeId) {
-    const res = await getTimeRangeReportApi(managerStore.managerStoreInfo?.storeId, type)
-    statCards.value = res.data
+    if (listParams.value.pageNum < res.data.totalPage) {
+      listParams.value.pageNum++
+    } else {
+      listFinished.value = true
+    }
+  } catch (err) {
+    console.error(err)
+  } finally {
+    listLoading.value = false
   }
 }
-onShow(() => getTimeRangeReportGet(timeActive.value))
 
-// 切换时间筛选
-const handleTimeFilter = async (filterId: string) => {
-  timeActive.value = filterId
-  selectedMonth.value = ''
-  console.log('切换时间筛选:', filterId)
-  // 根据筛选条件重新获取数据
-  await getTimeRangeReportGet(filterId)
+// 重置明细分页状态（换条件或下拉刷新时用）
+const resetCommissionListPage = () => {
+  console.log('resetCommissionListPage')
 }
 
-// 处理月份选择
-const handleMonthChange = async (e: any) => {
-  selectedMonth.value = e.detail.value
-  console.log('选择的月份:', selectedMonth.value)
-  //  根据选择的月份重新获取数据
-  if (managerStore.managerStoreInfo?.storeId && selectedMonth.value) {
-    const currentYear = Number(selectedMonth.value.slice(0, 4))
-    const currentMonth = Number(selectedMonth.value.slice(5, 7))
-    console.log(currentYear, currentMonth)
-    timeActive.value = ''
-    const res = await getTimeRangeReportApi(
-      managerStore.managerStoreInfo?.storeId,
-      timeActive.value,
-      currentYear,
-      currentMonth,
-    )
-    console.log('筛选结果', res)
-    statCards.value = res.data
-  }
+// 明细列表触底加载更多
+const handleCommissionListScrollToLower = () => {
+  console.log('handleCommissionListScrollToLower')
 }
+
+// 页面进入：拉概览与首屏明细
+onLoad(() => {
+  console.log('commission page onLoad')
+  fetchCommissionOverview()
+  fetchCommissionRecordList(listParams.value.pageNum, listParams.value.pageSize)
+})
 </script>
 
 <template>
-  <view class="report-page">
-    <!-- 页面滚动容器 -->
-    <scroll-view
-      class="report-scroll"
-      :scroll-y="true"
-      :style="{ paddingBottom: `calc(24rpx + ${safeAreaInsets?.bottom || 0}px)` }"
-    >
-      <!-- 财务概览 -->
-      <view class="finance-section">
-        <view class="section-title"
-          >财务概览<text style="font-size: 24rpx; color: #cccccc">(开业至今的合计数据)</text></view
-        >
-        <view class="finance-cards">
-          <view class="finance-card service-income">
-            <view class="finance-icon">📱</view>
-            <view class="finance-info">
-              <text class="finance-label">服务收入</text>
-              <text class="finance-value">{{
-                formatAmount(financeFlowData?.totalRevenue ?? 0)
-              }}</text>
-            </view>
-          </view>
-          <view class="finance-card commission-income">
-            <view class="finance-icon">💰</view>
-            <view class="finance-info">
-              <text class="finance-label">佣金收入</text>
-              <text class="finance-value">
-                {{ formatAmount(financeFlowData?.totalCommission ?? 0) }}
-              </text>
-            </view>
-          </view>
-          <view class="finance-card total-income">
-            <view class="finance-icon">📈</view>
-            <view class="finance-info">
-              <text class="finance-label">总收入</text>
-              <text class="finance-value">{{ formatAmount(financeFlowData?.total ?? 0) }}</text>
-            </view>
-          </view>
-          <view class="finance-card transactions">
-            <view class="finance-icon">📋</view>
-            <view class="finance-info">
-              <text class="finance-label">服务笔数</text>
-              <text class="finance-value">{{ financeFlowData?.totalServices }}</text>
-            </view>
-          </view>
+  <view class="page">
+    <view class="summary">
+      <view class="summary__inner">
+        <view class="summary__cell">
+          <text class="summary__label">累计佣金（元）</text>
+          <text class="summary__value">{{ formatAmount(totalCommission) }}</text>
+        </view>
+        <view class="summary__split" />
+        <view class="summary__cell">
+          <text class="summary__label">本月佣金（元）</text>
+          <text class="summary__value">{{ formatAmount(monthCommission) }}</text>
         </view>
       </view>
-      <!-- 时间筛选 -->
-      <view class="filter-bar">
-        <view class="filter-left">
-          <view
-            class="filter-tag"
-            :class="{ active: filter.id === timeActive }"
-            v-for="filter in timeFilters"
-            :key="filter.id"
-            @click="handleTimeFilter(filter.id)"
-          >
-            {{ filter.label }}
+    </view>
+
+    <view class="detail-section">
+      <view class="detail-section__head">
+        <view class="detail-section__mark" />
+        <text class="detail-section__title">佣金明细</text>
+      </view>
+
+      <view class="detail-section__body">
+        <view v-for="item in commissionRecordList" :key="item.id" class="record-card">
+          <image
+            v-if="item.subordinateAvatar"
+            class="record-card__avatar"
+            :src="item.subordinateAvatar"
+            mode="aspectFill"
+          />
+          <view v-else class="record-card__avatar record-card__avatar--placeholder">
+            <text class="record-card__avatar-text">?</text>
           </view>
-        </view>
-        <view class="filter-right">
-          <picker
-            mode="date"
-            fields="month"
-            :value="selectedMonth"
-            @change="handleMonthChange"
-            class="month-picker"
-          >
-            <view class="month-selector">
-              <text class="month-text">{{
-                selectedMonth ? formatMonth(selectedMonth) : '选择月份'
-              }}</text>
-              <text class="month-icon">📅</text>
+          <view class="record-card__main">
+            <view class="record-card__top">
+              <text class="record-card__mobile">
+                {{ displaySubordinateMobile(item.subordinateMobile) }}
+              </text>
+              <text
+                class="record-card__role"
+                :class="isManagerRole(item.subordinateRole) ? 'is-manager' : 'is-user'"
+              >
+                {{ roleDisplay(item.subordinateRole) }}
+              </text>
             </view>
-          </picker>
+            <view class="record-card__mid">
+              <text class="record-card__biz">{{ bizLabelLabel[item.bizLabel] }}</text>
+              <text class="record-card__amount">+¥{{ formatAmount(item.amount) }}</text>
+            </view>
+            <text class="record-card__time">{{ formatTimestamp(item.createdAt, 2) }}</text>
+          </view>
         </view>
       </view>
 
-      <!-- 统计卡片 -->
-      <view class="stat-cards">
-        <view class="stat-card">
-          <!--          <view class="card-header">-->
-          <!--            <text class="card-icon">{{ statCards.icon }}</text>-->
-          <!--            <text class="card-title">{{ statCards.title }}</text>-->
-          <!--          </view>-->
-          <view class="card-content">
-            <view class="stat-row">
-              <text class="stat-label">服务数</text>
-              <text class="stat-value">{{ statCards?.totalServices }}</text>
-            </view>
-            <view class="stat-row">
-              <text class="stat-label">贴膜营收</text>
-              <text class="stat-value">{{ formatAmount(statCards?.totalRevenue ?? 0) }}</text>
-            </view>
-            <view class="stat-row">
-              <text class="stat-label">好友返佣</text>
-              <text class="stat-value">{{ formatAmount(statCards?.totalCommission ?? 0) }}</text>
-            </view>
-            <view class="stat-row">
-              <text class="stat-label">合计收入</text>
-              <text class="stat-value">{{ formatAmount(statCards?.total ?? 0) }}</text>
-            </view>
-          </view>
-        </view>
+      <view v-if="listLoading" class="detail-section__foot">加载中…</view>
+      <view
+        v-else-if="listFinished && commissionRecordList.length > 0"
+        class="detail-section__foot"
+      >
+        没有更多了
       </view>
-    </scroll-view>
+    </view>
   </view>
 </template>
 
 <style scoped lang="scss">
-.report-page {
+.page {
   min-height: 100vh;
-  background-color: $jel-pageBackGroundColor;
-
-  .report-scroll {
-    height: 100vh;
-    padding: 24rpx;
-  }
+  padding: 24rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #f0f0f0 0%, $jel-pageBackGroundColor 220rpx);
 }
 
-// 时间筛选
-.filter-bar {
+.summary {
+  margin-bottom: 28rpx;
+}
+
+.summary__inner {
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  background: linear-gradient(145deg, $jel-brandColor 0%, #e02030 48%, #ff5a67 100%);
+  border-radius: 20rpx;
+  padding: 36rpx 28rpx;
+  box-shadow: 0 12rpx 32rpx rgba(214, 39, 49, 0.28);
+}
+
+.summary__cell {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14rpx;
+}
+
+.summary__label {
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.2;
+}
+
+.summary__value {
+  font-size: 44rpx;
+  font-weight: 700;
+  color: #ffffff;
+  line-height: 1.15;
+  letter-spacing: 0.5rpx;
+}
+
+.summary__split {
+  width: 2rpx;
+  align-self: stretch;
+  margin: 4rpx 0;
+  background: rgba(255, 255, 255, 0.38);
+}
+
+.detail-section {
+  width: 100%;
+}
+
+.detail-section__head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 20rpx;
+  padding: 0 4rpx;
+}
+
+.detail-section__mark {
+  width: 6rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  background: linear-gradient(180deg, $jel-brandColor 0%, #ff6b6b 100%);
+  flex-shrink: 0;
+}
+
+.detail-section__title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: $jel-font-title;
+  line-height: 1.2;
+}
+
+.detail-section__body {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+}
+
+.record-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 20rpx;
+  background: #ffffff;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.06);
+}
+
+.record-card__avatar {
+  width: 88rpx;
+  height: 88rpx;
+  border-radius: 50%;
+  background-color: $jel-border;
+  flex-shrink: 0;
+}
+
+.record-card__avatar--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(214, 39, 49, 0.12) 0%, rgba(255, 71, 87, 0.1) 100%);
+}
+
+.record-card__avatar-text {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: $jel-brandColor;
+  line-height: 1;
+}
+
+.record-card__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.record-card__top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx;
-  background-color: #fff;
-  margin-bottom: 24rpx;
-  border-radius: 16rpx;
-  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
-
-  .filter-left {
-    display: flex;
-    align-items: center;
-    gap: 16rpx;
-  }
-
-  .filter-right {
-    flex: 1;
-    display: flex;
-    justify-content: flex-end;
-
-    .month-picker {
-      width: 100%;
-      max-width: 300rpx;
-    }
-
-    .month-selector {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12rpx 20rpx;
-      border: 1rpx solid #e9ecef;
-      border-radius: 32rpx;
-      background-color: $jel-pageBackGroundColor;
-      transition: all 0.3s;
-      width: 100%;
-
-      &:active {
-        border-color: $jel-brandColor;
-        background-color: #fff;
-      }
-
-      .month-text {
-        font-size: 26rpx;
-        color: $jel-font-dec2;
-        flex: 1;
-        text-align: center;
-      }
-
-      .month-icon {
-        font-size: 24rpx;
-        color: $jel-font-dec;
-        flex-shrink: 0;
-      }
-    }
-  }
-
-  .filter-tag {
-    padding: 12rpx 24rpx;
-    border-radius: 32rpx;
-    font-size: 28rpx;
-    color: $jel-font-dec2;
-    background-color: $jel-pageBackGroundColor;
-    transition: all 0.3s;
-
-    &.active {
-      color: #fff;
-      background-color: $jel-brandColor;
-    }
-  }
-}
-
-// 统计卡片
-.stat-cards {
-  display: flex;
-  flex-direction: column;
   gap: 16rpx;
-  margin-bottom: 24rpx;
-
-  .stat-card {
-    background-color: #fff;
-    border-radius: 16rpx;
-    padding: 24rpx;
-    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
-    border-left: 4rpx solid transparent;
-
-    &:nth-child(1) {
-      border-left-color: #ff9a56;
-    }
-
-    &:nth-child(2) {
-      border-left-color: #ff6b6b;
-    }
-
-    &:nth-child(3) {
-      border-left-color: $jel-brandColor;
-    }
-
-    .card-header {
-      display: flex;
-      align-items: center;
-      gap: 12rpx;
-      margin-bottom: 16rpx;
-
-      .card-icon {
-        font-size: 32rpx;
-      }
-
-      .card-title {
-        font-size: 30rpx;
-        font-weight: 600;
-        color: $jel-font-title;
-      }
-    }
-
-    .card-content {
-      .stat-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        margin-bottom: 12rpx;
-
-        &:last-child {
-          margin-bottom: 0;
-        }
-
-        .stat-label {
-          font-size: 28rpx;
-          color: $jel-font-dec2;
-        }
-
-        .stat-value {
-          font-size: 28rpx;
-          font-weight: 600;
-          color: $jel-font-title;
-        }
-      }
-    }
-  }
+  margin-bottom: 14rpx;
 }
 
-// 财务概览
-.finance-section {
-  margin-bottom: 24rpx;
+.record-card__mobile {
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $jel-font-title;
+}
 
-  .section-title {
-    font-size: 32rpx;
-    font-weight: 600;
-    color: $jel-font-title;
-    margin-bottom: 20rpx;
-  }
+.record-card__role {
+  flex-shrink: 0;
+  font-size: 22rpx;
+  padding: 6rpx 14rpx;
+  border-radius: 8rpx;
+  line-height: 1.2;
+}
 
-  .finance-cards {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16rpx;
+.record-card__role.is-user {
+  color: #2d7dd2;
+  background: rgba(45, 125, 210, 0.1);
+}
 
-    .finance-card {
-      background-color: #fff;
-      border-radius: 16rpx;
-      padding: 24rpx;
-      display: flex;
-      align-items: center;
-      gap: 16rpx;
-      box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+.record-card__role.is-manager {
+  color: $jel-brandColor;
+  background: rgba(214, 39, 49, 0.08);
+}
 
-      &.service-income {
-        border-left: 4rpx solid #28a745;
-      }
+.record-card__mid {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 10rpx;
+}
 
-      &.commission-income {
-        border-left: 4rpx solid $jel-brandColor;
-      }
+.record-card__biz {
+  font-size: 26rpx;
+  color: $jel-font-dec2;
+}
 
-      &.total-income {
-        border-left: 4rpx solid #007bff;
-      }
+.record-card__amount {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: $jel-brandColor;
+  font-variant-numeric: tabular-nums;
+}
 
-      &.transactions {
-        border-left: 4rpx solid #6f42c1;
-      }
+.record-card__time {
+  font-size: 24rpx;
+  color: $jel-font-dec;
+}
 
-      .finance-icon {
-        font-size: 36rpx;
-        line-height: 1;
-        flex-shrink: 0;
-      }
-
-      .finance-info {
-        flex: 1;
-
-        .finance-label {
-          display: block;
-          font-size: 26rpx;
-          color: $jel-font-dec2;
-          margin-bottom: 4rpx;
-        }
-
-        .finance-value {
-          display: block;
-          font-size: 28rpx;
-          font-weight: 600;
-          color: $jel-font-title;
-        }
-      }
-    }
-  }
+.detail-section__foot {
+  text-align: center;
+  font-size: 24rpx;
+  color: $jel-font-dec;
+  padding: 16rpx 0 8rpx;
 }
 </style>
