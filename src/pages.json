@@ -283,6 +283,13 @@
             "navigationBarTitleText": "佣金管理",
             "enablePullDownRefresh": false
           }
+        },
+        {
+          "path": "storeWallet/storeWallet",
+          "style": {
+            "navigationBarTitleText": "钱包管理",
+            "enablePullDownRefresh": true
+          }
         }
       ]
     }

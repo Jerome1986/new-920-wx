@@ -13,7 +13,7 @@ onHide(() => {
 </script>
 
 <style lang="scss">
-@import '@/styles/base.scss';
+// base：vite scss.additionalData 已 @use "styles/base"，不再重复 @import
 @import '@/styles/iconfonts/iconfont.css';
 @import '@tuniao/tn-style/dist/uniapp/index.css';
 

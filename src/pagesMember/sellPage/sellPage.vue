@@ -52,6 +52,8 @@ const handleSearch = async () => {
     cateList.value[activeCateIndex.value].id,
   )
   console.log(result)
+  console.log('activeModel', selectedModel.value)
+
   inventoryList.value = result.data
 }
 
@@ -242,13 +244,14 @@ const handleSearchLocal = async (e: any) => {
 const handleConfirmOrder = async () => {
   if (!currentProduct.value) return
   console.log('product', currentProduct.value)
+  console.log('currentPrice', orderPrice.value)
 
   // 校验会员手机号
   if (isMember.value && !memberPhone.value) {
     await uni.showToast({ title: '请输入会员手机号', icon: 'none' })
     return
   }
-  const productId = currentProduct.value.id
+  const productId = currentProduct.value.productId
 
   // 如果有会员免费次数---直接跳转会员免费订单页面
   if (memberFreeCount.value > 0 && managerStore.managerStoreInfo?.id && productId) {
@@ -257,7 +260,25 @@ const handleConfirmOrder = async () => {
 
   // 没有免费次数，正常支付的情况
   if (managerStore.managerStoreInfo?.id && productId) {
-    // TODO: 支付流程
+    // TODO: 创建订单跳转订单详情
+    const result = await quickOrderApi(
+      managerStore.managerStoreInfo.id,
+      productId,
+      currentProduct.value.productName,
+      currentProduct.value.cover,
+      currentProduct.value.skuId,
+      currentProduct.value.skuNo,
+      currentProduct.value.salePrice,
+      orderPrice.value,
+    )
+    console.log(result)
+
+    if (result.code === 200) {
+      orderPopupRef.value?.close()
+      await uni.navigateTo({
+        url: `/pagesMember/quickOrder/quickOrder?code_url=${result.data.codeUrl}&out_trade_no=${result.data.outTradeNo}`,
+      })
+    }
   } else {
     await uni.showToast({ title: '参数错误', icon: 'none' })
   }

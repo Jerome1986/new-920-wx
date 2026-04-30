@@ -20,9 +20,9 @@ export type WechatPayParams = {
 // 扫码支付下单
 export type NativeResponse = {
   /** 支付二维码链接 */
-  code_url: string
+  codeUrl: string
   /** 业务订单号 */
-  out_trade_no: string
+  outTradeNo: string
 }
 
 // 退款金额信息

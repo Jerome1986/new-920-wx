@@ -19,6 +19,8 @@ export default defineConfig({
   css: {
     preprocessorOptions: {
       scss: {
+        // 第三方/全局：global-builtin、new-global、legacy-js-api（见注释）；[import] 因业务与 tuniao 仍大量用 @import
+        silenceDeprecations: ['global-builtin', 'new-global', 'legacy-js-api', 'import'],
         additionalData: `@use "styles/base" as *;`,
         includePaths: [resolve(__dirname, 'src')],
       },

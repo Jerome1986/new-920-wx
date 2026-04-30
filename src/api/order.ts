@@ -1,6 +1,7 @@
 import { request } from '@/utils/http.ts'
 import type {
   freeOrderStatus,
+  offlineOrderResult,
   OrderItem,
   OrderPageResult,
   OrderStatus,
@@ -219,16 +220,27 @@ export const vipOrderGetApi = (userId: string, status: string) => {
  */
 export const quickOrderApi = (
   storeId: string,
-  productId: string,
-  amount: number,
-  paymentMethod: string,
-  remark: string,
-  memberPhone: string,
+  productId: number,
+  productName: string,
+  productCover: string,
+  skuId: number,
+  skuNo: string,
+  originalPrice: string,
+  actualPayment: string,
 ) => {
   return request<NativeResponse>({
     method: 'POST',
-    url: '/quickSell/addOrder',
-    data: { storeId, productId, amount, paymentMethod, remark, memberPhone },
+    url: '/store-service-order/add',
+    data: {
+      storeId,
+      productId,
+      productName,
+      productCover,
+      skuId,
+      skuNo,
+      originalPrice,
+      actualPayment,
+    },
   })
 }
 
@@ -258,14 +270,12 @@ export const giftOrderApi = (
 
 /**
  * 获取线下贴膜订单详情
- * @param out_trade_no - 订单号
- * @template T - 状态类型：OrderStatus（支付订单）或 freeOrderStatus（免费订单）
+ * @param outTradeNo - 订单号
  */
-export const offlineOrderGetApi = <T = OrderStatus>(out_trade_no: string) => {
-  return request<QuickOrderResult<T>>({
+export const offlineOrderGetApi = (outTradeNo: string) => {
+  return request<offlineOrderResult>({
     method: 'GET',
-    url: '/order/offlineOrder',
-    data: { out_trade_no },
+    url: `/store-service-order/detail/${outTradeNo}`,
   })
 }
 
@@ -285,34 +295,22 @@ export const checkVipApi = (memberPhone: string) => {
  * 线下贴膜会员免费订单服务完成
  * @param out_trade_no - 订单号
  */
-export const completeGiftOrderApi = (out_trade_no: string) => {
+export const completeGiftOrderApi = (outTradeNo: string) => {
   return request<QuickOrderGiftVipResult>({
     method: 'POST',
     url: '/quickSell/completeGiftOrderApi',
-    data: { out_trade_no },
+    data: { outTradeNo },
   })
 }
 
 /**
  * 取消线下贴膜的支付订单
- * @param out_trade_no - 订单号
+ * @param outTradeNo - 订单号
  */
-export const cancelOfflineOrderApi = (out_trade_no: string) => {
+export const updateOfflineOrderApi = (outTradeNo: string, status: string) => {
   return request<updateResult>({
-    method: 'POST',
-    url: '/quickSell/cancel',
-    data: { out_trade_no },
-  })
-}
-
-/**
- * 线下贴膜订单服务完成
- * @param out_trade_no - 订单号
- */
-export const completeOfflineOrderApi = (out_trade_no: string) => {
-  return request<updateResult>({
-    method: 'POST',
-    url: '/quickSell/completed',
-    data: { out_trade_no },
+    method: 'PATCH' as any,
+    url: `/store-service-order/update/${outTradeNo}`,
+    data: { status },
   })
 }

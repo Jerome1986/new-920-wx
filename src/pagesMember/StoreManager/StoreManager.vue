@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { navList } from '@/pagesMember/StoreManager/config.ts'
 import { useManagerStore } from '@/stores/modules/manager.ts'
 import { onLoad } from '@dcloudio/uni-app'
@@ -6,12 +7,23 @@ import { onLoad } from '@dcloudio/uni-app'
 // 门店名称（可以从store中获取）
 const managerStore = useManagerStore()
 
+// App.vue 中 page 为 overflow:hidden，需用 scroll-view + 固定高度才能滚动
+const scrollHeight = ref(0)
+const initScrollHeight = () => {
+  scrollHeight.value = uni.getSystemInfoSync().windowHeight
+}
+initScrollHeight()
+
 // 处理导航跳转
 const handleNavigation = (path: string) => {
-  console.log(path)
+  const url = path.startsWith('/') ? path : `/${path}`
   uni.navigateTo({
-    url: path,
-    fail: () => {
+    url,
+    success: () => {
+      console.log('navigateTo', url)
+    },
+    fail: (err) => {
+      console.error('navigateTo fail', url, err)
       uni.showToast({
         title: '页面开发中',
         icon: 'none',
@@ -24,36 +36,49 @@ onLoad(() => managerStore.managerStoreGet())
 </script>
 
 <template>
-  <view class="container">
-    <!-- 顶部信息卡片 -->
-    <view class="header-card">
-      <view class="store-info">
-        <text class="store-name">{{ managerStore.managerStoreInfo?.name }}</text>
-        <text class="store-desc">门店管理中心</text>
+  <scroll-view
+    class="page-scroll"
+    :scroll-y="true"
+    :enhanced="true"
+    :show-scrollbar="false"
+    :style="{ height: scrollHeight + 'px' }"
+  >
+    <view class="container" :style="{ minHeight: scrollHeight + 'px' }">
+      <!-- 顶部信息卡片 -->
+      <view class="header-card">
+        <view class="store-info">
+          <text class="store-name">{{ managerStore.managerStoreInfo?.name }}</text>
+          <text class="store-desc">门店管理中心</text>
+        </view>
       </view>
-    </view>
 
-    <!-- 功能导航网格 -->
-    <view class="nav-grid">
-      <view
-        class="nav-item"
-        v-for="item in navList"
-        :key="item.id"
-        @click="handleNavigation(item.path)"
-      >
-        <view class="nav-icon">{{ item.icon }}</view>
-        <text class="nav-title">{{ item.title }}</text>
-        <text class="nav-desc">{{ item.desc }}</text>
+      <!-- 功能导航网格 -->
+      <view class="nav-grid">
+        <view
+          class="nav-item"
+          v-for="item in navList"
+          :key="item.id"
+          @click.stop="handleNavigation(item.path)"
+        >
+          <view class="nav-icon">{{ item.icon }}</view>
+          <text class="nav-title">{{ item.title }}</text>
+          <text class="nav-desc">{{ item.desc }}</text>
+        </view>
       </view>
     </view>
-  </view>
+  </scroll-view>
 </template>
 
 <style scoped lang="scss">
+.page-scroll {
+  width: 100%;
+  box-sizing: border-box;
+}
+
 .container {
-  min-height: 100vh;
   background: linear-gradient(180deg, #f8f8f8 0%, #ffffff 100%);
   padding: 32rpx;
+  padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
 

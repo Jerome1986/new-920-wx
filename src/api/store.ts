@@ -2,6 +2,7 @@ import { request } from '@/utils/http.ts'
 import type { StoreInventoryItem, StoreInventoryListResponse } from '@/types/StoreInventory'
 import type { StoreDetail } from '@/types/ManagerStore'
 import type { CommissionRecordPage } from '@/types/CommissionRecord'
+import type { StoreMemberPage } from '@/types/StoreMember'
 
 /**
  * 根据门店ID 和 子分类ID 获取门店的库存列表
@@ -95,9 +96,10 @@ export const findStoreCommissionRecord = (userId: string, pageNum: number, pageS
  * 获取门店会员
  * @param inviterId
  */
-export const findStoreVipApi = (inviterId: string) => {
-  return request({
+export const findStoreVipApi = (inviterId: string, pageNum: number, pageSize: number) => {
+  return request<StoreMemberPage>({
     method: 'GET',
     url: `/store/vip/${inviterId}`,
+    data: { pageNum, pageSize },
   })
 }

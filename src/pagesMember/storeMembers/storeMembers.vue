@@ -4,29 +4,10 @@ import { onLoad } from '@dcloudio/uni-app'
 import { useManagerStore } from '@/stores/modules/manager.ts'
 import { maskMiddle } from '@/utils/maskMiddle.ts'
 import type { StoreMemberItem } from '@/types/StoreMember'
+import { findStoreVipApi } from '@/api/store'
+import { formatTimestamp } from '@/utils/formatTimestamp'
 
 const managerStore = useManagerStore()
-
-// 模拟数据（接口接入后删除）
-const MOCK_MEMBERS: StoreMemberItem[] = [
-  {
-    id: 'mock-1',
-    // 微信默认头像示例
-    avatarUrl:
-      'https://mmbiz.qpic.cn/mmbiz/icTdbqWNOwNRna42FI242Lcia07jQodd2FJGIYQfG0LAJGFxM4FbnQP6yfMxBgJ0F3YRqJRJGYnHY84GzVQzDA/0',
-    mobile: '13800138001',
-    nickname: '张三',
-    totalOrderCount: 12,
-    expiresAt: new Date('2026-12-31').getTime(),
-  },
-  {
-    id: 'mock-2',
-    mobile: '15912345678',
-    nickname: '李四',
-    totalOrderCount: 3,
-    expiresAt: null,
-  },
-]
 
 // 列表与分页
 const memberList = ref<StoreMemberItem[]>([])
@@ -41,13 +22,19 @@ const params = ref({
 const scrollHeight = ref(0)
 
 // 拉取门店会员列表；TODO: 接入后端接口，传入 storeId、分页参数
-const fetchMemberList = async (_storeId: string) => {
+const fetchMemberList = async (managerId: string) => {
   if (finish.value || loading.value) return
   loading.value = true
   try {
-    // const res = await storeMemberListApi(_storeId, params.value)
-    memberList.value = [...MOCK_MEMBERS]
-    finish.value = true
+    const res = await findStoreVipApi(managerId, params.value.pageNum, params.value.pageSize)
+    console.log(res)
+    memberList.value.push(...res.data.list)
+
+    if (params.value.pageNum < res.data.totalPage) {
+      params.value.pageNum++
+    } else {
+      finish.value = true
+    }
   } finally {
     loading.value = false
   }
@@ -57,7 +44,7 @@ const fetchMemberList = async (_storeId: string) => {
 const handleScrolltolower = async () => {
   const storeId = managerStore.managerStoreInfo?.id
   if (!storeId || finish.value || loading.value) return
-  await fetchMemberList(storeId)
+  await fetchMemberList(managerStore.managerStoreInfo?.managerId as string)
 }
 
 const displayMobile = (mobile: string) => maskMiddle(mobile)
@@ -75,9 +62,9 @@ initScrollHeight()
 
 onLoad(async () => {
   await managerStore.managerStoreGet()
-  const storeId = managerStore.managerStoreInfo?.id
-  if (storeId) {
-    await fetchMemberList(storeId)
+  const managerId = managerStore.managerStoreInfo?.managerId
+  if (managerId) {
+    await fetchMemberList(managerId)
   }
 })
 </script>
@@ -119,10 +106,11 @@ onLoad(async () => {
         <view class="member-card__main">
           <view class="member-card__row member-card__row--top">
             <text class="member-card__name">{{ item.nickname }}</text>
-            <text class="member-card__expires">{{ item.expiresAt }}</text>
+            <text class="member-card__expires">{{ formatTimestamp(item.vipEndTime, 2) }}</text>
           </view>
           <text class="member-card__mobile">{{ displayMobile(item.mobile) }}</text>
           <view class="member-card__stats">
+            <!-- TODO 需要后端查询贴膜订单的总次数 -->
             <text class="member-card__stat member-card__stat--left"
               >消费 {{ item.totalOrderCount }} 次</text
             >

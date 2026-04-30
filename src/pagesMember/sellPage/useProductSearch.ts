@@ -59,10 +59,11 @@ export function isMatch(searchKey: string, targetName: string): boolean {
   if (isSearchIphone && isTargetIphone) return true
 
   // 华为 ↔ huawei ↔ hw
-  const huaweiWords = ['huawei', '华为', 'hw']
-  const isSearchHuawei = huaweiWords.some((w) => searchKey.includes(normalize(w)))
-  const isTargetHuawei = huaweiWords.some((w) => targetKey.includes(normalize(w)))
-  if (isSearchHuawei && isTargetHuawei) return true
+  // const huaweiWords = ['huawei', '华为', 'hw']
+  // const isSearchHuawei = huaweiWords.some((w) => searchKey.includes(normalize(w)))
+  // const isTargetHuawei = huaweiWords.some((w) => targetKey.includes(normalize(w)))
+
+  // if (isSearchHuawei && isTargetHuawei) return true
 
   return false
 }

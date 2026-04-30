@@ -215,34 +215,44 @@ export type VipOrderStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'REFUNDING'
 
 // 线下贴膜订单
 export interface offlineOrderResult {
-  /** 唯一标识ID */
-  _id: string
-  /** 门店ID */
-  storeId: string
-  /** 会员手机号码 */
-  memberPhone: string
-  /** 业务订单号 */
-  out_trade_no: string
-  /** 商品名称 */
-  productName: string
-  /** 商品封面图 */
-  productCover: string
-  /** 商品货号 */
-  productSkuNo: string
-  /** 商品备注 */
-  productDec: string
-  /** 包含的手机范围 */
-  models: string[]
-  /** 订单金额 */
-  amount: number
+  /** 实际支付金额 */
+  actualPayment: string
+  /** 取消时间 */
+  cancelledAt: string | null
+  /** 完成时间 */
+  completedAt: string | null
+  /** 创建时间 */
+  createdAt: string
+  /** 订单ID */
+  id: string
+  /** 用户openid */
+  openid: string | null
+  /** 原价 */
+  originalPrice: string
+  /** 商户订单号 */
+  outTradeNo: string
+  /** 支付时间 */
+  paidAt: string | null
   /** 支付方式 */
   paymentMethod: string
-  /** 订单备注 */
+  /** 商品封面图 */
+  productCover: string
+  /** 商品ID */
+  productId: number
+  /** 商品名称 */
+  productName: string
+  /** 备注 */
   remark: string
-  /** 创建时间 */
-  createdAt: Date
-  /** 更新时间 */
-  updatedAt: Date
+  /** 规格ID */
+  skuId: number
+  /** 规格编号 */
+  skuNo: string
+  /** 订单状态 */
+  status: string
+  /** 门店ID */
+  storeId: string
+  /** 用户ID */
+  userId: string | null
 }
 
 // 免费贴膜服务订单状态类型

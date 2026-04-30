@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { onLoad, onUnload } from '@dcloudio/uni-app'
-import { cancelOfflineOrderApi, completeOfflineOrderApi, offlineOrderGetApi } from '@/api/order.ts'
-import type { OrderStatus, QuickOrderResult } from '@/types/Order'
+import { updateOfflineOrderApi, offlineOrderGetApi } from '@/api/order.ts'
 import { formatTimestamp } from '@/utils/formatTimestamp.ts'
+import type { offlineOrderResult } from '@/types/Order'
 
 // 订单信息
-const orderInfo = ref<QuickOrderResult<OrderStatus>>()
+const orderInfo = ref<offlineOrderResult>()
 
 // 二维码 base64 图片
 const qrCodeUrl = ref('')
@@ -21,10 +21,12 @@ const handleCancelOrder = () => {
     content: '确定要取消该订单吗？',
     confirmColor: '#d62731',
     success: async (res) => {
-      if (res.confirm && orderInfo.value?.out_trade_no) {
+      if (res.confirm && orderInfo.value?.outTradeNo) {
         // 调用取消订单接口
-        console.log('取消订单:', orderInfo.value?.out_trade_no)
-        const res = await cancelOfflineOrderApi(orderInfo.value?.out_trade_no)
+        console.log('取消订单:', orderInfo.value?.outTradeNo)
+        const res = await updateOfflineOrderApi(orderInfo.value?.outTradeNo, 'CANCELLED')
+        console.log('取消', res)
+
         if (res.code === 200) {
           await uni.showToast({
             title: '订单已取消',
@@ -40,8 +42,8 @@ const handleCancelOrder = () => {
 }
 
 // 根据传过来的订单号获取线下贴膜订单
-const offlineOrderGet = async (out_trade_no: string) => {
-  const res = await offlineOrderGetApi<OrderStatus>(out_trade_no)
+const offlineOrderGet = async (outTradeNo: string) => {
+  const res = await offlineOrderGetApi(outTradeNo)
   orderInfo.value = res.data
   console.log('订单', res)
 }
@@ -53,10 +55,10 @@ const handleCompletedOrder = () => {
     content: '确定服务已完成吗？',
     confirmColor: '#d62731',
     success: async (res) => {
-      if (res.confirm && orderInfo.value?.out_trade_no) {
+      if (res.confirm && orderInfo.value?.outTradeNo) {
         // 调用取消订单接口
-        console.log('完成订单:', orderInfo.value?.out_trade_no)
-        const res = await completeOfflineOrderApi(orderInfo.value?.out_trade_no)
+        console.log('完成订单:', orderInfo.value?.outTradeNo)
+        const res = await updateOfflineOrderApi(orderInfo.value?.outTradeNo, 'COMPLETED')
         if (res.code === 200) {
           await uni.showToast({
             title: '订单已完成',
@@ -86,7 +88,7 @@ onLoad((query?: AnyObject) => {
 
     // 设置轮询
     timer = setInterval(async () => {
-      const res = await offlineOrderGetApi<OrderStatus>(query.out_trade_no)
+      const res = await offlineOrderGetApi(query.out_trade_no)
       console.log('轮询结果', res.data.status)
       if (res.data.status === 'PAID' || res.data.status === 'CANCELLED') {
         clearInterval(timer!)
@@ -116,7 +118,7 @@ onUnload(() => {
       <view class="status-info">
         <text class="status-text" v-if="!isPaid">等待客户付款</text>
         <text class="status-text status-success" v-else>付款成功</text>
-        <text class="order-no">订单号：{{ orderInfo?.out_trade_no }}</text>
+        <text class="order-no">订单号：{{ orderInfo?.outTradeNo }}</text>
       </view>
     </view>
 
@@ -132,11 +134,13 @@ onUnload(() => {
       <view class="product-info" v-if="orderInfo">
         <image class="product-cover" :src="orderInfo.productCover" mode="aspectFill" />
         <view class="product-detail">
-          <text class="product-name">{{ orderInfo.productSkuNo }}{{ orderInfo?.productName }}</text>
-          <text class="product-sku">{{ orderInfo?.productDec }}</text>
-          <text class="product-model">适配：{{ orderInfo.models?.[0] }}</text>
+          <text class="product-name">{{ orderInfo.skuNo }}{{ orderInfo?.productName }}</text>
+          <text class="product-sku">{{ orderInfo?.remark }}</text>
+          <!-- <text class="product-model">适配：{{ orderInfo.models?.[0] }}</text> -->
           <view class="price-row">
-            <text class="current-price">¥{{ ((orderInfo?.amount ?? 0) / 100).toFixed(2) }}</text>
+            <text class="current-price"
+              >¥{{ Number(orderInfo?.actualPayment ?? 0).toFixed(2) }}</text
+            >
           </view>
         </view>
       </view>
@@ -163,7 +167,9 @@ onUnload(() => {
         <view class="amount-info">
           <text class="amount-label">应付金额</text>
           <view class="amount-row">
-            <text class="amount-value">¥{{ ((orderInfo?.amount ?? 0) / 100).toFixed(2) }}</text>
+            <text class="amount-value"
+              >¥{{ Number(orderInfo?.actualPayment ?? 0).toFixed(2) }}</text
+            >
           </view>
         </view>
         <text class="scan-tip">请客户使用微信扫码支付</text>
@@ -173,7 +179,7 @@ onUnload(() => {
       <view class="paid-content" v-else>
         <image class="paid-icon" src="/static/images/paidSuccess.png" mode="aspectFit" />
         <text class="paid-title">付款成功</text>
-        <text class="paid-amount">¥{{ ((orderInfo?.amount ?? 0) / 100).toFixed(2) }}</text>
+        <text class="paid-amount">¥{{ Number(orderInfo?.actualPayment ?? 0).toFixed(2) }}</text>
         <text class="paid-tip">客户已完成支付</text>
       </view>
     </view>
