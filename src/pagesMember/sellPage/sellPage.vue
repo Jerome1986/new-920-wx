@@ -217,6 +217,7 @@ const handlePriceInput = (e: any) => {
 // 获取本机设备
 const getPhoneModel = async () => {
   selectedModel.value = uni.getSystemInfoSync().model
+  console.log('设备', uni.getSystemInfoSync())
 
   const res = await deviceFindPhoneNameApi(selectedModel.value)
 
@@ -257,6 +258,7 @@ const handleConfirmOrder = async () => {
   if (memberFreeCount.value > 0 && managerStore.managerStoreInfo?.id && productId) {
     // TODO: 跳转会员免费订单
   }
+  console.log(managerStore.managerStoreInfo, productId)
 
   // 没有免费次数，正常支付的情况
   if (managerStore.managerStoreInfo?.id && productId) {

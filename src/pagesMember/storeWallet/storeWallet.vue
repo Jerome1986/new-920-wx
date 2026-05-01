@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { onLoad, onPullDownRefresh } from '@dcloudio/uni-app'
+import { computed, ref } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import { formatAmount, formatTimestamp } from '@/utils/formatTimestamp'
+import { walletTransactionByUser } from '@/api/wallet'
+import { useMemberStore } from '@/stores'
 import type {
   UserWallet,
   WalletBizType,
@@ -10,45 +12,19 @@ import type {
   WalletTransactionType,
 } from '@/types/Wallet'
 
-// —— 模拟数据（2 条流水 + 1 组钱包，用于看版式） ——
-const mockWallet: UserWallet = {
-  userId: 'mock-manager-01',
-  balance: '3580.50',
-  availableBalance: '3000.00',
-  frozenBalance: '580.50',
-}
+const userStore = useMemberStore()
 
-const mockTransactionList: WalletTransaction[] = [
-  {
-    id: 1,
-    userId: 'mock-manager-01',
-    type: 'IN',
-    bizType: 'COMMISSION',
-    amount: '328.00',
-    balanceAfter: '3580.50',
-    relatedId: 9001,
-    remark: '线下贴膜订单佣金',
-    createdAt: '2026-04-25T10:32:00.000Z',
-  },
-  {
-    id: 2,
-    userId: 'mock-manager-01',
-    type: 'OUT',
-    bizType: 'WITHDRAW',
-    amount: '500.00',
-    balanceAfter: '3080.50',
-    relatedId: 7001,
-    remark: '提现至微信零钱',
-    createdAt: '2026-04-24T15:20:00.000Z',
-  },
-]
+const wallet = ref<UserWallet>({
+  userId: '',
+  balance: '0',
+  availableBalance: '0',
+  frozenBalance: '0',
+})
 
-// —— 状态（接接口后可改为空初始值，此处绑定模拟数据以展示） ——
-const wallet = ref<UserWallet>({ ...mockWallet })
-const transactionList = ref<WalletTransaction[]>([...mockTransactionList])
+const transactionList = ref<WalletTransaction[]>([])
 const listLoading = ref(false)
-// 接分页后由接口态控制；此处为 true 便于预览底部「没有更多了」
-const listFinished = ref(true)
+const listFinished = ref(false)
+const listParams = ref({ pageNum: 1, pageSize: 20 })
 const activeFilterTab = ref<WalletFilterTab>('ALL')
 
 const typeLabel: Record<WalletTransactionType, string> = {
@@ -66,42 +42,117 @@ const filterTabOptions: { key: WalletFilterTab; name: string }[] = [
   { key: 'ALL', name: '全部' },
   { key: 'IN', name: '进账' },
   { key: 'OUT', name: '出账' },
-  { key: 'WITHDRAW', name: '提现' },
 ]
 
-// 展示用：进账类业务（用于标签颜色等，可后续接筛选）
+/** 当前 Tab 下的展示列表（提现等业务类型仍属 OUT，归在「出账」里） */
+const filteredTransactionList = computed(() => {
+  const tab = activeFilterTab.value
+  const list = transactionList.value
+  if (tab === 'ALL') return list
+  if (tab === 'IN') return list.filter((t) => t.type === 'IN')
+  return list.filter((t) => t.type === 'OUT')
+})
+
 const isIncome = (t: WalletTransaction) => t.type === 'IN'
 
-// —— 滚动区高度（与项目其它页一致） ——
-const scrollHeight = ref(0)
-const initScrollHeight = () => {
-  scrollHeight.value = uni.getSystemInfoSync().windowHeight
-}
-initScrollHeight()
+/** 主标题：接口 remark 为主，空时退回业务类型文案 */
+const txTitle = (row: WalletTransaction) =>
+  (row.remark && row.remark.trim()) || bizTypeLabel[row.bizType]
 
 /** 拉取钱包余额 */
 const loadWallet = async () => {
   console.log('loadWallet')
 }
 
-/** 拉取流水列表 */
-const loadTransactionList = async () => {
-  console.log('loadTransactionList', activeFilterTab.value)
+/** 解析流水接口 data：纯数组，或分页对象含 list */
+const parseWalletTxResponse = (
+  data: unknown,
+): { list: WalletTransaction[]; totalPage: number; currentPage: number; isBareArray: boolean } => {
+  if (data == null) {
+    return { list: [], totalPage: 1, currentPage: 1, isBareArray: false }
+  }
+  if (Array.isArray(data)) {
+    return { list: data as WalletTransaction[], totalPage: 1, currentPage: 1, isBareArray: true }
+  }
+  if (
+    typeof data === 'object' &&
+    'list' in data &&
+    Array.isArray((data as { list: unknown }).list)
+  ) {
+    const d = data as Record<string, unknown>
+    const list = d.list as WalletTransaction[]
+    const totalPage = Math.max(1, Number(d.totalPage) || 1)
+    const currentPage = Math.max(1, Number(d.pageNum ?? d.currentPage) || 1)
+    return { list, totalPage, currentPage, isBareArray: false }
+  }
+  return { list: [], totalPage: 1, currentPage: 1, isBareArray: false }
+}
+
+/**
+ * 拉取流水列表
+ * @param reset true 重置分页并从第一页拉取；false 触底加载下一页
+ */
+const loadTransactionList = async (reset = false) => {
+  const userId = userStore.profile?.id
+  if (!userId) {
+    transactionList.value = []
+    listFinished.value = true
+    return
+  }
+  if (listLoading.value) return
+  if (!reset && listFinished.value) return
+  if (!reset && transactionList.value.length === 0) return
+
+  if (reset) {
+    listParams.value.pageNum = 1
+    transactionList.value = []
+    listFinished.value = false
+  }
+
+  const { pageNum, pageSize } = listParams.value
+  listLoading.value = true
+  try {
+    const res = await walletTransactionByUser(userId, { pageNum, pageSize })
+    if (res.code === 200) {
+      const { list, totalPage, currentPage, isBareArray } = parseWalletTxResponse(res.data)
+      if (reset) {
+        transactionList.value = list
+      } else {
+        transactionList.value = [...transactionList.value, ...list]
+      }
+
+      const raw =
+        res.data && typeof res.data === 'object' ? (res.data as Record<string, unknown>) : null
+      const serverTotalPage = raw != null ? Number(raw.totalPage) : NaN
+
+      if (isBareArray) {
+        listFinished.value = true
+      } else if (Number.isFinite(serverTotalPage) && serverTotalPage >= 1) {
+        listFinished.value = currentPage >= serverTotalPage
+      } else {
+        listFinished.value = list.length < pageSize
+      }
+
+      if (!listFinished.value) {
+        listParams.value.pageNum = pageNum + 1
+      }
+    } else {
+      if (reset) transactionList.value = []
+      listFinished.value = true
+    }
+  } catch {
+    if (reset) transactionList.value = []
+    listFinished.value = true
+  } finally {
+    listLoading.value = false
+  }
 }
 
 /** 进入页 */
 const onPageLoad = () => {
   console.log('storeWallet onPageLoad')
   void loadWallet()
-  void loadTransactionList()
-}
-
-/** 下拉刷新 */
-const onPagePullDownRefresh = async () => {
-  console.log('onPagePullDownRefresh')
-  await loadWallet()
-  await loadTransactionList()
-  uni.stopPullDownRefresh()
+  void loadTransactionList(true)
 }
 
 /** 申请提现 */
@@ -113,7 +164,6 @@ const handleApplyWithdraw = () => {
 const handleFilterTabChange = (tab: WalletFilterTab) => {
   activeFilterTab.value = tab
   console.log('handleFilterTabChange', tab)
-  void loadTransactionList()
 }
 
 /** 单条流水点击 */
@@ -123,125 +173,137 @@ const handleTransactionItemClick = (row: WalletTransaction) => {
 
 /** 列表触底加载更多 */
 const handleTransactionScrollToLower = () => {
-  console.log('handleTransactionScrollToLower')
+  void loadTransactionList(false)
 }
 
 onLoad(() => {
   onPageLoad()
 })
-
-onPullDownRefresh(() => {
-  void onPagePullDownRefresh()
-})
 </script>
 
 <template>
-  <scroll-view
-    class="page-scroll"
-    :scroll-y="true"
-    :enhanced="true"
-    :show-scrollbar="false"
-    :style="{ height: scrollHeight + 'px' }"
-    @scrolltolower="handleTransactionScrollToLower"
-  >
-    <view class="page">
-      <!-- 余额概览 -->
-      <view class="summary">
-        <view class="summary__main">
-          <text class="summary__label">总余额（元）</text>
-          <text class="summary__balance">¥{{ formatAmount(wallet.balance) }}</text>
+  <view class="page">
+    <!-- 余额概览 -->
+    <view class="summary">
+      <view class="summary__main">
+        <text class="summary__label">总余额（元）</text>
+        <text class="summary__balance">¥{{ formatAmount(wallet.balance) }}</text>
+      </view>
+      <view class="summary__sub">
+        <view class="summary__cell">
+          <text class="summary__sub-label">可用余额</text>
+          <text class="summary__sub-value">¥{{ formatAmount(wallet.availableBalance) }}</text>
         </view>
-        <view class="summary__sub">
-          <view class="summary__cell">
-            <text class="summary__sub-label">可用余额</text>
-            <text class="summary__sub-value">¥{{ formatAmount(wallet.availableBalance) }}</text>
-          </view>
-          <view class="summary__sub-split" />
-          <view class="summary__cell">
-            <text class="summary__sub-label">冻结金额</text>
-            <text class="summary__sub-value is-muted">
-              ¥{{ formatAmount(wallet.frozenBalance) }}
-            </text>
-          </view>
+        <view class="summary__sub-split" />
+        <view class="summary__cell">
+          <text class="summary__sub-label">冻结金额</text>
+          <text class="summary__sub-value is-muted">
+            ¥{{ formatAmount(wallet.frozenBalance) }}
+          </text>
+        </view>
+      </view>
+    </view>
+
+    <!-- 申请提现 -->
+    <view class="action-bar">
+      <button class="btn-withdraw" type="default" @click="handleApplyWithdraw">申请提现</button>
+      <text class="action-hint">可用金额可申请提现，具体以平台规则为准</text>
+    </view>
+
+    <!-- 流水区（仅列表区域滚动 + 加载更多） -->
+    <view class="section section--flex">
+      <view class="section__head">
+        <view class="section__mark" />
+        <text class="section__title">资金流水</text>
+      </view>
+
+      <view class="filter-tabs">
+        <view
+          v-for="opt in filterTabOptions"
+          :key="opt.key"
+          class="filter-tabs__item"
+          :class="{ 'is-active': activeFilterTab === opt.key }"
+          @click="handleFilterTabChange(opt.key)"
+        >
+          <text class="filter-tabs__text">{{ opt.name }}</text>
         </view>
       </view>
 
-      <!-- 申请提现 -->
-      <view class="action-bar">
-        <button class="btn-withdraw" type="default" @click="handleApplyWithdraw">申请提现</button>
-        <text class="action-hint">可用金额可申请提现，具体以平台规则为准</text>
-      </view>
-
-      <!-- 流水区 -->
-      <view class="section">
-        <view class="section__head">
-          <view class="section__mark" />
-          <text class="section__title">资金流水</text>
-        </view>
-
-        <view class="filter-tabs">
-          <view
-            v-for="opt in filterTabOptions"
-            :key="opt.key"
-            class="filter-tabs__item"
-            :class="{ 'is-active': activeFilterTab === opt.key }"
-            @click="handleFilterTabChange(opt.key)"
-          >
-            <text class="filter-tabs__text">{{ opt.name }}</text>
-          </view>
-        </view>
-
+      <scroll-view
+        class="tx-scroll"
+        :scroll-y="true"
+        :enhanced="true"
+        :show-scrollbar="false"
+        :lower-threshold="80"
+        @scrolltolower="handleTransactionScrollToLower"
+      >
         <view class="section__body">
           <view
-            v-for="row in transactionList"
+            v-for="row in filteredTransactionList"
             :key="row.id"
             class="tx-card"
             @click="handleTransactionItemClick(row)"
           >
-            <view class="tx-card__left">
-              <view class="tx-card__row1">
+            <view class="tx-card__row tx-card__row--1">
+              <text class="tx-card__title">{{ txTitle(row) }}</text>
+              <view class="tx-card__time-wrap">
+                <text class="tx-card__time-line">
+                  <text class="tx-card__time-prefix">交易时间：</text>
+                  <text class="tx-card__time-value">{{ formatTimestamp(row.createdAt, 2) }}</text>
+                </text>
+              </view>
+            </view>
+            <view class="tx-card__row tx-card__row--2">
+              <view class="tx-card__biz-type">
                 <text class="tx-card__biz">{{ bizTypeLabel[row.bizType] }}</text>
                 <text class="tx-card__type" :class="isIncome(row) ? 'is-in' : 'is-out'">
                   {{ typeLabel[row.type] }}
                 </text>
               </view>
-              <text class="tx-card__remark">{{ row.remark || '—' }}</text>
-              <text class="tx-card__time">{{ formatTimestamp(row.createdAt, 2) }}</text>
-            </view>
-            <view class="tx-card__right">
               <text class="tx-card__amount" :class="isIncome(row) ? 'is-in' : 'is-out'">
                 {{ isIncome(row) ? '+' : '-' }}¥{{ formatAmount(row.amount) }}
               </text>
-              <text class="tx-card__after">余额 ¥{{ formatAmount(row.balanceAfter) }}</text>
+            </view>
+            <view class="tx-card__row tx-card__row--3">
+              <text class="tx-card__related-line">
+                <text class="tx-card__aux-label">关联编号：</text>
+                <text class="tx-card__aux-value tx-card__aux-value--muted">{{
+                  row.relatedId != null ? String(row.relatedId) : '—'
+                }}</text>
+              </text>
+              <text class="tx-card__balance-line">
+                <text class="tx-card__aux-label">余额：</text>
+                <text class="tx-card__aux-value">{{ formatAmount(row.balanceAfter) }}</text>
+              </text>
             </view>
           </view>
         </view>
 
         <view v-if="listLoading" class="section__foot">加载中…</view>
-        <view v-else-if="listFinished && transactionList.length > 0" class="section__foot">
+        <view v-else-if="listFinished && filteredTransactionList.length > 0" class="section__foot">
           没有更多了
         </view>
-      </view>
+      </scroll-view>
     </view>
-  </scroll-view>
+  </view>
 </template>
 
 <style scoped lang="scss">
-.page-scroll {
-  width: 100%;
-  box-sizing: border-box;
-  background: linear-gradient(180deg, #f0f0f0 0%, $jel-pageBackGroundColor 220rpx);
-}
-
 .page {
-  min-height: 100%;
+  height: 100vh;
+  overflow: hidden;
   padding: 24rpx;
   padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, #f0f0f0 0%, $jel-pageBackGroundColor 220rpx);
 }
 
 .summary {
   margin-bottom: 24rpx;
+  flex-shrink: 0;
   background: linear-gradient(145deg, $jel-brandColor 0%, #e02030 48%, #ff5a67 100%);
   border-radius: 20rpx;
   padding: 36rpx 28rpx 28rpx;
@@ -259,7 +321,7 @@ onPullDownRefresh(() => {
 
 .summary__label {
   font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.82);
   margin-bottom: 12rpx;
 }
 
@@ -285,7 +347,7 @@ onPullDownRefresh(() => {
 
 .summary__sub-label {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .summary__sub-value {
@@ -295,7 +357,7 @@ onPullDownRefresh(() => {
 
   &.is-muted {
     font-weight: 500;
-    color: rgba(255, 255, 255, 0.92);
+    color: rgba(255, 255, 255, 0.88);
   }
 }
 
@@ -308,6 +370,7 @@ onPullDownRefresh(() => {
 
 .action-bar {
   margin-bottom: 28rpx;
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -332,12 +395,26 @@ onPullDownRefresh(() => {
 .action-hint {
   text-align: center;
   font-size: 22rpx;
-  color: #999999;
+  color: #b3b3b3;
   line-height: 1.4;
 }
 
 .section {
   width: 100%;
+}
+
+.section--flex {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.tx-scroll {
+  flex: 1;
+  height: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .section__head {
@@ -392,7 +469,7 @@ onPullDownRefresh(() => {
 
 .filter-tabs__text {
   font-size: 26rpx;
-  color: #666666;
+  color: #5a5a5a;
   line-height: 1.2;
 }
 
@@ -404,95 +481,149 @@ onPullDownRefresh(() => {
 
 .tx-card {
   display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 20rpx;
+  flex-direction: column;
+  gap: 18rpx;
   background: #ffffff;
   border-radius: 16rpx;
-  padding: 24rpx;
+  padding: 28rpx 24rpx;
   box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
 }
 
-.tx-card__left {
+.tx-card__row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 16rpx;
+  box-sizing: border-box;
+}
+
+.tx-card__row--1 {
+  flex-wrap: nowrap;
+  align-items: center;
+}
+
+.tx-card__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: $jel-font-title;
+  line-height: 1.45;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tx-card__time-wrap {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.tx-card__time-line {
+  font-size: 22rpx;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.tx-card__time-prefix {
+  color: #b0b0b0;
+  font-weight: 400;
+}
+
+.tx-card__time-value {
+  color: #5c5c5c;
+  font-weight: 500;
+}
+
+.tx-card__biz-type {
   flex: 1;
   min-width: 0;
   display: flex;
-  flex-direction: column;
-  gap: 10rpx;
-}
-
-.tx-card__row1 {
-  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-start;
   gap: 12rpx;
 }
 
 .tx-card__biz {
-  font-size: 30rpx;
-  font-weight: 600;
-  color: $jel-font-title;
+  font-size: 28rpx;
+  font-weight: 500;
+  color: #454545;
+  line-height: 1.4;
 }
 
 .tx-card__type {
   font-size: 22rpx;
-  padding: 4rpx 10rpx;
+  padding: 4rpx 12rpx;
   border-radius: 8rpx;
-  line-height: 1.2;
+  line-height: 1.3;
+  font-weight: 500;
 
   &.is-in {
     color: $jel-brandColor;
-    background: rgba(214, 39, 49, 0.1);
+    background: rgba(214, 39, 49, 0.12);
   }
 
   &.is-out {
-    color: #8a8a8a;
-    background: #f2f2f2;
+    color: #6a6a6a;
+    background: #ececec;
   }
-}
-
-.tx-card__remark {
-  font-size: 26rpx;
-  color: #666666;
-  line-height: 1.35;
-}
-
-.tx-card__time {
-  font-size: 24rpx;
-  color: #aaaaaa;
-}
-
-.tx-card__right {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  flex-shrink: 0;
-  gap: 8rpx;
 }
 
 .tx-card__amount {
+  flex-shrink: 0;
   font-size: 32rpx;
   font-weight: 700;
-  line-height: 1.2;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
 
   &.is-in {
     color: $jel-brandColor;
   }
 
   &.is-out {
-    color: #333333;
+    color: #2a2a2a;
   }
 }
 
-.tx-card__after {
-  font-size: 22rpx;
-  color: #999999;
+.tx-card__related-line {
+  flex: 1;
+  min-width: 0;
+  font-size: 24rpx;
+  line-height: 1.4;
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-card__balance-line {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  line-height: 1.4;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.tx-card__aux-label {
+  color: #b8b8b8;
+  font-weight: 400;
+}
+
+.tx-card__aux-value {
+  color: #5a5a5a;
+  font-weight: 500;
+}
+
+.tx-card__aux-value--muted {
+  color: #9a9a9a;
+  font-weight: 400;
 }
 
 .section__foot {
   text-align: center;
   font-size: 24rpx;
-  color: #aaaaaa;
+  color: #c4c4c4;
   padding: 16rpx 0 0;
 }
 </style>

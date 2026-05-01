@@ -26,6 +26,5 @@ export interface WalletTransaction {
   remark: string | null
   createdAt: string
 }
-
-/** 钱包流水页筛选项（UI） */
-export type WalletFilterTab = 'ALL' | 'IN' | 'OUT' | 'WITHDRAW'
+/** 钱包流水页筛选项（UI）：提现走 OUT，不单列筛选项 */
+export type WalletFilterTab = 'ALL' | 'IN' | 'OUT'
