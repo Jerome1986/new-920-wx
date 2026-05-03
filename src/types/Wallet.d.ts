@@ -26,5 +26,14 @@ export interface WalletTransaction {
   remark: string | null
   createdAt: string
 }
+
+export interface WalletTransactionPage {
+  list: WalletTransaction[]
+  total: number
+  pageNum: number
+  pageSize: number
+  totalPage: number
+}
+
 /** 钱包流水页筛选项（UI）：提现走 OUT，不单列筛选项 */
 export type WalletFilterTab = 'ALL' | 'IN' | 'OUT'

@@ -1,3 +1,4 @@
+import type { WalletFilterTab, WalletTransactionPage } from '@/types/Wallet'
 import { request } from '@/utils/http'
 
 /**
@@ -7,11 +8,13 @@ import { request } from '@/utils/http'
  */
 export const walletTransactionByUser = (
   userId: string,
-  params?: { pageNum?: number; pageSize?: number },
+  tab: WalletFilterTab,
+  pageNum: number,
+  pageSize: number,
 ) => {
-  return request({
+  return request<WalletTransactionPage>({
     method: 'GET',
     url: `/wallet-transaction/transaction/${userId}`,
-    data: params,
+    data: { tab, pageNum, pageSize },
   })
 }

@@ -64,35 +64,8 @@ const loadWallet = async () => {
   console.log('loadWallet')
 }
 
-/** 解析流水接口 data：纯数组，或分页对象含 list */
-const parseWalletTxResponse = (
-  data: unknown,
-): { list: WalletTransaction[]; totalPage: number; currentPage: number; isBareArray: boolean } => {
-  if (data == null) {
-    return { list: [], totalPage: 1, currentPage: 1, isBareArray: false }
-  }
-  if (Array.isArray(data)) {
-    return { list: data as WalletTransaction[], totalPage: 1, currentPage: 1, isBareArray: true }
-  }
-  if (
-    typeof data === 'object' &&
-    'list' in data &&
-    Array.isArray((data as { list: unknown }).list)
-  ) {
-    const d = data as Record<string, unknown>
-    const list = d.list as WalletTransaction[]
-    const totalPage = Math.max(1, Number(d.totalPage) || 1)
-    const currentPage = Math.max(1, Number(d.pageNum ?? d.currentPage) || 1)
-    return { list, totalPage, currentPage, isBareArray: false }
-  }
-  return { list: [], totalPage: 1, currentPage: 1, isBareArray: false }
-}
-
-/**
- * 拉取流水列表
- * @param reset true 重置分页并从第一页拉取；false 触底加载下一页
- */
-const loadTransactionList = async (reset = false) => {
+// 拉取流水列表
+const loadTransactionList = async () => {
   const userId = userStore.profile?.id
   if (!userId) {
     transactionList.value = []
@@ -100,48 +73,29 @@ const loadTransactionList = async (reset = false) => {
     return
   }
   if (listLoading.value) return
-  if (!reset && listFinished.value) return
-  if (!reset && transactionList.value.length === 0) return
 
-  if (reset) {
-    listParams.value.pageNum = 1
-    transactionList.value = []
-    listFinished.value = false
-  }
-
-  const { pageNum, pageSize } = listParams.value
   listLoading.value = true
   try {
-    const res = await walletTransactionByUser(userId, { pageNum, pageSize })
-    if (res.code === 200) {
-      const { list, totalPage, currentPage, isBareArray } = parseWalletTxResponse(res.data)
-      if (reset) {
-        transactionList.value = list
-      } else {
-        transactionList.value = [...transactionList.value, ...list]
-      }
+    console.log(activeFilterTab.value)
 
-      const raw =
-        res.data && typeof res.data === 'object' ? (res.data as Record<string, unknown>) : null
-      const serverTotalPage = raw != null ? Number(raw.totalPage) : NaN
-
-      if (isBareArray) {
-        listFinished.value = true
-      } else if (Number.isFinite(serverTotalPage) && serverTotalPage >= 1) {
-        listFinished.value = currentPage >= serverTotalPage
-      } else {
-        listFinished.value = list.length < pageSize
-      }
-
-      if (!listFinished.value) {
-        listParams.value.pageNum = pageNum + 1
-      }
+    const res = await walletTransactionByUser(
+      userId,
+      activeFilterTab.value,
+      listParams.value.pageNum,
+      listParams.value.pageSize,
+    )
+    if (listParams.value.pageNum === 1) {
+      transactionList.value = res.data.list
     } else {
-      if (reset) transactionList.value = []
+      transactionList.value.push(...res.data.list)
+    }
+
+    if (listParams.value.pageNum < res.data.totalPage) {
+      listParams.value.pageNum++
+    } else {
       listFinished.value = true
     }
   } catch {
-    if (reset) transactionList.value = []
     listFinished.value = true
   } finally {
     listLoading.value = false
@@ -150,9 +104,8 @@ const loadTransactionList = async (reset = false) => {
 
 /** 进入页 */
 const onPageLoad = () => {
-  console.log('storeWallet onPageLoad')
-  void loadWallet()
-  void loadTransactionList(true)
+  loadWallet()
+  loadTransactionList()
 }
 
 /** 申请提现 */
@@ -173,7 +126,7 @@ const handleTransactionItemClick = (row: WalletTransaction) => {
 
 /** 列表触底加载更多 */
 const handleTransactionScrollToLower = () => {
-  void loadTransactionList(false)
+  loadTransactionList()
 }
 
 onLoad(() => {
