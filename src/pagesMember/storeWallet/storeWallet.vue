@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { formatAmount, formatTimestamp } from '@/utils/formatTimestamp'
-import { walletTransactionByUser } from '@/api/wallet'
+import { userWalletApi, walletTransactionByUser } from '@/api/wallet'
 import { useMemberStore } from '@/stores'
 import type {
   UserWallet,
@@ -62,6 +62,9 @@ const txTitle = (row: WalletTransaction) =>
 /** 拉取钱包余额 */
 const loadWallet = async () => {
   console.log('loadWallet')
+  const res = await userWalletApi(userStore.profile.id)
+  console.log('钱包', res)
+  wallet.value = res.data
 }
 
 // 拉取流水列表

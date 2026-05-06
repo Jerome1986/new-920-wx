@@ -1,4 +1,4 @@
-import type { WalletFilterTab, WalletTransactionPage } from '@/types/Wallet'
+import type { UserWallet, WalletFilterTab, WalletTransactionPage } from '@/types/Wallet'
 import { request } from '@/utils/http'
 
 /**
@@ -16,5 +16,16 @@ export const walletTransactionByUser = (
     method: 'GET',
     url: `/wallet-transaction/transaction/${userId}`,
     data: { tab, pageNum, pageSize },
+  })
+}
+
+/**
+ * 获取用户钱包信息
+ * @param userId
+ */
+export const userWalletApi = (userId: string) => {
+  return request<UserWallet>({
+    method: 'GET',
+    url: `/wallet/${userId}`,
   })
 }

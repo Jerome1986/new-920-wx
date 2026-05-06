@@ -116,6 +116,19 @@ export interface StoreTransactionPageResult {
   totalPage: number
 }
 
+export interface StoreDashboardVO {
+  /** 营业额 */
+  turnoverAmount: string
+  /** 服务订单数 */
+  serviceCount: number
+  /** 客单价 */
+  avgCustomerPrice: string
+  /** 进货支出 */
+  purchaseExpense: string
+  /** 利润 */
+  profitAmount: string
+}
+
 export type TimeRangePreset = 'today' | 'month' | 'year'
 
 export type StoreTransactionFilterType = 'ALL' | 'INCOME' | 'EXPENSE'

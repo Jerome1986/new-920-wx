@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import { formatAmount, formatTimestamp } from '@/utils/formatTimestamp.ts'
-import { storeTransactionGetApi } from '@/api/storeTransaction'
+import { storeDashboardApi, storeTransactionGetApi } from '@/api/storeTransaction'
 import { useManagerStore } from '@/stores'
 import type {
   StoreTransaction,
@@ -23,32 +23,53 @@ const activeTimePreset = ref<TimeRangePreset>('month')
 // 概览副标题时间
 const timeRangeLabel = ref('本月')
 
-const handleTimePresetChange = (preset: TimeRangePreset) => {
+const handleTimePresetChange = async (preset: TimeRangePreset) => {
   resetTransactionListPage()
   activeTimePreset.value = preset
   const labelMap: Record<TimeRangePreset, string> = { today: '今日', month: '本月', year: '本年' }
   timeRangeLabel.value = labelMap[preset]
-  fetchStoreTransactionList(
-    activeTransactionFilter.value,
-    activeTimePreset.value,
-    transactionListParams.value.pageNum,
-    transactionListParams.value.pageSize,
-  )
+
+  if (managerStore.managerStoreInfo) {
+    await Promise.all([
+      fetchStoreIncomeOverview(
+        managerStore.managerStoreInfo.id,
+        managerStore.managerStoreInfo.managerId,
+        activeTimePreset.value,
+      ),
+      fetchStoreTransactionList(
+        activeTransactionFilter.value,
+        activeTimePreset.value,
+        transactionListParams.value.pageNum,
+        transactionListParams.value.pageSize,
+      ),
+    ])
+  }
 }
 
 // 营业额
-const turnoverAmount = ref(0)
+const turnoverAmount = ref('0')
 // 服务数
 const serviceCount = ref(0)
 // 客单价
-const averageOrderValue = ref(0)
+const averageOrderValue = ref('0')
 // 进货支出
-const purchaseExpenseAmount = ref(0)
+const purchaseExpenseAmount = ref('0')
 // 经营利润
-const operatingProfit = ref<number | null>(null)
+const operatingProfit = ref<string | null>(null)
 
 // 拉取经营概览
-const fetchStoreIncomeOverview = async () => {}
+const fetchStoreIncomeOverview = async (
+  storeId: string,
+  userId: string,
+  timeRangePreset: TimeRangePreset,
+) => {
+  const res = await storeDashboardApi(storeId, userId, timeRangePreset)
+  turnoverAmount.value = res.data.turnoverAmount
+  serviceCount.value = res.data.serviceCount
+  averageOrderValue.value = res.data.avgCustomerPrice
+  purchaseExpenseAmount.value = res.data.purchaseExpense
+  operatingProfit.value = res.data.profitAmount
+}
 
 // 门店流水列表
 const transactionListParams = ref({
@@ -97,7 +118,15 @@ const fetchStoreTransactionList = async (
 }
 
 // 流水触底加载
-const handleTransactionListScrollToLower = () => {}
+const handleTransactionListScrollToLower = () => {
+  if (transactionListFinished.value) return
+  fetchStoreTransactionList(
+    activeTransactionFilter.value,
+    activeTimePreset.value,
+    transactionListParams.value.pageNum,
+    transactionListParams.value.pageSize,
+  )
+}
 
 // 重置流水分页
 const resetTransactionListPage = () => {
@@ -119,6 +148,7 @@ const transactionFilterMap: Record<StoreTransactionFilterType, string> = {
   INCOME: '收入',
 }
 
+// 流水标签（收入/支出）
 const handleTransactionFilterChange = (tag: StoreTransactionFilterType) => {
   resetTransactionListPage()
   activeTransactionFilter.value = tag
@@ -133,13 +163,22 @@ const handleTransactionFilterChange = (tag: StoreTransactionFilterType) => {
 // 安全区
 const { safeAreaInsets } = uni.getSystemInfoSync()
 
-onLoad(() => {
-  fetchStoreTransactionList(
-    activeTransactionFilter.value,
-    activeTimePreset.value,
-    transactionListParams.value.pageNum,
-    transactionListParams.value.pageSize,
-  )
+onLoad(async () => {
+  if (managerStore.managerStoreInfo) {
+    await Promise.all([
+      fetchStoreIncomeOverview(
+        managerStore.managerStoreInfo.id,
+        managerStore.managerStoreInfo.managerId,
+        activeTimePreset.value,
+      ),
+      fetchStoreTransactionList(
+        activeTransactionFilter.value,
+        activeTimePreset.value,
+        transactionListParams.value.pageNum,
+        transactionListParams.value.pageSize,
+      ),
+    ])
+  }
 })
 </script>
 
