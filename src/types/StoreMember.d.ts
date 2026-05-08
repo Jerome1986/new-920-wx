@@ -8,7 +8,7 @@ export interface StoreMemberItem {
   /** 昵称 */
   nickname: string
   /** 总消费次数 */
-  totalOrderCount: number
+  serviceCount: number
   /** 会员到期时间（时间戳毫秒或 ISO 字符串；无则非会员/无期限由前端展示「—」） */
   vipEndTime?: number | string | null
 }

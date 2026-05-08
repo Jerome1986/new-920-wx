@@ -27,7 +27,7 @@ const fetchMemberList = async (managerId: string) => {
   loading.value = true
   try {
     const res = await findStoreVipApi(managerId, params.value.pageNum, params.value.pageSize)
-    console.log(res)
+    console.log('vip', res)
     memberList.value.push(...res.data.list)
 
     if (params.value.pageNum < res.data.totalPage) {
@@ -112,7 +112,7 @@ onLoad(async () => {
           <view class="member-card__stats">
             <!-- TODO 需要后端查询贴膜订单的总次数 -->
             <text class="member-card__stat member-card__stat--left"
-              >消费 {{ item.totalOrderCount }} 次</text
+              >消费 {{ item.serviceCount ?? 0 }} 次</text
             >
             <view class="member-card__detail-btn" @click.stop="handleMemberDetail">
               <text class="member-card__detail-btn-text">详情</text>

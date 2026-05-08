@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import type { CateItem } from '@/types/CateItem'
-import type { ProductItem } from '@/types/ProductItem'
-import { cateMoGetApi, subCategoryGetApi } from '@/api/cate.ts'
+import { cateMoGetApi } from '@/api/cate.ts'
 import { onLoad } from '@dcloudio/uni-app'
 import { productListByCateIdGetApi, quickSellSearchModelsApi } from '@/api/product.ts'
 import { searchInventoryApi, storeGetInventoryApi } from '@/api/store.ts'
@@ -252,17 +251,40 @@ const handleConfirmOrder = async () => {
     await uni.showToast({ title: '请输入会员手机号', icon: 'none' })
     return
   }
+
+  // 如果有手机号存在但是未查询
+  if (memberPhone.value && !memberChecked.value) {
+    await uni.showToast({ title: '请先查询', icon: 'none' })
+    return
+  }
   const productId = currentProduct.value.productId
 
   // 如果有会员免费次数---直接跳转会员免费订单页面
   if (memberFreeCount.value > 0 && managerStore.managerStoreInfo?.id && productId) {
-    // TODO: 跳转会员免费订单
+    // 跳转会员免费订单
+    console.log('free')
+    // 1.创建会员订单
+    const res = await giftOrderApi(
+      managerStore.managerStoreInfo.id,
+      productId,
+      currentProduct.value.productName,
+      currentProduct.value.cover,
+      currentProduct.value.skuId,
+      currentProduct.value.skuNo,
+      currentProduct.value.salePrice,
+      orderPrice.value,
+      memberPhone.value,
+    )
+
+    // 2.跳转会员免费服务
+    uni.navigateTo({ url: `/pagesMember/quickOrder/giftOrder?outTtradeNo=${res.data.outTradeNo}` })
+    return
   }
   console.log(managerStore.managerStoreInfo, productId)
 
-  // 没有免费次数，正常支付的情况
+  // 没有免费次数 OR 正常支付的情况
   if (managerStore.managerStoreInfo?.id && productId) {
-    // TODO: 创建订单跳转订单详情
+    // 创建订单跳转订单详情
     const result = await quickOrderApi(
       managerStore.managerStoreInfo.id,
       productId,

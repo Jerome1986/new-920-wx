@@ -255,16 +255,29 @@ export const quickOrderApi = (
  */
 export const giftOrderApi = (
   storeId: string,
-  productId: string,
-  amount: number,
-  paymentMethod: string,
-  remark: string,
+  productId: number,
+  productName: string,
+  productCover: string,
+  skuId: number,
+  skuNo: string,
+  originalPrice: string,
+  actualPayment: string,
   memberPhone: string,
 ) => {
   return request<QuickOrderResult<freeOrderStatus>>({
     method: 'POST',
-    url: '/quickSell/giftOrder',
-    data: { storeId, productId, amount, paymentMethod, remark, memberPhone },
+    url: '/store-service-order/freeAdd',
+    data: {
+      storeId,
+      productId,
+      productName,
+      productCover,
+      skuId,
+      skuNo,
+      originalPrice,
+      actualPayment,
+      memberPhone,
+    },
   })
 }
 
@@ -273,7 +286,7 @@ export const giftOrderApi = (
  * @param outTradeNo - 订单号
  */
 export const offlineOrderGetApi = (outTradeNo: string) => {
-  return request<offlineOrderResult>({
+  return request<QuickOrderResult<freeOrderStatus>>({
     method: 'GET',
     url: `/store-service-order/detail/${outTradeNo}`,
   })
@@ -281,13 +294,13 @@ export const offlineOrderGetApi = (outTradeNo: string) => {
 
 /**
  * 根据用户手机号码，检查是否是会员，是否还有免费次数
- * @param memberPhone - 会员手机号码
+ * @param mobile - 会员手机号码
  */
-export const checkVipApi = (memberPhone: string) => {
+export const checkVipApi = (mobile: string) => {
   return request<CheckVipResponse>({
     method: 'POST',
-    url: '/quickSell/checkVip',
-    data: { memberPhone },
+    url: '/store/checkMember',
+    data: { mobile },
   })
 }
 

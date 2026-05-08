@@ -253,13 +253,17 @@ export interface offlineOrderResult {
   storeId: string
   /** 用户ID */
   userId: string | null
+  memberPhone?: string
 }
 
 // 免费贴膜服务订单状态类型
 export type freeOrderStatus =
-  | 'SERVICING' // 服务中
-  | 'COMPLETED' // 服务完成
-  | 'CANCELLED' // 已取消
+  | 'PENDING'
+  | 'PAID'
+  | 'IN_SERVICE'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'REFUNDED'
 
 // 快速下单数据类型
 export interface QuickOrderResult<TStatus> extends offlineOrderResult {
@@ -272,7 +276,7 @@ export interface QuickOrderResult<TStatus> extends offlineOrderResult {
 // 会员免费贴膜服务完成返回数据类型
 export interface QuickOrderGiftVipResult {
   /** 订单号 */
-  out_trade_no: string
+  outTradeNo: string
   /** 更新后的订单状态 */
   orderStatus: freeOrderStatus
   /** 会员剩余的贴膜次数 */

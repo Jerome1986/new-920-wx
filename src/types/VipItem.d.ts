@@ -43,22 +43,14 @@ export type VipStatus =
   | 'disabled' // 被禁用（预留）
 
 export interface CheckVipResponse {
-  /** 查询的用户ID */
+  /** 用户ID */
   userId: string
-  /** 查询的用户手机号码 */
+  /** 手机号 */
   mobile: string
-  /** 是否会员（历史 + 当前） */
+  /** 是否VIP会员 */
   isVip: boolean
-  /** 当前是否可用 */
-  isValid: boolean //
-  /** 具体状态说明 */
-  status: VipStatus
-  /** 到期时间 */
-  vipEndTime: Date
-  /** 剩余次数（没有就是 0） */
-  remainTimes: number
-  /** 是否需要续费  status === 'expired' || status === 'not_vip' */
-  needRenew: boolean
-  /** 是否需要购买次数 status === 'no_times'   */
-  needBuyTimes: boolean
+  /** VIP礼品领取状态 */
+  vipGift: number
+  /** VIP到期时间 */
+  vipEndTime: Date | string
 }

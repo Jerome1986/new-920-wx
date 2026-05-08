@@ -19,8 +19,8 @@ export const useQueryMember = () => {
       // 调用查询会员免费次数接口
       const res = await checkVipApi(memberPhone.value)
       console.log('检查结果', res)
-      memberFreeCount.value = res.data.remainTimes
-      memberChecked.value = res.data.isValid
+      memberFreeCount.value = res.data.vipGift
+      memberChecked.value = res.data.vipGift > 0 ? true : false
 
       if (memberFreeCount.value > 0) {
         orderPrice.value = '0' // 有免费次数，价格为0
@@ -29,9 +29,9 @@ export const useQueryMember = () => {
         orderPrice.value = price // 无免费次数，恢复原价
         await uni.showToast({ title: '会员无免费次数', icon: 'none' })
       }
-    } catch (e) {
-      console.error('查询会员失败', e)
-      await uni.showToast({ title: '查询失败，请重试', icon: 'none' })
+    } catch (e: any) {
+      console.error('查询会员失败', e.data)
+      await uni.showToast({ title: e.data.message ?? '查询失败，请重试', icon: 'none' })
     } finally {
       memberQueryLoading.value = false
     }

@@ -16,8 +16,8 @@ import { isArray } from 'wot-design-uni/components/common/util'
  */
 
 // 基地址
-const baseUrl = 'http://localhost:3000/api'
-// const baseUrl = 'https://74044b5f.r28.cpolar.top/api'
+// const baseUrl = 'http://localhost:3000/api'
+const baseUrl = 'https://14d80db1.r28.cpolar.top/api'
 
 /**
  * 从 pinia-plugin-persistedstate 读取 member store token
