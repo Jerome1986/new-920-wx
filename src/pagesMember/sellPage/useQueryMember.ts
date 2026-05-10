@@ -20,7 +20,8 @@ export const useQueryMember = () => {
       const res = await checkVipApi(memberPhone.value)
       console.log('检查结果', res)
       memberFreeCount.value = res.data.vipGift
-      memberChecked.value = res.data.vipGift > 0 ? true : false
+      // 查询成功即视为已查询（无免费次数也不应阻断后续流程）
+      memberChecked.value = true
 
       if (memberFreeCount.value > 0) {
         orderPrice.value = '0' // 有免费次数，价格为0

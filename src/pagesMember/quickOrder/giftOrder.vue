@@ -2,20 +2,27 @@
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
 import type { freeOrderStatus, QuickOrderResult } from '@/types/Order'
-import { completeGiftOrderApi, offlineOrderGetApi } from '@/api/order'
+import { completeGiftOrderApi, offlineOrderGetApi, updateOfflineOrderApi } from '@/api/order'
 import { formatTimestamp } from '@/utils/formatTimestamp.ts'
+import { quickOrderStatusConfig } from './statusConfig'
 import {
+  arrayBufferToHex,
   closeBleConnection,
   closeBluetoothAdapter,
   createBleConnection,
+  disableBleNotification,
+  enableBleNotification,
   findWritableCharacteristic,
+  offBleCharacteristicValueChange,
   offBluetoothDeviceFound,
+  onBleCharacteristicValueChange,
   onBluetoothDeviceFound,
   openBluetoothAdapter,
   startBluetoothDiscovery,
   stopBluetoothDiscovery,
   writeBleHexCommand,
 } from '@/utils/bluetooth'
+import { decrementStoreStockApi } from '@/api/store'
 
 // 订单信息
 const orderInfo = ref<QuickOrderResult<freeOrderStatus>>()
@@ -28,50 +35,36 @@ const bluetoothDevices = ref<
     RSSI?: number
   }>
 >([])
-const connectingDeviceId = ref('')
-const connectedDeviceId = ref('')
-const currentServiceId = ref('')
-const currentWriteCharId = ref('')
-const isFilmStarted = ref(false)
+const connectingDeviceId = ref('') // 当前正在连接/断开的设备ID（用于按钮防重入）
+const connectedDeviceId = ref('') // 当前已连接设备ID
+const currentServiceId = ref('') // 协议写入服务ID（AB01）
+const currentWriteCharId = ref('') // 协议写入特征ID（AB02）
+const notifyServiceId = ref('') // 协议通知服务ID（AB01）
+const notifyCharacteristicId = ref('') // 协议通知特征ID（AB03）
+const isFilmStarted = ref(false) // 是否处于贴膜进行中状态
+const filmFinished = ref(false) // 是否已收到贴膜结束通知（FFB1110055）
+const isDiscoveryListening = ref(false) // 是否已注册扫描监听（避免重复监听）
 
-// 状态配置（统一使用主题色系）
-const statusConfig: Record<freeOrderStatus, { text: string; color: string; bgColor: string }> = {
-  PENDING: {
-    text: '已支付',
-    color: '#d62731',
-    bgColor: 'linear-gradient(135deg, #d62731 0%, #e84545 100%)',
-  },
-  PAID: {
-    text: '已支付',
-    color: '#d62731',
-    bgColor: 'linear-gradient(135deg, #d62731 0%, #e84545 100%)',
-  },
-  IN_SERVICE: {
-    text: '服务中',
-    color: '#d62731',
-    bgColor: 'linear-gradient(135deg, #d62731 0%, #e84545 100%)',
-  },
-  COMPLETED: {
-    text: '已完成',
-    color: '#52c41a',
-    bgColor: 'linear-gradient(135deg, #52c41a 0%, #73d13d 100%)',
-  },
-  CANCELLED: {
-    text: '已取消',
-    color: '#999',
-    bgColor: 'linear-gradient(135deg, #999 0%, #bfbfbf 100%)',
-  },
-  REFUNDED: {
-    text: '已取消',
-    color: '#999',
-    bgColor: 'linear-gradient(135deg, #999 0%, #bfbfbf 100%)',
-  },
+// 协议固定特征：服务 AB01、写 AB02、通知 AB03
+const PROTOCOL_SERVICE_SUFFIX = 'AB01'
+const PROTOCOL_WRITE_SUFFIX = 'AB02'
+
+// 清理页面内蓝牙状态缓存（不处理底层连接释放）
+const resetBluetoothState = () => {
+  connectedDeviceId.value = ''
+  connectingDeviceId.value = ''
+  currentServiceId.value = ''
+  currentWriteCharId.value = ''
+  notifyServiceId.value = ''
+  notifyCharacteristicId.value = ''
+  isFilmStarted.value = false
+  filmFinished.value = false
 }
 
 // 当前状态配置
 const currentStatus = computed(() => {
   const status = orderInfo.value?.status || 'IN_SERVICE'
-  return statusConfig[status]
+  return quickOrderStatusConfig[status]
 })
 
 // 是否可以确认完成（服务中状态可以操作）
@@ -94,15 +87,20 @@ const handleConfirmService = () => {
     confirmColor: '#52c41a',
     success: async (res) => {
       if (res.confirm) {
-        // TODO: 调用完成服务接口
+        // 调用完成服务接口
         if (orderInfo.value?.outTradeNo) {
-          const result = await completeGiftOrderApi(orderInfo.value?.outTradeNo)
+          const result = await completeGiftOrderApi(orderInfo.value?.outTradeNo, 'COMPLETED')
           console.log('确认完成服务:', result)
           await uni.showToast({ title: '服务已完成', icon: 'success' })
+          closeBluetoothList()
           // 更新本地状态
           if (orderInfo.value) {
-            orderInfo.value.status = result.data.orderStatus
+            orderInfo.value.status = result.data.status
           }
+          // 跳转到门店管理页
+          setTimeout(() => {
+            uni.redirectTo({ url: '/pagesMember/StoreManager/StoreManager' })
+          }, 800)
         }
       }
     },
@@ -117,7 +115,8 @@ const handleCancelOrder = () => {
     confirmColor: '#d62731',
     success: async (res) => {
       if (res.confirm) {
-        // TODO: 调用取消订单接口
+        // 调用取消订单接口
+        if (orderInfo.value) await updateOfflineOrderApi(orderInfo.value?.outTradeNo, 'CANCELLED')
         console.log('取消订单:', orderInfo.value?.outTradeNo)
         await uni.showToast({ title: '订单已取消', icon: 'success' })
         setTimeout(() => {
@@ -137,6 +136,10 @@ const startService = () => {
   openBluetoothAdapter()
     .then(() => startBluetoothDiscovery())
     .then(() => {
+      // 避免重复注册扫描监听
+      if (isDiscoveryListening.value) {
+        offBluetoothDeviceFound()
+      }
       // 持续监听扫描回调，增量合并设备列表
       onBluetoothDeviceFound((devices) => {
         devices.forEach((device) => {
@@ -155,6 +158,7 @@ const startService = () => {
           console.log('发现设备：', device.name || device.localName, device.deviceId)
         })
       })
+      isDiscoveryListening.value = true
     })
     .catch((err) => {
       console.log('蓝牙初始化或扫描失败', err)
@@ -163,22 +167,41 @@ const startService = () => {
 }
 
 // 蓝牙流程-6：发送开始贴膜指令（FFA1110055）
-const handleStartFilm = () => {
-  // TODO: 开始贴膜前确认 notify 已开启（必要时在这里做二次校验）
+const handleStartFilm = async () => {
+  // 开始贴膜前确保通知已开启（避免错过设备上报）
+  if (connectedDeviceId.value && notifyServiceId.value && notifyCharacteristicId.value) {
+    enableBleNotification(
+      connectedDeviceId.value,
+      notifyServiceId.value,
+      notifyCharacteristicId.value,
+    ).catch((err) => console.log('开始贴膜前启用通知失败', err))
+  }
   // 下发开始贴膜指令，成功后更新本地贴膜状态
   sendFilmCommand('FFA1110055', () => {
     isFilmStarted.value = true
+    filmFinished.value = false
     uni.showToast({ title: '开始贴膜指令已发送', icon: 'success' })
   })
+
+  // 指令发送成功扣减库存
+  console.log('sku', orderInfo.value?.skuId)
+
+  if (orderInfo.value)
+    await decrementStoreStockApi(orderInfo.value?.storeId, orderInfo.value?.skuId, 1)
 }
 
-// 蓝牙流程-7：发送取消贴膜指令（FFA1000055）
-const handleCancelFilm = () => {
-  // 下发取消贴膜指令，成功后恢复为可开始贴膜状态
-  sendFilmCommand('FFA1000055', () => {
-    isFilmStarted.value = false
-    uni.showToast({ title: '取消贴膜指令已发送', icon: 'success' })
-  })
+// 关闭前判断：已完成先确认完成，贴膜中二次确认，其它状态直接关闭
+const handleCloseWithCheck = () => {
+  if (filmFinished.value) {
+    handleConfirmService()
+    closeBluetoothList()
+    return
+  }
+  if (isFilmStarted.value) {
+    uni.showToast({ title: '贴膜进行中，暂不可关闭', icon: 'none' })
+    return
+  }
+  closeBluetoothList()
 }
 
 // 蓝牙流程-4：发现并缓存可写特征（后续写入贴膜机指令必需）
@@ -186,11 +209,44 @@ const discoverWritableCharacteristic = (deviceId: string) => {
   // 连接成功后查询可写特征，供后续发送指令
   findWritableCharacteristic(deviceId)
     .then(({ serviceId, characteristicId }) => {
-      // 缓存可写服务与特征 ID
+      // 仅使用协议指定的 AB01/AB02；防止误用其它服务特征导致通知收不到
+      const serviceUpper = serviceId.toUpperCase()
+      const charUpper = characteristicId.toUpperCase()
+      if (
+        !serviceUpper.includes(`0000${PROTOCOL_SERVICE_SUFFIX}`) ||
+        !charUpper.includes(`0000${PROTOCOL_WRITE_SUFFIX}`)
+      ) {
+        uni.showToast({ title: '未匹配协议写特征AB02', icon: 'none' })
+        console.log('当前写特征不匹配协议:', serviceId, characteristicId)
+        return
+      }
       currentServiceId.value = serviceId
       currentWriteCharId.value = characteristicId
-      // TODO: 在此处补充 notify 特征发现与开启通知（enableBleNotification）
-      // TODO: 在此处注册通知监听（onBleCharacteristicValueChange）并处理 FFB1110055
+
+      // 通知固定走 AB03（与 AB01 同服务）
+      notifyServiceId.value = serviceId
+      notifyCharacteristicId.value = characteristicId.replace(/0000AB02/i, '0000AB03')
+      enableBleNotification(deviceId, notifyServiceId.value, notifyCharacteristicId.value)
+        .then(() => {
+          offBleCharacteristicValueChange()
+          onBleCharacteristicValueChange((res) => {
+            const hex = arrayBufferToHex(res.value).toUpperCase()
+            console.log('蓝牙通知回包:', hex, res.value)
+            if (hex === 'FFB1110055') {
+              isFilmStarted.value = false
+              filmFinished.value = true
+              console.log('收到贴膜结束上报')
+            }
+          })
+          console.log(
+            '蓝牙通知已开启并注册监听:',
+            notifyServiceId.value,
+            notifyCharacteristicId.value,
+          )
+        })
+        .catch((err) => {
+          console.log('通知开启失败', err)
+        })
       // 找到可写特征后停止扫描，避免多余资源消耗
       stopBluetoothDiscovery().then(() => console.log('连接后停止扫描成功'))
       isFilmStarted.value = false
@@ -204,22 +260,27 @@ const discoverWritableCharacteristic = (deviceId: string) => {
 
 // 蓝牙流程-8：关闭蓝牙弹层（断开连接 -> 停止扫描 -> 取消监听 -> 关闭适配器 -> 清理状态）
 const closeBluetoothList = () => {
+  const currentDeviceId = connectedDeviceId.value
   // 若有已连接设备，先断开连接
-  if (connectedDeviceId.value) {
-    closeBleConnection(connectedDeviceId.value)
+  if (currentDeviceId) {
+    closeBleConnection(currentDeviceId)
       .then(() => console.log('关闭弹层时断开蓝牙成功'))
       .catch((err) => console.log('关闭弹层时断开蓝牙失败', err))
-    connectedDeviceId.value = ''
   }
   // 清理连接态与贴膜态缓存
-  isFilmStarted.value = false
-  currentServiceId.value = ''
-  currentWriteCharId.value = ''
-  connectingDeviceId.value = ''
-  // TODO: 关闭弹层时关闭通知（disableBleNotification）并移除通知监听（offBleCharacteristicValueChange）
+  if (currentDeviceId && notifyServiceId.value && notifyCharacteristicId.value) {
+    disableBleNotification(
+      currentDeviceId,
+      notifyServiceId.value,
+      notifyCharacteristicId.value,
+    ).catch((err) => console.log('关闭弹层时关闭通知失败', err))
+  }
+  resetBluetoothState()
+  offBleCharacteristicValueChange()
   // 释放蓝牙资源并关闭弹层
   stopBluetoothDiscovery().then(() => console.log('停止蓝牙扫描成功'))
   offBluetoothDeviceFound()
+  isDiscoveryListening.value = false
   closeBluetoothAdapter().then(() => console.log('关闭蓝牙模块成功'))
   showBluetoothList.value = false
 }
@@ -256,12 +317,16 @@ const handleDisconnectDevice = (deviceId: string) => {
     .then(() => {
       console.log('断开蓝牙成功')
       if (connectedDeviceId.value === deviceId) {
-        // TODO: 断开前/断开后补充通知清理（disableBleNotification + offBleCharacteristicValueChange）
+        if (notifyServiceId.value && notifyCharacteristicId.value) {
+          disableBleNotification(
+            deviceId,
+            notifyServiceId.value,
+            notifyCharacteristicId.value,
+          ).catch((err) => console.log('断开时关闭通知失败', err))
+        }
+        offBleCharacteristicValueChange()
         // 断开后清空可写特征与贴膜状态缓存
-        connectedDeviceId.value = ''
-        currentServiceId.value = ''
-        currentWriteCharId.value = ''
-        isFilmStarted.value = false
+        resetBluetoothState()
       }
       uni.showToast({ title: '已断开连接', icon: 'none' })
     })
@@ -407,14 +472,14 @@ onLoad((query?: AnyObject) => {
       <template v-if="orderInfo?.status === 'PAID'">
         <view class="btn-complete" @click="startService">
           <text class="iconfont icon-queren"></text>
-          <text>开始连接</text>
+          <text>连接设备</text>
+        </view>
+        <view class="btn-cancel" @click="handleCancelOrder">
+          <text>取消订单</text>
         </view>
       </template>
       <!-- 待服务/服务中状态 -->
       <template v-else-if="canComplete">
-        <view class="btn-cancel" @click="handleCancelOrder">
-          <text>取消订单</text>
-        </view>
         <view class="btn-complete" @click="handleConfirmService">
           <text class="iconfont icon-queren"></text>
           <text>确认完成</text>
@@ -437,8 +502,7 @@ onLoad((query?: AnyObject) => {
             <text class="iconfont icon-lanya"></text>
             <text class="bluetooth-title">选择蓝牙设备</text>
           </view>
-          <text class="bluetooth-status">扫描中</text>
-          <view class="header-close" @click="closeBluetoothList">
+          <view class="header-close" @click="handleCloseWithCheck">
             <text>关闭</text>
           </view>
         </view>
@@ -468,7 +532,7 @@ onLoad((query?: AnyObject) => {
               <text v-if="connectingDeviceId === item.deviceId">{{
                 connectedDeviceId === item.deviceId ? '断开中...' : '连接中...'
               }}</text>
-              <text v-else-if="connectedDeviceId === item.deviceId">断开连接</text>
+              <text v-else-if="connectedDeviceId === item.deviceId">断开</text>
               <text v-else>连接</text>
             </view>
           </view>
@@ -480,10 +544,15 @@ onLoad((query?: AnyObject) => {
         <view class="bluetooth-footer">
           <view
             class="btn-close"
-            :class="{ 'btn-start-film': !isFilmStarted }"
-            @click="isFilmStarted ? handleCancelFilm() : handleStartFilm()"
+            :class="{
+              'btn-start-film': !isFilmStarted && !filmFinished,
+              'btn-finished': filmFinished,
+            }"
+            @click="
+              filmFinished ? handleConfirmService() : !isFilmStarted ? handleStartFilm() : null
+            "
           >
-            <text>{{ isFilmStarted ? '取消贴膜' : '开始贴膜' }}</text>
+            <text>{{ filmFinished ? '确认完成' : isFilmStarted ? '贴膜中' : '开始贴膜' }}</text>
           </view>
         </view>
       </view>
@@ -832,14 +901,6 @@ onLoad((query?: AnyObject) => {
       color: $jel-font-title;
     }
 
-    .bluetooth-status {
-      position: absolute;
-      left: 50%;
-      transform: translateX(-50%);
-      font-size: 24rpx;
-      color: $jel-brandColor;
-    }
-
     .header-close {
       margin-left: auto;
       padding: 8rpx 16rpx;
@@ -970,6 +1031,15 @@ onLoad((query?: AnyObject) => {
 
   .btn-close.btn-start-film {
     background: linear-gradient(135deg, $jel-brandColor 0%, #e84545 100%);
+
+    text {
+      color: #fff;
+      font-weight: 600;
+    }
+  }
+
+  .btn-close.btn-finished {
+    background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
 
     text {
       color: #fff;

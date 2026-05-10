@@ -278,7 +278,5 @@ export interface QuickOrderGiftVipResult {
   /** 订单号 */
   outTradeNo: string
   /** 更新后的订单状态 */
-  orderStatus: freeOrderStatus
-  /** 会员剩余的贴膜次数 */
-  remainVipGift: number
+  status: freeOrderStatus
 }

@@ -103,3 +103,17 @@ export const findStoreVipApi = (inviterId: string, pageNum: number, pageSize: nu
     data: { pageNum, pageSize },
   })
 }
+
+/**
+ * 扣除当前门店某商品的库存
+ * @param storeId
+ * @param skuId
+ * @param quantity
+ */
+export const decrementStoreStockApi = (storeId: string, skuId: number, quantity: number) => {
+  return request({
+    method: 'Patch' as any,
+    url: `/store-inventory/decrementStock/${storeId}`,
+    data: { skuId, quantity },
+  })
+}

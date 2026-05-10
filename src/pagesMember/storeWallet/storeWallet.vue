@@ -122,11 +122,6 @@ const handleFilterTabChange = (tab: WalletFilterTab) => {
   console.log('handleFilterTabChange', tab)
 }
 
-/** 单条流水点击 */
-const handleTransactionItemClick = (row: WalletTransaction) => {
-  console.log('handleTransactionItemClick', row.id)
-}
-
 /** 列表触底加载更多 */
 const handleTransactionScrollToLower = () => {
   loadTransactionList()
@@ -194,12 +189,7 @@ onLoad(() => {
         @scrolltolower="handleTransactionScrollToLower"
       >
         <view class="section__body">
-          <view
-            v-for="row in filteredTransactionList"
-            :key="row.id"
-            class="tx-card"
-            @click="handleTransactionItemClick(row)"
-          >
+          <view v-for="row in filteredTransactionList" :key="row.id" class="tx-card">
             <view class="tx-card__row tx-card__row--1">
               <text class="tx-card__title">{{ txTitle(row) }}</text>
               <view class="tx-card__time-wrap">

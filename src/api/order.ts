@@ -306,13 +306,13 @@ export const checkVipApi = (mobile: string) => {
 
 /**
  * 线下贴膜会员免费订单服务完成
- * @param out_trade_no - 订单号
+ * @param outTradeNo - 订单号
  */
-export const completeGiftOrderApi = (outTradeNo: string) => {
+export const completeGiftOrderApi = (outTradeNo: string, status: freeOrderStatus) => {
   return request<QuickOrderGiftVipResult>({
     method: 'POST',
-    url: '/quickSell/completeGiftOrderApi',
-    data: { outTradeNo },
+    url: '/store-service-order/freeOrderCompleted',
+    data: { outTradeNo, status },
   })
 }
 
@@ -320,7 +320,7 @@ export const completeGiftOrderApi = (outTradeNo: string) => {
  * 取消线下贴膜的支付订单
  * @param outTradeNo - 订单号
  */
-export const updateOfflineOrderApi = (outTradeNo: string, status: string) => {
+export const updateOfflineOrderApi = (outTradeNo: string, status: freeOrderStatus) => {
   return request<updateResult>({
     method: 'PATCH' as any,
     url: `/store-service-order/update/${outTradeNo}`,

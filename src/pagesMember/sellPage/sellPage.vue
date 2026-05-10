@@ -188,6 +188,8 @@ const priceEditable = ref(false) // 价格是否可编辑
 const handleCreateOrder = (product: StoreInventoryItem) => {
   console.log(product)
   currentProduct.value = product
+  // 缓存商品原价，供会员查询失败/切换非会员时恢复价格
+  originalPrice.value = product.salePrice
   isMember.value = false
   priceEditable.value = false
   resetQueryMember()

@@ -134,6 +134,45 @@ export const findWritableCharacteristic = (deviceId: string) =>
     })
   })
 
+// 发现设备中的通知特征（notify/indicate）
+export const findNotifyCharacteristic = (deviceId: string) =>
+  new Promise<WritableCharacteristic>((resolve, reject) => {
+    wx.getBLEDeviceServices({
+      deviceId,
+      success: (serviceRes) => {
+        const services = serviceRes.services || []
+        const loopServices = (index: number) => {
+          if (index >= services.length) {
+            reject(new Error('未找到通知特征'))
+            return
+          }
+          const serviceId = services[index].uuid
+          wx.getBLEDeviceCharacteristics({
+            deviceId,
+            serviceId,
+            success: (charRes) => {
+              const chars = charRes.characteristics || []
+              const notifyChar = chars.find(
+                (char) => char.properties?.notify || char.properties?.indicate,
+              )
+              if (notifyChar) {
+                resolve({
+                  serviceId,
+                  characteristicId: notifyChar.uuid,
+                })
+                return
+              }
+              loopServices(index + 1)
+            },
+            fail: () => loopServices(index + 1),
+          })
+        }
+        loopServices(0)
+      },
+      fail: (err) => reject(err),
+    })
+  })
+
 // 向指定特征写入十六进制指令
 export const writeBleHexCommand = (
   deviceId: string,
