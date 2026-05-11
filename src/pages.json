@@ -290,6 +290,13 @@
             "navigationBarTitleText": "钱包管理",
             "enablePullDownRefresh": false
           }
+        },
+        {
+          "path": "storeWallet/applyWithdraw",
+          "style": {
+            "navigationBarTitleText": "申请提现",
+            "enablePullDownRefresh": false
+          }
         }
       ]
     }

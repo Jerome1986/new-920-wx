@@ -114,6 +114,9 @@ const onPageLoad = () => {
 /** 申请提现 */
 const handleApplyWithdraw = () => {
   console.log('handleApplyWithdraw', wallet.value.availableBalance)
+  uni.navigateTo({
+    url: `/pagesMember/storeWallet/applyWithdraw?availableBalance=${wallet.value.availableBalance}`,
+  })
 }
 
 /** 切换流水筛选 */

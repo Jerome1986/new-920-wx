@@ -37,3 +37,12 @@ export interface WalletTransactionPage {
 
 /** 钱包流水页筛选项（UI）：提现走 OUT，不单列筛选项 */
 export type WalletFilterTab = 'ALL' | 'IN' | 'OUT'
+
+/** 钱包提现申请表单 */
+export interface WalletWithdrawApplyForm {
+  userId: string
+  amount: string
+  payeeName: string
+  payeeAccount: string
+  bankName: string
+}

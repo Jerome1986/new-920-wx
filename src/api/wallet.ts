@@ -29,3 +29,25 @@ export const userWalletApi = (userId: string) => {
     url: `/wallet/${userId}`,
   })
 }
+
+/**
+ * 用户提现申请
+ * @param userId
+ * @param amount
+ * @param payeeName
+ * @param payeeAccount
+ * @param bankName
+ */
+export const walletWithdrawApplyApi = (
+  userId: string,
+  amount: number,
+  payeeName: string,
+  payeeAccount: string,
+  bankName: string,
+) => {
+  return request({
+    method: 'POST',
+    url: '/wallet-withdraw-apply/submit',
+    data: { userId, amount, payeeName, payeeAccount, bankName },
+  })
+}
