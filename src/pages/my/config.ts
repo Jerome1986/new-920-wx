@@ -1,4 +1,5 @@
 import { useMemberStore } from '@/stores'
+import { isManagerRole } from '@/utils/role'
 
 /// 用户功能配置
 const userData = [
@@ -82,7 +83,7 @@ export const managerHandleClickGird = (val: string) => {
 export const configData = () => {
   // 在函数内部获取 store，确保 Pinia 已初始化
   const userStore = useMemberStore()
-  if (userStore.profile?.role === 'MANAGER') {
+  if (isManagerRole(userStore.profile?.role)) {
     return managerData
   } else {
     return userData

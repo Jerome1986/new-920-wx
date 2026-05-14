@@ -6,6 +6,7 @@ import { validateForm } from '@/utils/validate'
 import { useMemberStore } from '@/stores'
 import { updateImg } from '@/composables/updateImg'
 import { cooperateAddApi } from '@/api/cooperate.ts'
+import { isManagerRole } from '@/utils/role'
 
 // 获取系统安全范围
 const { safeAreaInsets } = uni.getSystemInfoSync()
@@ -36,7 +37,7 @@ const handleSubmit = async () => {
   console.log('提交', form.value)
 
   // 用户身份验证
-  if (userStore.profile.role === 'manager') {
+  if (isManagerRole(userStore.profile.role)) {
     await uni.showToast({
       title: '您已经是我们的员工啦',
       icon: 'none',

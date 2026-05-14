@@ -6,6 +6,7 @@ import { useMemberStore } from '@/stores'
 import { hireAddApi } from '@/api/hire'
 import { updateImg } from '@/composables/updateImg'
 import UpdateFIle from '@/components/UpdateFIle.vue'
+import { isManagerRole } from '@/utils/role'
 
 const { safeAreaInsets } = uni.getSystemInfoSync()
 
@@ -34,7 +35,7 @@ const handleSubmit = async (): Promise<void> => {
   console.log('提交', form.value)
 
   // 用户身份验证
-  if (userStore.profile.role === 'manager') {
+  if (isManagerRole(userStore.profile.role)) {
     await uni.showToast({
       title: '您已经是我们的员工啦',
       icon: 'none',

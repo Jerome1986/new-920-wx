@@ -7,6 +7,7 @@ import type { CommissionRecordItem } from '@/types/CommissionRecord'
 import { findStoreCommissionRecord } from '@/api/store'
 import { useMemberStore } from '@/stores'
 import type { StoreBizType } from '@/types/ManagerStore'
+import { isManagerRole } from '@/utils/role'
 
 const userStore = useMemberStore()
 
@@ -42,9 +43,6 @@ const displaySubordinateMobile = (m?: string | null) => {
 
 // 下级角色转为中文文案
 const roleDisplay = (role: string) => formatRole(role, 0)
-
-// 是否为店长角色（样式区分）
-const isManagerRole = (role: string) => role === 'MANAGER'
 
 // 佣金类型转换中文
 const bizLabelLabel: Record<StoreBizType, string> = {

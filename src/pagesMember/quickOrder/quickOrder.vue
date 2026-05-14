@@ -4,6 +4,7 @@ import { onLoad, onUnload } from '@dcloudio/uni-app'
 import { updateOfflineOrderApi, offlineOrderGetApi } from '@/api/order.ts'
 import { formatTimestamp } from '@/utils/formatTimestamp.ts'
 import type { freeOrderStatus, QuickOrderResult } from '@/types/Order'
+import { useMemberStore } from '@/stores'
 import {
   arrayBufferToHex,
   closeBleConnection,
@@ -22,6 +23,8 @@ import {
   writeBleHexCommand,
 } from '@/utils/bluetooth'
 import { decrementStoreStockApi } from '@/api/store'
+
+const userStore = useMemberStore()
 
 // 订单信息
 const orderInfo = ref<QuickOrderResult<freeOrderStatus>>()
@@ -52,6 +55,7 @@ const isDiscoveryListening = ref(false)
 // 协议固定特征：服务 AB01、写 AB02、通知 AB03
 const PROTOCOL_SERVICE_SUFFIX = 'AB01'
 const PROTOCOL_WRITE_SUFFIX = 'AB02'
+const isPrimaryManager = () => userStore.profile.role === 'MANAGER_PRIMARY'
 
 // 取消订单
 const handleCancelOrder = () => {
@@ -105,7 +109,7 @@ const resetBluetoothState = () => {
 const handleConnectDevice = () => {
   console.log(isPaid.value, orderInfo.value?.status)
 
-  if (!isPaid.value || orderInfo.value?.status !== 'PAID') {
+  if (!isPrimaryManager() && (!isPaid.value || orderInfo.value?.status !== 'PAID')) {
     uni.showToast({
       title: '请先完成支付后再连接设备',
       icon: 'none',
@@ -351,8 +355,13 @@ onLoad((query?: AnyObject) => {
   console.log('页面接收到参数', query)
 
   if (query.code_url && query.out_trade_no) {
-    qrCodeUrl.value = query.code_url // 后端返回的 base64 图片
     offlineOrderGet(query.out_trade_no)
+
+    if (isPrimaryManager()) {
+      return
+    }
+
+    qrCodeUrl.value = query.code_url // 后端返回的 base64 图片
 
     // 设置轮询
     timer = setInterval(async () => {
@@ -387,7 +396,8 @@ onUnload(() => {
     <!-- 订单状态头部 -->
     <view class="order-header">
       <view class="status-info">
-        <text class="status-text" v-if="!isPaid">等待客户付款</text>
+        <text class="status-text" v-if="isPrimaryManager()">连接设备</text>
+        <text class="status-text" v-else-if="!isPaid">等待客户付款</text>
         <text class="status-text status-success" v-else>付款成功</text>
         <text class="order-no">订单号：{{ orderInfo?.outTradeNo }}</text>
       </view>
@@ -418,7 +428,7 @@ onUnload(() => {
     </view>
 
     <!-- 二维码付款区域 -->
-    <view class="qrcode-card">
+    <view class="qrcode-card" v-if="!isPrimaryManager()">
       <view class="card-title">
         <text class="iconfont icon-saoma"></text>
         <text>扫码付款</text>

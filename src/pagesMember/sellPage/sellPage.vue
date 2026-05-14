@@ -187,6 +187,10 @@ const priceEditable = ref(false) // 价格是否可编辑
 // 打开出单弹框
 const handleCreateOrder = (product: StoreInventoryItem) => {
   console.log(product)
+  if (product.stock < 1) {
+    uni.showToast({ icon: 'none', title: '库存不足' })
+    return
+  }
   currentProduct.value = product
   // 缓存商品原价，供会员查询失败/切换非会员时恢复价格
   originalPrice.value = product.salePrice

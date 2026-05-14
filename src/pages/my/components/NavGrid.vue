@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useMemberStore } from '@/stores'
 import { configData, managerHandleClickGird, userHandleClickGird } from '@/pages/my/config.ts'
+import { isManagerRole } from '@/utils/role'
 
 // 定义store
 const userStore = useMemberStore()
@@ -13,7 +14,7 @@ const handleGrid = (val: string) => {
     return uni.showToast({ icon: 'none', title: '登录后可查看', mask: true })
 
   // 如果是店长，就是用店长对应的点击功能函数
-  if (userStore.profile?.role === 'MANAGER') {
+  if (isManagerRole(userStore.profile?.role)) {
     managerHandleClickGird(val)
   } else {
     // 如果是用户操作，就使用用户的点击功能函数

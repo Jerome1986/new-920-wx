@@ -2,10 +2,19 @@
 import { ref } from 'vue'
 import { navList } from '@/pagesMember/StoreManager/config.ts'
 import { useManagerStore } from '@/stores/modules/manager.ts'
+import { useMemberStore } from '@/stores/modules/member.ts'
 import { onLoad } from '@dcloudio/uni-app'
 
 // 门店名称（可以从store中获取）
 const managerStore = useManagerStore()
+const userStore = useMemberStore()
+
+const primaryRestrictedPaths = new Set([
+  '/pagesMember/myIncome/myIncome',
+  '/pagesMember/storeReport/storeReport',
+  '/pagesMember/storeWallet/storeWallet',
+  '/pagesMember/storeMembers/storeMembers',
+])
 
 // App.vue 中 page 为 overflow:hidden，需用 scroll-view + 固定高度才能滚动
 const scrollHeight = ref(0)
@@ -17,6 +26,14 @@ initScrollHeight()
 // 处理导航跳转
 const handleNavigation = (path: string) => {
   const url = path.startsWith('/') ? path : `/${path}`
+  if (userStore.profile.role === 'MANAGER_PRIMARY' && primaryRestrictedPaths.has(url)) {
+    uni.showToast({
+      title: '请升级店长权限后再试',
+      icon: 'none',
+    })
+    return
+  }
+
   uni.navigateTo({
     url,
     success: () => {

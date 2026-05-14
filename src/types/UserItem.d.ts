@@ -1,3 +1,11 @@
+export type UserRole =
+  | 'USER'
+  | 'VIP'
+  | 'MANAGER'
+  | 'MANAGER_PRIMARY'
+  | 'MANAGER_SENIOR'
+  | 'PLATFORM'
+
 /**
  * 用户数据类型
  */
@@ -14,8 +22,8 @@ export type UserItem = {
   mobile: string
   /** 性别 */
   gender: number
-  /** 用户角色 - user普通用户 vip会员 manager店长 */
-  role: string
+  /** 用户角色 */
+  role: UserRole
   /** 用户归属-门店 */
   storeId?: string
   /** 注册时间 */
