@@ -50,16 +50,6 @@ const handleCheckout = () => {
     return
   }
 
-  // 检查店长购物车内是否是和商品混合，有则提示
-  const uniqueTypes = new Set(cartTobStore.cartTobList.map((cart) => cart.type))
-  if (uniqueTypes.size > 1) {
-    uni.showToast({
-      title: '进货时不要选择商品噢',
-      icon: 'none',
-    })
-    return
-  }
-
   // 拿到所选择商品数组里的type并传递给订单页面
   const orderType = cartTobStore.selectProduct[0].type
   console.log('商品类型', orderType)
