@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useCartTobStore, useManagerStore, useMemberStore, useRateStore } from '@/stores'
+import { useCartTobStore, useMemberStore } from '@/stores'
 import type { OrderAmount, OrderUserInfo, sumbitOrderProduct } from '@/types/Order'
 import { formatAmount } from '@/utils/formatTimestamp.ts'
 import type { AddressInfo } from '@/types/UserItem'
@@ -12,8 +12,6 @@ const { safeAreaInsets } = uni.getSystemInfoSync()
 // 定义store
 const cartTobStore = useCartTobStore()
 const userStore = useMemberStore()
-const rateStore = useRateStore()
-const managerStore = useManagerStore()
 
 // 选择地址-直接调用微信的收货地址
 const showAddress = ref(true)
@@ -43,25 +41,9 @@ const handleAddress = () => {
   })
 }
 
-// 可抵扣金额
-const deductAmount = computed(() => {
-  const totalYuan = cartTobStore.totalPrice || 0
-  const rules = rateStore.rateRules
-  const userScore = Math.max(0, userStore.profile?.score || 0)
-
-  if (rules && typeof rules.maxUsePercent === 'number' && typeof rules.useRate === 'number') {
-    const maxDeductYuan = totalYuan * rules.maxUsePercent
-    const scoreDeductYuan = userScore * rules.useRate
-    const canUseYuan = Math.min(maxDeductYuan, scoreDeductYuan)
-    return Math.floor(canUseYuan)
-  }
-
-  return 0
-})
-
 // 实际支付金额
 const needPay = computed(() => {
-  return cartTobStore.totalPrice - deductAmount.value
+  return cartTobStore.totalPrice
 })
 
 // 确认订单提交入库
@@ -99,9 +81,9 @@ const submit = async () => {
   // 商品金额信息
   const amount: OrderAmount = {
     totalPrice: Number(cartTobStore.totalPrice.toFixed(2)),
-    deductAmount: Number(deductAmount.value.toFixed(2)),
+    deductAmount: 0,
     actualPayment: Number(needPay.value.toFixed(2)),
-    usedScore: Number(deductAmount.value.toFixed(2)),
+    usedScore: 0,
   }
 
   // 调用API提交订单
@@ -214,19 +196,6 @@ const submit = async () => {
       <view class="item">
         <text class="label">商品金额</text>
         <text class="value">{{ formatAmount(cartTobStore.totalPrice) }}</text>
-      </view>
-      <view class="item">
-        <text class="label">运营资金</text>
-        <text class="value">{{ formatAmount(userStore.profile.operating_balance ?? 0) }}</text>
-      </view>
-      <view class="item">
-        <text class="label">剩余积分</text>
-        <text class="value">{{ (userStore.profile.score ?? 0).toFixed(2) }}</text>
-      </view>
-      <!-- 当前可抵扣的积分 -->
-      <view class="item">
-        <text class="label">可抵积分</text>
-        <text class="value" style="color: #d62731">{{ deductAmount.toFixed(2) }}</text>
       </view>
       <view class="item total">
         <text class="label">合计</text>
