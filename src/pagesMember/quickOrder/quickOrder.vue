@@ -24,6 +24,7 @@ import {
 } from '@/utils/bluetooth'
 import { decrementStoreStockApi } from '@/api/store'
 
+// 会员/店员信息
 const userStore = useMemberStore()
 
 // 订单信息
@@ -34,7 +35,11 @@ const qrCodeUrl = ref('')
 
 // 付款成功状态（用于控制显示）
 const isPaid = ref(false)
+
+// 蓝牙设备弹层显示状态
 const showBluetoothList = ref(false)
+
+// 扫描到的蓝牙设备列表
 const bluetoothDevices = ref<
   Array<{
     deviceId: string
@@ -43,19 +48,66 @@ const bluetoothDevices = ref<
     RSSI?: number
   }>
 >([])
+
+// 当前正在连接或断开的设备 ID
 const connectingDeviceId = ref('')
+
+// 当前已连接的设备 ID
 const connectedDeviceId = ref('')
+
+// 当前协议写入服务 ID
 const currentServiceId = ref('')
+
+// 当前协议写入特征 ID
 const currentWriteCharId = ref('')
+
+// 当前协议通知服务 ID
 const notifyServiceId = ref('')
+
+// 当前协议通知特征 ID
 const notifyCharacteristicId = ref('')
+
+// 贴膜是否已开始
 const isFilmStarted = ref(false)
+
+// 贴膜是否已结束
 const filmFinished = ref(false)
+
+// 是否已注册蓝牙扫描监听
 const isDiscoveryListening = ref(false)
+
 // 协议固定特征：服务 AB01、写 AB02、通知 AB03
 const PROTOCOL_SERVICE_SUFFIX = 'AB01'
 const PROTOCOL_WRITE_SUFFIX = 'AB02'
+
+// 判断当前用户是否为主店长
 const isPrimaryManager = () => userStore.profile.role === 'MANAGER_PRIMARY'
+
+// 优先展示的蓝牙设备名前缀
+const YINGXIONG_DEVICE_PREFIX = 'YINGXIONG'
+
+// 获取蓝牙设备展示名称
+const getBluetoothDeviceName = (device: { name?: string; localName?: string }) => {
+  return (device.name || device.localName || '').trim()
+}
+
+// 判断是否为 YINGXIONG 设备
+const isYingxiongDevice = (device: { name?: string; localName?: string }) => {
+  return getBluetoothDeviceName(device).toUpperCase().startsWith(YINGXIONG_DEVICE_PREFIX)
+}
+
+// 将 YINGXIONG 设备稳定排到前面
+const sortBluetoothDevices = () => {
+  bluetoothDevices.value = bluetoothDevices.value
+    .map((device, index) => ({ device, index }))
+    .sort((left, right) => {
+      const leftPriority = isYingxiongDevice(left.device) ? 0 : 1
+      const rightPriority = isYingxiongDevice(right.device) ? 0 : 1
+
+      return leftPriority - rightPriority || left.index - right.index
+    })
+    .map(({ device }) => device)
+}
 
 // 取消订单
 const handleCancelOrder = () => {
@@ -129,6 +181,7 @@ const handleConnectDevice = () => {
         // 扫描结果按 deviceId 去重并增量更新
         devices.forEach((device) => {
           if (!device?.deviceId) return
+          if (!getBluetoothDeviceName(device)) return
           const index = bluetoothDevices.value.findIndex(
             (item) => item.deviceId === device.deviceId,
           )
@@ -141,6 +194,7 @@ const handleConnectDevice = () => {
             bluetoothDevices.value.push(device)
           }
         })
+        sortBluetoothDevices()
       })
       isDiscoveryListening.value = true
     })
@@ -153,6 +207,7 @@ const handleConnectDevice = () => {
 // 轮询订单，同步成功状态
 let timer: any
 
+// 确认并完成当前订单
 const handleCompletedOrder = () => {
   uni.showModal({
     title: '提示',
@@ -350,6 +405,7 @@ const closeBluetoothList = () => {
   showBluetoothList.value = false
 }
 
+// 页面加载时初始化订单和支付轮询
 onLoad((query?: AnyObject) => {
   if (!query) return
   console.log('页面接收到参数', query)

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref } from 'vue'
 import type { CateItem } from '@/types/CateItem'
 import { cateMoGetApi } from '@/api/cate.ts'
 import { onLoad } from '@dcloudio/uni-app'
-import { productListByCateIdGetApi, quickSellSearchModelsApi } from '@/api/product.ts'
+import { quickSellSearchModelsApi } from '@/api/product.ts'
 import { searchInventoryApi, storeGetInventoryApi } from '@/api/store.ts'
 import { useManagerStore } from '@/stores'
 import {
@@ -11,7 +11,6 @@ import {
   normalize,
   searchInventoryProduct,
 } from '@/pagesMember/sellPage/useProductSearch.ts'
-import { highlightKeyword } from '@/pagesMember/sellPage/useHighlightKeyword.ts'
 import { giftOrderApi, quickOrderApi } from '@/api/order.ts'
 import { useQueryMember } from '@/pagesMember/sellPage/useQueryMember.ts'
 import { deviceFindPhoneNameApi } from '@/api/device.ts'
@@ -36,31 +35,182 @@ const managerStore = useManagerStore()
 // 搜索关键词
 const keyword = ref('')
 
+// 最近一次有效搜索词，用于分类切换时恢复搜索框
+const lastSearchKeyword = ref('')
+
 // 当前选中的手机型号
 const selectedModel = ref('')
 
 // 型号筛选开关
 const modelFilterEnabled = ref(false)
 
+// 搜索型号建议列表
+const modelSuggestionList = ref<string[]>([])
+
+// 是否显示型号建议列表
+const showModelSuggestions = ref(false)
+
+// 型号建议加载状态
+const modelSuggestionLoading = ref(false)
+
+// 型号建议防抖计时器
+let modelSuggestionTimer: ReturnType<typeof setTimeout> | null = null
+
+// 型号建议请求序号，避免旧请求覆盖新结果
+let modelSuggestionRequestId = 0
+
+// 获取当前分类ID
+const currentCateId = () => cateList.value[activeCateIndex.value]?.id
+
+// 获取搜索输入值
+const getSearchInputValue = (value: unknown) => {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') {
+    const eventValue = value as { value?: string; detail?: { value?: string } }
+    return eventValue.value ?? eventValue.detail?.value ?? keyword.value
+  }
+  return keyword.value
+}
+
+// 高亮型号建议中匹配的关键词
+const highlightKeyword = (text: string, searchValue: string) => {
+  if (!searchValue) return text
+  const escaped = searchValue.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const regex = new RegExp(`(${escaped})`, 'gi')
+  return text.replace(regex, '<span style="color: #d62731;">$1</span>')
+}
+
+// 隐藏并清空型号建议
+const clearModelSuggestions = () => {
+  if (modelSuggestionTimer) {
+    clearTimeout(modelSuggestionTimer)
+    modelSuggestionTimer = null
+  }
+  modelSuggestionRequestId++
+  modelSuggestionList.value = []
+  showModelSuggestions.value = false
+  modelSuggestionLoading.value = false
+}
+
+// 分类切换后恢复搜索框显示值
+const restoreSearchKeyword = (searchValue: string) => {
+  keyword.value = searchValue
+  setTimeout(() => {
+    if (lastSearchKeyword.value === searchValue) {
+      keyword.value = searchValue
+    }
+  }, 0)
+}
+
+// 按关键词搜索当前分类库存
+const searchCurrentCateInventory = async (searchValue: string) => {
+  const storeId = managerStore.managerStoreInfo?.id
+  const cateId = currentCateId()
+  const searchKey = searchValue.trim()
+
+  if (!storeId || !cateId) return
+  if (!searchKey) {
+    reset()
+    await productListGet(cateId)
+    return
+  }
+
+  reset()
+  modelFilterEnabled.value = false
+  loading.value = true
+
+  try {
+    const result = await searchInventoryApi(storeId, searchKey.toLocaleLowerCase(), cateId)
+    inventoryList.value = result.data
+    finish.value = true
+  } finally {
+    loading.value = false
+  }
+}
+
+// 请求匹配的手机型号建议
+const fetchModelSuggestions = async (searchValue: string) => {
+  const searchKey = searchValue.trim()
+  const requestId = ++modelSuggestionRequestId
+
+  if (!searchKey) {
+    modelSuggestionList.value = []
+    showModelSuggestions.value = false
+    return
+  }
+
+  modelSuggestionLoading.value = true
+
+  try {
+    const res = await quickSellSearchModelsApi(searchKey)
+    if (requestId !== modelSuggestionRequestId) return
+
+    modelSuggestionList.value = res.data || []
+    showModelSuggestions.value = modelSuggestionList.value.length > 0
+  } catch {
+    if (requestId !== modelSuggestionRequestId) return
+    modelSuggestionList.value = []
+    showModelSuggestions.value = false
+  } finally {
+    if (requestId === modelSuggestionRequestId) {
+      modelSuggestionLoading.value = false
+    }
+  }
+}
+
+// 处理搜索框输入，联想型号列表
+const handleKeywordInput = (value: unknown) => {
+  keyword.value = getSearchInputValue(value)
+
+  if (modelFilterEnabled.value) {
+    modelFilterEnabled.value = false
+  }
+
+  if (modelSuggestionTimer) {
+    clearTimeout(modelSuggestionTimer)
+  }
+
+  const searchKey = keyword.value.trim()
+  if (!searchKey) {
+    clearModelSuggestions()
+    return
+  }
+
+  lastSearchKeyword.value = keyword.value
+
+  modelSuggestionList.value = []
+  showModelSuggestions.value = false
+  modelSuggestionLoading.value = true
+
+  modelSuggestionTimer = setTimeout(() => {
+    fetchModelSuggestions(searchKey)
+  }, 250)
+}
+
 // 搜索
 const handleSearch = async () => {
-  reset()
-  const result = await searchInventoryApi(
-    managerStore.managerStoreInfo?.id as string,
-    keyword.value.trim().toLocaleLowerCase(),
-    cateList.value[activeCateIndex.value].id,
-  )
-  console.log(result)
+  clearModelSuggestions()
   console.log('activeModel', selectedModel.value)
-
-  inventoryList.value = result.data
+  lastSearchKeyword.value = keyword.value
+  await searchCurrentCateInventory(keyword.value)
 }
 
 // 清空搜索
 const handleSearchClear = async () => {
   keyword.value = ''
+  lastSearchKeyword.value = ''
+  clearModelSuggestions()
+  modelFilterEnabled.value = false
   reset()
-  await productListGet(cateList.value[activeCateIndex.value].id)
+  await productListGet(currentCateId())
+}
+
+// 点击型号建议后精准搜索
+const handleModelSuggestionSelect = async (modelName: string) => {
+  keyword.value = modelName
+  lastSearchKeyword.value = modelName
+  clearModelSuggestions()
+  await searchCurrentCateInventory(modelName)
 }
 
 // 分类标签数据
@@ -76,21 +226,32 @@ const tagListGet = async () => {
       return []
     }
   })
+  if (!tagList.value.length) return
   changeCateList(tagList.value[0].id)
-  productListGet(cateList.value[0].id)
+  productListGet(currentCateId())
 }
 
 // 切换标签
 const handleTagChange = async (index: number, cateId: number) => {
+  const searchValue = keyword.value.trim() ? keyword.value : lastSearchKeyword.value
   activeTagIndex.value = index
   // 重置
   activeCateIndex.value = 0
-  keyword.value = ''
   modelFilterEnabled.value = false
   reset()
   // 根据标签筛选
   changeCateList(cateId)
-  productListGet(cateList.value[0].id)
+  clearModelSuggestions()
+
+  if (searchValue.trim()) {
+    restoreSearchKeyword(searchValue)
+    lastSearchKeyword.value = searchValue
+    await searchCurrentCateInventory(searchValue)
+    restoreSearchKeyword(searchValue)
+    return
+  }
+
+  productListGet(currentCateId())
 }
 
 // 左侧分类数据
@@ -104,14 +265,23 @@ const changeCateList = (tagId: number) => {
 
 // 切换分类
 const handleCateChange = async (index: number) => {
+  const searchValue = keyword.value.trim() ? keyword.value : lastSearchKeyword.value
   activeCateIndex.value = index
-  keyword.value = ''
   modelFilterEnabled.value = false
   reset()
   //  根据分类筛选
-  console.log('cate', cateList.value[activeCateIndex.value].id)
+  console.log('cate', currentCateId())
 
-  productListGet(cateList.value[activeCateIndex.value].id)
+  if (searchValue.trim()) {
+    clearModelSuggestions()
+    restoreSearchKeyword(searchValue)
+    lastSearchKeyword.value = searchValue
+    await searchCurrentCateInventory(searchValue)
+    restoreSearchKeyword(searchValue)
+    return
+  }
+
+  productListGet(currentCateId())
 }
 
 onLoad(() => tagListGet())
@@ -127,10 +297,10 @@ const finish = ref(false)
 const loading = ref(false)
 // 库存数据
 const inventoryList = ref<StoreInventoryItem[]>([])
-const productListGet = async (cateId: number) => {
+const productListGet = async (cateId?: number) => {
   console.log('cateId', cateId)
 
-  if (finish.value || loading.value) return
+  if (!cateId || finish.value || loading.value) return
 
   loading.value = true
 
@@ -168,7 +338,7 @@ const handleLoadMore = async () => {
   // - keyword 搜索：直接一次性返回
   // - 本机搜索（modelFilterEnabled）：直接一次性返回
   if (keyword.value || modelFilterEnabled.value) return
-  productListGet(cateList.value[activeCateIndex.value].id)
+  productListGet(currentCateId())
 }
 
 // 重置函数
@@ -236,13 +406,15 @@ onLoad(() => getPhoneModel())
 const handleSearchLocal = async (e: any) => {
   modelFilterEnabled.value = e.detail.value
   keyword.value = ''
+  lastSearchKeyword.value = ''
+  clearModelSuggestions()
   reset()
   // 开启搜索本机
   if (modelFilterEnabled.value) {
-    await productListGet(cateList.value[activeCateIndex.value].id)
+    await productListGet(currentCateId())
     inventoryList.value = searchInventoryProduct(selectedModel.value, inventoryList.value)
   } else {
-    await productListGet(cateList.value[activeCateIndex.value].id)
+    await productListGet(currentCateId())
   }
 }
 
@@ -336,9 +508,33 @@ const handleCancelOrder = () => {
           bgColor="#fff"
           cancelButton="none"
           clearButton="auto"
+          @input="handleKeywordInput"
           @confirm="handleSearch"
           @clear="handleSearchClear"
         />
+        <view class="model-suggestion-panel" v-if="showModelSuggestions || modelSuggestionLoading">
+          <view class="suggestion-loading" v-if="modelSuggestionLoading">
+            <text>匹配型号中...</text>
+          </view>
+          <scroll-view
+            class="suggestion-scroll"
+            :scroll-y="true"
+            :show-scrollbar="true"
+            v-if="modelSuggestionList.length"
+          >
+            <view
+              class="suggestion-item"
+              v-for="modelName in modelSuggestionList"
+              :key="modelName"
+              @click.stop="handleModelSuggestionSelect(modelName)"
+            >
+              <rich-text
+                class="suggestion-name"
+                :nodes="highlightKeyword(modelName, keyword)"
+              ></rich-text>
+            </view>
+          </scroll-view>
+        </view>
       </view>
     </view>
 
@@ -573,6 +769,7 @@ const handleCancelOrder = () => {
     bottom: 40rpx;
     left: 32rpx;
     right: 32rpx;
+    z-index: 10;
 
     // 自定义 uni-search-bar 样式
     :deep(.uni-searchbar) {
@@ -601,6 +798,54 @@ const handleCancelOrder = () => {
     :deep(.uni-searchbar__box-search-input) {
       font-size: 28rpx !important;
       color: $jel-font-title !important;
+    }
+
+    .model-suggestion-panel {
+      position: absolute;
+      top: 88rpx;
+      left: 0;
+      right: 0;
+      max-height: 420rpx;
+      background-color: #fff;
+      border-radius: 16rpx;
+      box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.12);
+      z-index: 20;
+      overflow: hidden;
+
+      .suggestion-scroll {
+        max-height: 420rpx;
+      }
+
+      .suggestion-loading,
+      .suggestion-item {
+        min-height: 76rpx;
+        padding: 0 28rpx;
+        display: flex;
+        align-items: center;
+        border-bottom: 1rpx solid $jel-border;
+      }
+
+      .suggestion-loading {
+        text {
+          font-size: 26rpx;
+          color: $jel-font-dec2;
+        }
+      }
+
+      .suggestion-item {
+        &:last-child {
+          border-bottom: 0;
+        }
+
+        &:active {
+          background-color: $jel-pageBackGroundColor;
+        }
+      }
+
+      .suggestion-name {
+        font-size: 28rpx;
+        color: $jel-font-title;
+      }
     }
   }
 }
