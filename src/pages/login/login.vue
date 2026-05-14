@@ -4,7 +4,6 @@ import { useMemberStore } from '@/stores'
 import { onLoad } from '@dcloudio/uni-app'
 import { ref } from 'vue'
 import { isVipExpired } from '@/utils/validate.ts'
-import { userInviter2CodeGetApi } from '@/api/user.ts'
 
 // 定义store
 const userStore = useMemberStore()
@@ -31,41 +30,54 @@ const showAgreementModal = () => {
 // 获取手机号凭证返回类型
 type GetPhoneNumberEvent = {
   detail: {
-    code?: string // 用于获取手机号的凭证
-    errMsg?: string // 错误信息
-    iv?: string // 加密算法的初始向量（已废弃）
-    encryptedData?: string // 加密数据（已废弃）
+    code?: string
+    errMsg?: string
   }
 }
 // 手机登录
 const handleLogin = async (e: GetPhoneNumberEvent) => {
   console.log('handleMobileLogin', e)
+
+  if (!agree.value) {
+    uni.showToast({ icon: 'none', title: '请先阅读并勾选用户协议' })
+    return
+  }
+
+  const phoneCode = e.detail.code
+
+  if (!phoneCode) {
+    uni.showToast({ icon: 'none', title: '未获取到手机号授权凭证' })
+    console.error('getPhoneNumber 未返回 code', e)
+    return
+  }
+
+  const loginRes = await uni.login()
+
+  if (!loginRes.code) {
+    uni.showToast({ icon: 'none', title: '获取微信登录凭证失败' })
+    return
+  }
+
   try {
-    const wxRes = await wxLoginApi(
-      freshCode.value,
-      e.detail.encryptedData!,
-      e.detail.iv!,
-      inviterCode.value,
-    )
+    const wxRes = await wxLoginApi(loginRes.code, phoneCode, inviterCode.value)
+
     console.log('wxMobileLoginApi 返回', wxRes)
 
     if (wxRes.code === 200 && wxRes.data) {
       const userRes = wxRes.data
-      console.log('登录返回', userRes)
-      // 检测会员是否过期
+
       if (
         userRes.user.role === 'VIP' &&
         userRes.user.vipEndTime &&
         isVipExpired(userRes.user.vipEndTime)
       ) {
         userRes.user.role = 'USER'
-        console.log('会员已过期')
       }
-      // 将返回的用户信息存入store
+
       userStore.setProfile(userRes.user)
       userStore.setToken(userRes.token)
 
-      await uni.showToast({
+      uni.showToast({
         icon: 'success',
         title: '登录成功',
         duration: 1000,
@@ -75,14 +87,13 @@ const handleLogin = async (e: GetPhoneNumberEvent) => {
         uni.switchTab({ url: '/pages/home/home' })
       }, 1000)
     } else {
-      await uni.showToast({
+      uni.showToast({
         icon: 'none',
         title: wxRes.message || '登录失败，请稍后重试',
       })
-      console.warn('登录接口响应失败', wxRes)
     }
   } catch (err) {
-    await uni.showToast({ icon: 'none', title: '请求异常，请检查网络' })
+    uni.showToast({ icon: 'none', title: '请求异常，请检查网络' })
     console.error('调用登录接口异常', err)
   }
 }

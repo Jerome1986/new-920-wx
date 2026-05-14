@@ -19,7 +19,7 @@ onHide(() => {
 
 @font-face {
   font-family: 'YouSheBiaoTiHei';
-  src: url('https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/YouSheBiaoTiHei.ttf');
+  src: url('https://objectstorageapi.gzg.sealos.run/erq1dfin-920/YouSheBiaoTiHei.ttf');
 }
 
 page {

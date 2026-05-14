@@ -264,6 +264,13 @@
           }
         },
         {
+          "path": "userFindMo/userFindMo",
+          "style": {
+            "navigationBarTitleText": "查找机型",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
           "path": "quickOrder/quickOrder",
           "style": {
             "navigationBarTitleText": "收银订单",

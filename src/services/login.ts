@@ -11,19 +11,13 @@ import type { LoginResult } from '@/types/UserItem'
  * @param {string} inviter2Code - 上上级邀请码
  */
 
-export const wxLoginApi = (
-  code: string,
-  encryptedData: string,
-  iv: string,
-  inviterCode?: string,
-) => {
+export const wxLoginApi = (code: string, phoneCode: string, inviterCode?: string) => {
   return request<LoginResult>({
     method: 'POST',
     url: '/auth/wx-phone-login',
     data: {
       code,
-      encryptedData,
-      iv,
+      phoneCode,
       inviterCode,
     },
   })

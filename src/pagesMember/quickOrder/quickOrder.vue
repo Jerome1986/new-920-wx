@@ -103,6 +103,8 @@ const resetBluetoothState = () => {
 
 // 蓝牙流程-1：开始连接（打开弹层 -> 初始化蓝牙 -> 开始扫描 -> 持续接收设备列表）
 const handleConnectDevice = () => {
+  console.log(isPaid.value, orderInfo.value?.status)
+
   if (!isPaid.value || orderInfo.value?.status !== 'PAID') {
     uni.showToast({
       title: '请先完成支付后再连接设备',
@@ -362,6 +364,7 @@ onLoad((query?: AnyObject) => {
         timer = null
         // 显示支付成功
         res.data.status === 'PAID' ? (isPaid.value = true) : (isPaid.value = false)
+        orderInfo.value!.status = res.data.status
         console.log('已支付/已取消，结束轮询')
       }
     }, 5000)
