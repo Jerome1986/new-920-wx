@@ -161,13 +161,14 @@ const resetBluetoothState = () => {
 const handleConnectDevice = () => {
   console.log(isPaid.value, orderInfo.value?.status)
 
-  if (!isPrimaryManager() && (!isPaid.value || orderInfo.value?.status !== 'PAID')) {
-    uni.showToast({
-      title: '请先完成支付后再连接设备',
-      icon: 'none',
-    })
-    return
-  }
+  // if (!isPrimaryManager() && (!isPaid.value || orderInfo.value?.status !== 'PAID')) {
+  //   uni.showToast({
+  //     title: '请先完成支付后再连接设备',
+  //     icon: 'none',
+  //   })
+  //   return
+  // }
+
   showBluetoothList.value = true
   bluetoothDevices.value = []
   openBluetoothAdapter()
@@ -223,12 +224,6 @@ const handleCompletedOrder = () => {
             icon: 'success',
           })
           closeBluetoothList()
-          setTimeout(() => {
-            // 完成后回到门店管理
-            uni.redirectTo({
-              url: '/pagesMember/StoreManager/StoreManager',
-            })
-          }, 1200)
         }
       }
     },
