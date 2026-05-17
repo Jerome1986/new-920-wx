@@ -18,6 +18,7 @@ const scrollHeight = ref(0)
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
+const remainingStock = ref(0)
 const finish = ref(false)
 // 库存数据
 const inventoryList = ref<StoreInventoryItem[]>([])
@@ -35,6 +36,23 @@ const inventoryListGet = async (storeId: string) => {
   }
 }
 
+// 获取剩余库存总数
+const remainingStockGet = async (storeId: string) => {
+  const summaryPageSize = 1000
+  let currentPage = 1
+  let totalPage = 1
+  let stockTotal = 0
+
+  do {
+    const res = await storeGetInventoryApi(storeId, 0, currentPage, summaryPageSize)
+    stockTotal += res.data.list.reduce((sum, item) => sum + Number(item.stock || 0), 0)
+    totalPage = res.data.totalPage || 1
+    currentPage++
+  } while (currentPage <= totalPage)
+
+  remainingStock.value = stockTotal
+}
+
 // 加载更多
 const handleMore = () => {
   if (finish.value) return
@@ -44,6 +62,7 @@ const handleMore = () => {
 onLoad(() => {
   if (managerStore.managerStoreInfo?.id) {
     inventoryListGet(managerStore.managerStoreInfo?.id)
+    remainingStockGet(managerStore.managerStoreInfo?.id)
   }
 })
 
@@ -115,6 +134,14 @@ const handleOneClickRestock = async () => {
       <view class="stat-item">
         <text class="stat-value">{{ total }}</text>
         <text class="stat-label">库存商品</text>
+      </view>
+      <view class="divider"></view>
+      <view class="stat-item">
+        <view class="stat-value-row">
+          <text class="stat-value">{{ remainingStock }}</text>
+          <text class="stat-unit">片</text>
+        </view>
+        <text class="stat-label">剩余库存</text>
       </view>
       <view class="divider"></view>
       <view class="stat-item stat-item--restock">
@@ -208,7 +235,7 @@ const handleOneClickRestock = async () => {
   justify-content: center;
   background: linear-gradient(135deg, $jel-brandColor 0%, #ff4757 100%);
   border-radius: 20rpx;
-  padding: 40rpx 60rpx;
+  padding: 40rpx 32rpx;
   margin-bottom: 24rpx;
   box-shadow: 0 8rpx 24rpx rgba(214, 39, 49, 0.25);
 
@@ -226,6 +253,21 @@ const handleOneClickRestock = async () => {
       line-height: 1.2;
     }
 
+    .stat-value-row {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      max-width: 100%;
+
+      .stat-unit {
+        margin-left: 6rpx;
+        font-size: 24rpx;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.9);
+        line-height: 1;
+      }
+    }
+
     .stat-label {
       font-size: 26rpx;
       color: rgba(255, 255, 255, 0.85);
@@ -239,7 +281,7 @@ const handleOneClickRestock = async () => {
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 14rpx 36rpx;
+      padding: 14rpx 28rpx;
       border-radius: 32rpx;
       background-color: rgba(255, 255, 255, 0.95);
       box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.12);
@@ -257,7 +299,7 @@ const handleOneClickRestock = async () => {
     width: 2rpx;
     height: 80rpx;
     background-color: rgba(255, 255, 255, 0.3);
-    margin: 0 40rpx;
+    margin: 0 24rpx;
   }
 }
 
