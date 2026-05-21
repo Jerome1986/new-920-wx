@@ -148,6 +148,9 @@ const transactionFilterMap: Record<StoreTransactionFilterType, string> = {
   INCOME: '收入',
 }
 
+// 判断流水是否为收入
+const isIncomeTransaction = (row: StoreTransaction) => row.type === 'INCOME'
+
 // 流水标签（收入/支出）
 const handleTransactionFilterChange = (tag: StoreTransactionFilterType) => {
   resetTransactionListPage()
@@ -262,7 +265,12 @@ onLoad(async () => {
               >单号 {{ row.relatedOrderId }}</text
             >
           </view>
-          <text class="transaction-row__amount">￥{{ Number(row.amount).toFixed(2) }}</text>
+          <text
+            class="transaction-row__amount"
+            :class="isIncomeTransaction(row) ? 'is-in' : 'is-out'"
+          >
+            {{ isIncomeTransaction(row) ? '+' : '-' }}¥{{ formatAmount(row.amount) }}
+          </text>
         </view>
       </view>
       <view class="list-footer-tip">
@@ -465,9 +473,18 @@ onLoad(async () => {
 
 .transaction-row__amount {
   font-size: 32rpx;
-  font-weight: 600;
+  font-weight: 700;
+  line-height: 1.3;
   flex-shrink: 0;
-  color: $jel-font-title;
+  font-variant-numeric: tabular-nums;
+
+  &.is-in {
+    color: $jel-brandColor;
+  }
+
+  &.is-out {
+    color: #2a2a2a;
+  }
 }
 
 .list-footer-tip {

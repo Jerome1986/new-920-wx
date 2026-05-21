@@ -53,6 +53,30 @@ export const purchaseOrderGetApi = (
 }
 
 /**
+ * 根据订单商品货号搜索进货单
+ * @param userId - 用户ID
+ * @param skuNo - 商品货号
+ * @param status - 订单状态
+ * @param target - 查询目标
+ * @param pageNum - 页码
+ * @param pageSize - 条数
+ */
+export const purchaseOrderSearchBySkuNoApi = (
+  userId: string,
+  skuNo: string,
+  status: string,
+  target: 'ALL' | 'TOB' | 'TOC',
+  pageNum: number,
+  pageSize: number,
+) => {
+  return request<OrderPageResult>({
+    method: 'POST',
+    url: '/order/search',
+    data: { userId, target, skuNo, status, pageNum, pageSize },
+  })
+}
+
+/**
  * 取消进货单
  * @param out_trade_no - 订单号
  */

@@ -5,7 +5,7 @@ import { ref } from 'vue'
 import NavTitle from '@/components/NavTitle.vue'
 import GuessBar from '@/pages/search/GuessBar.vue'
 import type { JelSearchBar } from '@/types/component'
-// import { productListSearchToBGetApi } from '@/api/product.ts'
+import { productListSearchGetApi } from '@/api/product.ts'
 import GlobalProductBar from '@/components/GlobalProductBar.vue'
 
 // 搜索组件
@@ -22,17 +22,23 @@ const params = ref({
 
 // 产品数据
 const finish = ref(false)
+const loading = ref(false)
 const products = ref<ProductItem[]>([])
 const getProducts = async (val: string, pageNum: number, pageSize: number) => {
-  // if (finish.value) return
-  // const res = await productListSearchToBGetApi(val, pageNum, pageSize)
-  // console.log('搜索结果', res.data)
-  // products.value.push(...res.data.list)
-  // if (params.value.pageNum < res.data.totalPage) {
-  //   params.value.pageNum++
-  // } else {
-  //   finish.value = true
-  // }
+  if (finish.value || loading.value) return
+  loading.value = true
+  try {
+    const res = await productListSearchGetApi(val, pageNum, pageSize, 'TOB')
+    console.log('搜索结果', res.data)
+    products.value.push(...res.data.list)
+    if (params.value.pageNum < res.data.totalPage) {
+      params.value.pageNum++
+    } else {
+      finish.value = true
+    }
+  } finally {
+    loading.value = false
+  }
 }
 
 // 选择猜你想搜事件
@@ -42,6 +48,7 @@ const selectGuess = (guessName: string) => {
   products.value = [] // 清空旧的搜索结果
   params.value.pageNum = 1
   finish.value = false
+  loading.value = false
   searchRef.value?.setSearchValue(guessName) // 让搜索组件input同步搜索内容
   getProducts(guessName, params.value.pageNum, params.value.pageSize)
 }
@@ -53,6 +60,7 @@ const historySearch = async (val: string) => {
   products.value = [] // 清空旧的搜索结果
   params.value.pageNum = 1
   finish.value = false
+  loading.value = false
   await getProducts(val, params.value.pageNum, params.value.pageSize)
 }
 
@@ -63,6 +71,7 @@ const handleSearch = async (val: string) => {
   products.value = [] // 清空旧的搜索结果
   params.value.pageNum = 1
   finish.value = false
+  loading.value = false
   await getProducts(val, params.value.pageNum, params.value.pageSize)
 }
 
@@ -72,6 +81,7 @@ const handleClear = () => {
   products.value = []
   params.value.pageNum = 1
   finish.value = false
+  loading.value = false
 }
 
 // 搜索结果加载更多
@@ -98,17 +108,18 @@ const handleScrollToLower = async () => {
       @clear="handleClear"
     ></SearchBar>
     <!--  猜你想搜  -->
-    <GuessBar @selectGuess="selectGuess"></GuessBar>
+    <!-- <GuessBar @selectGuess="selectGuess"></GuessBar> -->
 
     <!-- 搜索结果 -->
     <view v-show="products.length > 0 || currentSearchKeyword" class="searchResult">
       <NavTitle title="搜索结果" :is-more="false"></NavTitle>
       <GlobalProductBar
-        :models="'toC'"
+        :models="'toB'"
         :key="currentSearchKeyword || 'default'"
         :list="products"
         :finish="finish"
-      ></GlobalProductBar>
+      >
+      </GlobalProductBar>
     </view>
   </scroll-view>
 </template>

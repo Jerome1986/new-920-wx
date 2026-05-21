@@ -26,6 +26,7 @@ const listLoading = ref(false)
 const listFinished = ref(false)
 const listParams = ref({ pageNum: 1, pageSize: 20 })
 const activeFilterTab = ref<WalletFilterTab>('ALL')
+let transactionListRequestSeq = 0
 
 const typeLabel: Record<WalletTransactionType, string> = {
   IN: '进账',
@@ -69,44 +70,59 @@ const loadWallet = async () => {
 
 // 拉取流水列表
 const loadTransactionList = async () => {
+  if (listFinished.value || listLoading.value) return
+
   const userId = userStore.profile?.id
   if (!userId) {
     transactionList.value = []
     listFinished.value = true
     return
   }
-  if (listLoading.value) return
 
   listLoading.value = true
+  const requestSeq = ++transactionListRequestSeq
+  const { pageNum, pageSize } = listParams.value
+  const tab = activeFilterTab.value
   try {
-    console.log(activeFilterTab.value)
+    console.log(tab)
 
-    const res = await walletTransactionByUser(
-      userId,
-      activeFilterTab.value,
-      listParams.value.pageNum,
-      listParams.value.pageSize,
-    )
-    if (listParams.value.pageNum === 1) {
+    const res = await walletTransactionByUser(userId, tab, pageNum, pageSize)
+    if (requestSeq !== transactionListRequestSeq) return
+
+    if (pageNum === 1) {
       transactionList.value = res.data.list
     } else {
       transactionList.value.push(...res.data.list)
     }
 
-    if (listParams.value.pageNum < res.data.totalPage) {
+    if (pageNum < res.data.totalPage) {
       listParams.value.pageNum++
     } else {
       listFinished.value = true
     }
   } catch {
-    listFinished.value = true
+    if (requestSeq === transactionListRequestSeq) {
+      listFinished.value = true
+    }
   } finally {
-    listLoading.value = false
+    if (requestSeq === transactionListRequestSeq) {
+      listLoading.value = false
+    }
   }
+}
+
+/** 重置流水分页状态 */
+const resetTransactionListPage = () => {
+  transactionListRequestSeq++
+  listFinished.value = false
+  listLoading.value = false
+  listParams.value.pageNum = 1
+  transactionList.value = []
 }
 
 /** 进入页 */
 const onPageLoad = () => {
+  resetTransactionListPage()
   loadWallet()
   loadTransactionList()
 }
@@ -121,8 +137,12 @@ const handleApplyWithdraw = () => {
 
 /** 切换流水筛选 */
 const handleFilterTabChange = (tab: WalletFilterTab) => {
+  if (activeFilterTab.value === tab) return
+
   activeFilterTab.value = tab
   console.log('handleFilterTabChange', tab)
+  resetTransactionListPage()
+  loadTransactionList()
 }
 
 /** 列表触底加载更多 */

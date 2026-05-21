@@ -29,7 +29,7 @@ const finish = ref(false)
 const products = ref<ProductItem[]>([])
 const getProducts = async (val: string, pageNum: number, pageSize: number) => {
   if (finish.value) return
-  const res = await productListSearchGetApi(val, pageNum, pageSize)
+  const res = await productListSearchGetApi(val, pageNum, pageSize, 'TOC')
   console.log('搜索结果', res.data)
   products.value.push(...res.data.list)
   if (params.value.pageNum < res.data.totalPage) {
@@ -124,7 +124,8 @@ const handleScrollToLower = async () => {
         :key="currentSearchKeyword || 'default'"
         :list="products"
         :finish="finish"
-      ></GlobalProductBar>
+      >
+      </GlobalProductBar>
     </view>
   </scroll-view>
 </template>

@@ -7,7 +7,7 @@ import {
   formatPurchasedOrderState,
   formatTimestamp,
 } from '@/utils/formatTimestamp.ts'
-import { purchaseOrderGetApi } from '@/api/purchase.ts'
+import { purchaseOrderGetApi, purchaseOrderSearchBySkuNoApi } from '@/api/purchase.ts'
 import type { OrderItem } from '@/types/Order'
 import { confirmOrderLogistics, proOrderCancelApi } from '@/api/order'
 
@@ -30,10 +30,18 @@ const params = ref({
   pageSize: 8,
 })
 
+// 搜索框输入的商品货号
+const searchSkuNo = ref('')
+// 当前已生效的商品货号搜索条件
+const activeSearchSkuNo = ref('')
+// 是否处于货号搜索模式
+const isSearchMode = () => !!activeSearchSkuNo.value
+
 // 重置函数
 const reset = () => {
   finish.value = false
   loading.value = false
+  isLoading.value = false
   params.value.pageNum = 1
 }
 
@@ -45,13 +53,14 @@ const handleTag = (text: string, index: number) => {
   activeIndex.value = index
   reset() // 重置订单页面信息
   //  请求进货单接口
-  purchaseOrderListGet(userStore.profile.id, text, params.value.pageNum, params.value.pageSize)
+  reloadPurchaseOrderList()
 }
 
 // 订单列表
 const finish = ref(false)
 const loading = ref(false) // 防抖
 const purchaseOrderList = ref<OrderItem[]>([])
+// 拉取普通订单分页列表
 const purchaseOrderListGet = async (
   userId: string,
   status: string,
@@ -59,36 +68,108 @@ const purchaseOrderListGet = async (
   pageSize: number,
 ) => {
   // 请求进货单
-  if (finish.value) return // 退出分页
-  const res = await purchaseOrderGetApi(userId, status, 'TOB', pageNum, pageSize)
-  console.log('结果', res)
-  // 如果是第一页就直接赋值，否则就用数组添加
-  if (params.value.pageNum === 1) {
-    purchaseOrderList.value = res.data.list
-  } else {
-    purchaseOrderList.value.push(...res.data.list)
-  }
+  if (finish.value || loading.value) return // 退出分页
+  loading.value = true
+  try {
+    const res = await purchaseOrderGetApi(userId, status, 'TOB', pageNum, pageSize)
+    console.log('结果', res)
+    // 如果是第一页就直接赋值，否则就用数组添加
+    if (pageNum === 1) {
+      purchaseOrderList.value = res.data.list
+    } else {
+      purchaseOrderList.value.push(...res.data.list)
+    }
 
-  // 加载分页
-  if (params.value.pageNum < res.data.totalPage) {
-    params.value.pageNum++
-  } else {
-    finish.value = true
+    // 加载分页
+    if (pageNum < res.data.totalPage) {
+      params.value.pageNum++
+    } else {
+      finish.value = true
+    }
+  } finally {
+    loading.value = false
+  }
+}
+
+// 拉取商品货号搜索订单分页列表
+const searchPurchaseOrderListGet = async (
+  userId: string,
+  skuNo: string,
+  status: string,
+  pageNum: number,
+  pageSize: number,
+) => {
+  if (finish.value || loading.value) return
+  loading.value = true
+  try {
+    const res = await purchaseOrderSearchBySkuNoApi(userId, skuNo, status, 'TOB', pageNum, pageSize)
+    console.log('搜索结果', res)
+    if (pageNum === 1) {
+      purchaseOrderList.value = res.data.list
+    } else {
+      purchaseOrderList.value.push(...res.data.list)
+    }
+
+    if (pageNum < res.data.totalPage) {
+      params.value.pageNum++
+    } else {
+      finish.value = true
+    }
+  } finally {
+    loading.value = false
   }
 }
 
 // 触底加载更多
 const isLoading = ref(false) // 加载中标记，避免并发
+// 订单列表触底加载下一页
 const handleScrolltolower = async () => {
   if (finish.value || isLoading.value) return
   isLoading.value = true
-  await purchaseOrderListGet(
+  try {
+    await reloadPurchaseOrderList()
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// 根据当前模式重新加载订单列表
+const reloadPurchaseOrderList = () => {
+  if (!userStore.profile?.id) return
+  const status = tagList.value[activeIndex.value].text
+  if (isSearchMode()) {
+    return searchPurchaseOrderListGet(
+      userStore.profile.id,
+      activeSearchSkuNo.value,
+      status,
+      params.value.pageNum,
+      params.value.pageSize,
+    )
+  }
+
+  return purchaseOrderListGet(
     userStore.profile.id,
-    tagList.value[activeIndex.value].text,
+    status,
     params.value.pageNum,
     params.value.pageSize,
   )
-  isLoading.value = false
+}
+
+// 提交商品货号搜索
+const handleSearch = () => {
+  activeSearchSkuNo.value = searchSkuNo.value.trim()
+  reset()
+  purchaseOrderList.value = []
+  reloadPurchaseOrderList()
+}
+
+// 清空商品货号搜索并恢复普通订单列表
+const handleClearSearch = () => {
+  searchSkuNo.value = ''
+  activeSearchSkuNo.value = ''
+  reset()
+  purchaseOrderList.value = []
+  reloadPurchaseOrderList()
 }
 
 // 跳转订单详情
@@ -111,12 +192,7 @@ const handleConfirm = (orderNo: string, _transactionId: string) => {
         if (result.code === 200) {
           activeIndex.value = tagList.value.findIndex((item) => item.text === 'COMPLETED')
           reset()
-          await purchaseOrderListGet(
-            userStore.profile.id,
-            tagList.value[activeIndex.value].text,
-            params.value.pageNum,
-            params.value.pageSize,
-          )
+          await reloadPurchaseOrderList()
           await uni.showToast({
             title: '订单已完成',
             icon: 'success',
@@ -145,12 +221,7 @@ const handleCancel = (outTradeNo: string, actualPayment: string) => {
           activeIndex.value = tagList.value.findIndex((item) => item.text === 'PROCESSING')
           reset()
           // 重新拉取订单数据
-          await purchaseOrderListGet(
-            userStore.profile.id,
-            tagList.value[activeIndex.value]?.text,
-            params.value.pageNum,
-            params.value.pageSize,
-          )
+          await reloadPurchaseOrderList()
         }
         uni.showToast({ icon: 'none', title: '申请已提交', mask: true })
       }
@@ -161,15 +232,33 @@ const handleCancel = (outTradeNo: string, actualPayment: string) => {
   })
 }
 
+// 页面进入时加载订单列表
 onLoad(() => {
   if (userStore.profile?.id) {
-    purchaseOrderListGet(userStore.profile.id, 'ALL', params.value.pageNum, params.value.pageSize)
+    reloadPurchaseOrderList()
   }
 })
 </script>
 
 <template>
   <view class="product-order">
+    <view class="search-card">
+      <view class="search-box">
+        <text class="search-box__icon iconfont icon-sousuo"></text>
+        <input
+          v-model="searchSkuNo"
+          class="search-box__input"
+          type="text"
+          confirm-type="search"
+          placeholder="输入商品货号搜索订单"
+          placeholder-class="search-box__placeholder"
+          @confirm="handleSearch"
+        />
+        <text v-if="searchSkuNo" class="search-box__clear" @click="handleClearSearch">清除</text>
+      </view>
+      <button class="search-card__btn" type="default" @click="handleSearch">搜索</button>
+    </view>
+
     <!-- 筛选标签 -->
     <view class="filter-bar">
       <view
@@ -304,7 +393,7 @@ onLoad(() => {
     <!-- 空状态 -->
     <view class="cart-blank" v-else>
       <image src="/static/images/empty.png" class="image" />
-      <text class="text">当前没有任何订单</text>
+      <text class="text">{{ activeSearchSkuNo ? '未找到相关订单' : '当前没有任何订单' }}</text>
     </view>
   </view>
 </template>
@@ -315,6 +404,72 @@ onLoad(() => {
   background-color: $jel-pageBackGroundColor;
   padding: 24rpx;
   box-sizing: border-box;
+
+  .search-card {
+    display: flex;
+    align-items: center;
+    gap: 16rpx;
+    margin-bottom: 16rpx;
+  }
+
+  .search-box {
+    flex: 1;
+    min-width: 0;
+    height: 72rpx;
+    padding: 0 20rpx;
+    display: flex;
+    align-items: center;
+    gap: 12rpx;
+    background-color: #fff;
+    border: 1rpx solid #f0f0f0;
+    border-radius: 999rpx;
+    box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.04);
+
+    &__icon {
+      font-size: 28rpx;
+      color: $jel-font-dec;
+      flex-shrink: 0;
+    }
+
+    &__input {
+      flex: 1;
+      min-width: 0;
+      height: 72rpx;
+      font-size: 26rpx;
+      color: $jel-font-title;
+    }
+
+    &__placeholder {
+      color: #b8b8b8;
+      font-size: 26rpx;
+    }
+
+    &__clear {
+      flex-shrink: 0;
+      font-size: 24rpx;
+      color: $jel-font-dec;
+      line-height: 1;
+      padding-left: 8rpx;
+    }
+  }
+
+  .search-card__btn {
+    flex-shrink: 0;
+    width: 132rpx;
+    height: 72rpx;
+    line-height: 72rpx;
+    padding: 0;
+    margin: 0;
+    border-radius: 999rpx;
+    font-size: 26rpx;
+    font-weight: 600;
+    color: #fff;
+    background-color: $jel-brandColor;
+
+    &::after {
+      border: none;
+    }
+  }
 
   .filter-bar {
     display: flex;
@@ -345,7 +500,7 @@ onLoad(() => {
   }
 
   .list {
-    height: calc(100vh - 160rpx);
+    height: calc(100vh - 248rpx);
   }
 
   .order-card {

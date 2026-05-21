@@ -79,18 +79,16 @@ onShareAppMessage((res) => {
   if (res.from === 'button' && userStore.profile) {
     // 来自页面内按钮
     return {
-      title: '920来帮你换膜啦~',
+      title: '920AI智能平台(AI手机贴膜)',
       path: `/pages/login/login?inviterCode=${userStore.profile.referralCode}`,
-      imageUrl:
-        'https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/banner/Snipaste_2025-11-27_16-45-00.png',
+      imageUrl: 'https://objectstorageapi.gzg.sealos.run/erq1dfin-920/m16.png',
     }
   }
   // 默认分享
   return {
-    title: '给你的手机换个膜吧',
+    title: '920AI智能平台(AI手机贴膜)',
     path: `/pages/login/login?inviterCode=${userStore.profile.referralCode}`,
-    imageUrl:
-      'https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/banner/Snipaste_2025-11-27_16-45-00.png',
+    imageUrl: 'https://objectstorageapi.gzg.sealos.run/erq1dfin-920/m16.png',
   }
 })
 </script>

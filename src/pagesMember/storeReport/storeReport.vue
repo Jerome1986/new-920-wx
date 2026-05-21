@@ -75,12 +75,24 @@ const fetchCommissionOverview = async () => {
 
 // 拉取佣金明细分页
 const fetchCommissionRecordList = async (pageNum: number, pageSize: number) => {
+  if (listFinished.value || listLoading.value) return
+  const userId = userStore.profile?.id
+  if (!userId) {
+    commissionRecordList.value = []
+    listFinished.value = true
+    return
+  }
+
   listLoading.value = true
-  if (listFinished.value || !listLoading.value) return
   try {
-    const res = await findStoreCommissionRecord(userStore.profile.id, pageNum, pageSize)
-    commissionRecordList.value = res.data.list
+    const res = await findStoreCommissionRecord(userId, pageNum, pageSize)
     console.log(res)
+
+    if (listParams.value.pageNum === 1) {
+      commissionRecordList.value = res.data.list
+    } else {
+      commissionRecordList.value.push(...res.data.list)
+    }
 
     if (listParams.value.pageNum < res.data.totalPage) {
       listParams.value.pageNum++
@@ -96,17 +108,21 @@ const fetchCommissionRecordList = async (pageNum: number, pageSize: number) => {
 
 // 重置明细分页状态（换条件或下拉刷新时用）
 const resetCommissionListPage = () => {
-  console.log('resetCommissionListPage')
+  listFinished.value = false
+  listLoading.value = false
+  listParams.value.pageNum = 1
+  commissionRecordList.value = []
 }
 
 // 明细列表触底加载更多
 const handleCommissionListScrollToLower = () => {
-  console.log('handleCommissionListScrollToLower')
+  fetchCommissionRecordList(listParams.value.pageNum, listParams.value.pageSize)
 }
 
 // 页面进入：拉概览与首屏明细
 onLoad(() => {
   console.log('commission page onLoad')
+  resetCommissionListPage()
   fetchCommissionOverview()
   fetchCommissionRecordList(listParams.value.pageNum, listParams.value.pageSize)
 })
@@ -134,52 +150,64 @@ onLoad(() => {
         <text class="detail-section__title">佣金明细</text>
       </view>
 
-      <view class="detail-section__body">
-        <view v-for="item in commissionRecordList" :key="item.id" class="record-card">
-          <image
-            v-if="item.subordinateAvatar"
-            class="record-card__avatar"
-            :src="item.subordinateAvatar"
-            mode="aspectFill"
-          />
-          <view v-else class="record-card__avatar record-card__avatar--placeholder">
-            <text class="record-card__avatar-text">?</text>
+      <scroll-view
+        class="detail-section__scroll"
+        :scroll-y="true"
+        :enhanced="true"
+        :show-scrollbar="false"
+        :lower-threshold="80"
+        @scrolltolower="handleCommissionListScrollToLower"
+      >
+        <view class="detail-section__body">
+          <view v-for="item in commissionRecordList" :key="item.id" class="record-card">
+            <image
+              v-if="item.subordinateAvatar"
+              class="record-card__avatar"
+              :src="item.subordinateAvatar"
+              mode="aspectFill"
+            />
+            <view v-else class="record-card__avatar record-card__avatar--placeholder">
+              <text class="record-card__avatar-text">?</text>
+            </view>
+            <view class="record-card__main">
+              <view class="record-card__top">
+                <text class="record-card__mobile">
+                  {{ displaySubordinateMobile(item.subordinateMobile) }}
+                </text>
+                <text
+                  class="record-card__role"
+                  :class="isManagerRole(item.subordinateRole) ? 'is-manager' : 'is-user'"
+                >
+                  {{ roleDisplay(item.subordinateRole) }}
+                </text>
+              </view>
+              <view class="record-card__mid">
+                <text class="record-card__biz">{{ bizLabelLabel[item.bizLabel] }}</text>
+                <text class="record-card__amount">+¥{{ formatAmount(item.amount) }}</text>
+              </view>
+              <text class="record-card__time">{{ formatTimestamp(item.createdAt, 2) }}</text>
+            </view>
           </view>
-          <view class="record-card__main">
-            <view class="record-card__top">
-              <text class="record-card__mobile">
-                {{ displaySubordinateMobile(item.subordinateMobile) }}
-              </text>
-              <text
-                class="record-card__role"
-                :class="isManagerRole(item.subordinateRole) ? 'is-manager' : 'is-user'"
-              >
-                {{ roleDisplay(item.subordinateRole) }}
-              </text>
-            </view>
-            <view class="record-card__mid">
-              <text class="record-card__biz">{{ bizLabelLabel[item.bizLabel] }}</text>
-              <text class="record-card__amount">+¥{{ formatAmount(item.amount) }}</text>
-            </view>
-            <text class="record-card__time">{{ formatTimestamp(item.createdAt, 2) }}</text>
+
+          <view v-if="listLoading" class="detail-section__foot">加载中…</view>
+          <view
+            v-else-if="listFinished && commissionRecordList.length > 0"
+            class="detail-section__foot"
+          >
+            没有更多了
           </view>
         </view>
-      </view>
-
-      <view v-if="listLoading" class="detail-section__foot">加载中…</view>
-      <view
-        v-else-if="listFinished && commissionRecordList.length > 0"
-        class="detail-section__foot"
-      >
-        没有更多了
-      </view>
+      </scroll-view>
     </view>
   </view>
 </template>
 
 <style scoped lang="scss">
 .page {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   padding: 24rpx;
   padding-bottom: calc(32rpx + env(safe-area-inset-bottom));
   box-sizing: border-box;
@@ -188,6 +216,7 @@ onLoad(() => {
 
 .summary {
   margin-bottom: 28rpx;
+  flex-shrink: 0;
 }
 
 .summary__inner {
@@ -231,9 +260,14 @@ onLoad(() => {
 
 .detail-section {
   width: 100%;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .detail-section__head {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12rpx;
@@ -254,6 +288,13 @@ onLoad(() => {
   font-weight: 600;
   color: $jel-font-title;
   line-height: 1.2;
+}
+
+.detail-section__scroll {
+  flex: 1;
+  height: 0;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .detail-section__body {

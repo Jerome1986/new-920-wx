@@ -14,11 +14,11 @@ const userStore = useMemberStore()
 
 <template>
   <view class="vip-card">
-    <image
-      class="backGroud"
-      src="https://objectstorageapi.gzg.sealos.run/dxepxlzz-920/images/backgroudVip.png"
-      mode="aspectFill"
-    ></image>
+    <view class="vip-bg">
+      <view class="vip-bg__ribbon"></view>
+      <view class="vip-bg__edge"></view>
+      <view class="vip-bg__texture"></view>
+    </view>
     <view class="vipContent">
       <view class="top">
         <view class="icon">
@@ -67,14 +67,65 @@ const userStore = useMemberStore()
 .vip-card {
   position: relative;
   min-height: 216rpx;
+  overflow: hidden;
+  border-radius: 16rpx;
+  background: #171414;
 
-  .backGroud {
+  .vip-bg {
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
     height: 100%;
-    border-radius: 16rpx;
+    background: linear-gradient(
+        127deg,
+        rgba(98, 58, 39, 0.92) 0%,
+        rgba(33, 29, 30, 0.96) 46%,
+        #11141a 100%
+      ),
+      linear-gradient(90deg, rgba(234, 180, 154, 0.24), rgba(234, 180, 154, 0));
+
+    .vip-bg__ribbon {
+      position: absolute;
+      right: -82rpx;
+      top: -42rpx;
+      width: 360rpx;
+      height: 164rpx;
+      border-radius: 0 0 0 120rpx;
+      transform: rotate(-13deg);
+      background: linear-gradient(
+        107deg,
+        rgba(255, 218, 188, 0.3) 0%,
+        rgba(214, 137, 89, 0.13) 46%,
+        rgba(255, 255, 255, 0) 100%
+      );
+    }
+
+    .vip-bg__edge {
+      position: absolute;
+      left: 18rpx;
+      right: 18rpx;
+      top: 16rpx;
+      bottom: 16rpx;
+      border-radius: 14rpx;
+      border: 1px solid rgba(234, 180, 154, 0.22);
+    }
+
+    .vip-bg__texture {
+      position: absolute;
+      left: -20rpx;
+      right: -20rpx;
+      bottom: -68rpx;
+      height: 148rpx;
+      transform: rotate(-4deg);
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 222, 194, 0.12) 28%,
+        rgba(255, 255, 255, 0.03) 54%,
+        rgba(255, 255, 255, 0) 100%
+      );
+    }
   }
 
   .vipContent {
