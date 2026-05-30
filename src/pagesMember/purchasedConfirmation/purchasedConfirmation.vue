@@ -12,6 +12,7 @@ const { safeAreaInsets } = uni.getSystemInfoSync()
 // 定义store
 const cartTobStore = useCartTobStore()
 const userStore = useMemberStore()
+const submitting = ref(false)
 
 // 选择地址-直接调用微信的收货地址
 const showAddress = ref(true)
@@ -48,6 +49,7 @@ const needPay = computed(() => {
 
 // 确认订单提交入库
 const submit = async () => {
+  if (submitting.value) return
   console.log('提交订单', cartTobStore.selectProduct)
   if (!addressInfo.value) {
     await uni.showToast({
@@ -58,77 +60,88 @@ const submit = async () => {
     return
   }
 
-  // 当前订单的用户信息
-  const userInfo: OrderUserInfo = {
-    openid: userStore.profile.openid as string,
-    userId: userStore.profile.id,
-    nickname: userStore.profile.nickname || '',
-    mobile: userStore.profile.mobile,
-    avatarUrl: userStore.profile.avatarUrl,
+  submitting.value = true
+  try {
+    // 当前订单的用户信息
+    const userInfo: OrderUserInfo = {
+      openid: userStore.profile.openid as string,
+      userId: userStore.profile.id,
+      nickname: userStore.profile.nickname || '',
+      mobile: userStore.profile.mobile,
+      avatarUrl: userStore.profile.avatarUrl,
+    }
+
+    // 当前订单的商品
+    const products: sumbitOrderProduct[] = cartTobStore.selectProduct.map((item) => ({
+      productId: item.productId,
+      skuNo: item.skuNo,
+      name: item.name,
+      price: item.salePrice,
+      quantity: item.quantity,
+      image: item.cover,
+      skuId: item.skuId,
+    }))
+
+    // 商品金额信息
+    const amount: OrderAmount = {
+      totalPrice: Number(cartTobStore.totalPrice.toFixed(2)),
+      deductAmount: 0,
+      actualPayment: Number(needPay.value.toFixed(2)),
+      usedScore: 0,
+    }
+
+    // 调用API提交订单
+    const orderRes = await proOrderPayApi(
+      userInfo.openid,
+      userInfo.userId,
+      'TOB',
+      userInfo.nickname,
+      userInfo.mobile,
+      userInfo.avatarUrl as string,
+      addressInfo.value,
+      products,
+      cartTobStore.totalCount,
+      amount.totalPrice,
+      amount.deductAmount,
+      amount.actualPayment,
+      amount.usedScore ?? 0,
+      'wechat',
+      '店长进货',
+    )
+
+    console.log('提交结果', orderRes)
+
+    // 调起微信支付
+    wx.requestPayment({
+      timeStamp: orderRes.data.timeStamp,
+      nonceStr: orderRes.data.nonceStr,
+      package: orderRes.data.packageValue,
+      signType: orderRes.data.signType,
+      paySign: orderRes.data.paySign,
+      async success(res) {
+        try {
+          console.log('支付结果', res)
+          showAddress.value = false
+          // 重新拉取用户信息
+          await userStore.userInfoGet(userStore.profile.id)
+          await uni.showToast({ icon: 'success', title: '支付成功' })
+          await uni.redirectTo({
+            url: '/pagesMember/storeOrders/storeOrders',
+          })
+          await cartTobStore.clearSelectedCart()
+        } finally {
+          submitting.value = false
+        }
+      },
+      fail(err) {
+        console.error('支付失败', err)
+        submitting.value = false
+      },
+    })
+  } catch (err) {
+    console.error('提交订单失败', err)
+    submitting.value = false
   }
-
-  // 当前订单的商品
-  const products: sumbitOrderProduct[] = cartTobStore.selectProduct.map((item) => ({
-    productId: item.productId,
-    skuNo: item.skuNo,
-    name: item.name,
-    price: item.salePrice,
-    quantity: item.quantity,
-    image: item.cover,
-    skuId: item.skuId,
-  }))
-
-  // 商品金额信息
-  const amount: OrderAmount = {
-    totalPrice: Number(cartTobStore.totalPrice.toFixed(2)),
-    deductAmount: 0,
-    actualPayment: Number(needPay.value.toFixed(2)),
-    usedScore: 0,
-  }
-
-  // 调用API提交订单
-  const orderRes = await proOrderPayApi(
-    userInfo.openid,
-    userInfo.userId,
-    'TOB',
-    userInfo.nickname,
-    userInfo.mobile,
-    userInfo.avatarUrl as string,
-    addressInfo.value,
-    products,
-    cartTobStore.totalCount,
-    amount.totalPrice,
-    amount.deductAmount,
-    amount.actualPayment,
-    amount.usedScore ?? 0,
-    'wechat',
-    '店长进货',
-  )
-
-  console.log('提交结果', orderRes)
-
-  // 调起微信支付
-  wx.requestPayment({
-    timeStamp: orderRes.data.timeStamp,
-    nonceStr: orderRes.data.nonceStr,
-    package: orderRes.data.packageValue,
-    signType: orderRes.data.signType,
-    paySign: orderRes.data.paySign,
-    async success(res) {
-      console.log('支付结果', res)
-      showAddress.value = false
-      // 重新拉取用户信息
-      await userStore.userInfoGet(userStore.profile.id)
-      await uni.showToast({ icon: 'success', title: '支付成功' })
-      await uni.redirectTo({
-        url: '/pagesMember/storeOrders/storeOrders',
-      })
-      await cartTobStore.clearSelectedCart()
-    },
-    fail(err) {
-      console.error('支付失败', err)
-    },
-  })
 }
 </script>
 
@@ -217,7 +230,9 @@ const submit = async () => {
         <text class="label">实际支付:</text>
         <text class="amount">{{ formatAmount(needPay) }}</text>
       </view>
-      <button class="btn" @click="submit">结算</button>
+      <button class="btn" :disabled="submitting" @click="submit">
+        {{ submitting ? '支付中...' : '结算' }}
+      </button>
     </view>
     <!-- 安全区域 -->
     <view class="safe-area" :style="{ height: safeAreaInsets?.bottom + 'px' }"></view>

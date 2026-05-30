@@ -60,6 +60,10 @@ const handleTag = (text: string, index: number) => {
 const finish = ref(false)
 const loading = ref(false) // 防抖
 const purchaseOrderList = ref<OrderItem[]>([])
+const filterVisibleOrders = (list: OrderItem[]) => {
+  return list.filter((item) => item.status !== 'PENDING')
+}
+
 // 拉取普通订单分页列表
 const purchaseOrderListGet = async (
   userId: string,
@@ -73,11 +77,12 @@ const purchaseOrderListGet = async (
   try {
     const res = await purchaseOrderGetApi(userId, status, 'TOB', pageNum, pageSize)
     console.log('结果', res)
+    const visibleOrders = filterVisibleOrders(res.data.list)
     // 如果是第一页就直接赋值，否则就用数组添加
     if (pageNum === 1) {
-      purchaseOrderList.value = res.data.list
+      purchaseOrderList.value = visibleOrders
     } else {
-      purchaseOrderList.value.push(...res.data.list)
+      purchaseOrderList.value.push(...visibleOrders)
     }
 
     // 加载分页
@@ -104,10 +109,11 @@ const searchPurchaseOrderListGet = async (
   try {
     const res = await purchaseOrderSearchBySkuNoApi(userId, skuNo, status, 'TOB', pageNum, pageSize)
     console.log('搜索结果', res)
+    const visibleOrders = filterVisibleOrders(res.data.list)
     if (pageNum === 1) {
-      purchaseOrderList.value = res.data.list
+      purchaseOrderList.value = visibleOrders
     } else {
-      purchaseOrderList.value.push(...res.data.list)
+      purchaseOrderList.value.push(...visibleOrders)
     }
 
     if (pageNum < res.data.totalPage) {

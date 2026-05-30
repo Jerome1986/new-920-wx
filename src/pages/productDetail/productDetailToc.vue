@@ -56,6 +56,8 @@ const selectSku = ref<SkuItem>() // 当前选择的sku对象
 const handleSelectSku = (item: SkuItem, index: number) => {
   activeSkuIndex.value = index
   activeSkuCover.value = item.image
+  console.log(item.image)
+
   activeSkuPrice.value = item.salePrice
   activeSkuName.value = item.attrs.value
   selectSku.value = item

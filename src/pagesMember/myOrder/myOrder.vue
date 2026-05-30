@@ -47,6 +47,10 @@ const handleTag = (text: string, index: number) => {
 const finish = ref(false)
 const loading = ref(false) // 防抖
 const orderList = ref<OrderItem[]>([])
+const filterVisibleOrders = (list: OrderItem[]) => {
+  return list.filter((item) => item.status !== 'PENDING')
+}
+
 const orderListGet = async (userId: string, status: string, pageNum: number, pageSize: number) => {
   if (finish.value || loading.value) return // 通过标记退出分页加载
   loading.value = true
@@ -54,11 +58,12 @@ const orderListGet = async (userId: string, status: string, pageNum: number, pag
   // 发起请求
   const res = await userOrderGetApi(userId, status, 'TOC', pageNum, pageSize)
   console.log('订单', res.data)
+  const visibleOrders = filterVisibleOrders(res.data.list)
   // 首页直接赋值，分页追加
   if (params.value.pageNum === 1) {
-    orderList.value = res.data.list
+    orderList.value = visibleOrders
   } else {
-    orderList.value.push(...res.data.list)
+    orderList.value.push(...visibleOrders)
   }
 
   // 如果当前页小于总页数就++
