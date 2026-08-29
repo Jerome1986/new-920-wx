@@ -8,6 +8,58 @@ import { isVipExpired } from '@/utils/validate.ts'
 // 定义store
 const userStore = useMemberStore()
 
+interface PendingAgentInvite {
+  agentCode: string
+  createdAt: number
+}
+
+const PENDING_AGENT_INVITE_KEY = 'pending-agent-invite'
+const AGENT_INVITE_LANDING_PATH = '/pages/agentInvite/landing'
+// 代理邀请领取页是否已启用
+const AGENT_INVITE_LANDING_ENABLED = true
+
+// 获取参数-原推荐邀请码与代理邀请码相互独立
+const inviterCode = ref('')
+const agentCode = ref('')
+
+// 保存待处理的代理邀请信息
+const savePendingAgentInvite = (code: string) => {
+  const pendingInvite: PendingAgentInvite = {
+    agentCode: code,
+    createdAt: Date.now(),
+  }
+  uni.setStorageSync(PENDING_AGENT_INVITE_KEY, pendingInvite)
+}
+
+// 跳转到代理邀请领取页面
+const redirectToAgentInviteLanding = () => {
+  if (!AGENT_INVITE_LANDING_ENABLED || !agentCode.value) return false
+
+  uni.redirectTo({
+    url: `${AGENT_INVITE_LANDING_PATH}?agentCode=${encodeURIComponent(agentCode.value)}`,
+  })
+  return true
+}
+
+// 解析小程序码中的场景参数
+const parseSceneParams = (sceneValue?: string) => {
+  if (!sceneValue) return new Map<string, string>()
+
+  try {
+    const decodedScene = decodeURIComponent(sceneValue)
+    const entries = decodedScene
+      .split('&')
+      .map((item) => item.split('='))
+      .filter(([key]) => Boolean(key))
+      .map(([key, ...valueParts]) => [key, valueParts.join('=')] as const)
+
+    return new Map(entries)
+  } catch (error) {
+    console.warn('二维码 scene 参数解析失败', error)
+    return new Map<string, string>()
+  }
+}
+
 // 协议开关
 const agree = ref(false)
 
@@ -84,6 +136,7 @@ const handleLogin = async (e: GetPhoneNumberEvent) => {
       })
 
       setTimeout(() => {
+        if (redirectToAgentInviteLanding()) return
         uni.switchTab({ url: '/pages/home/home' })
       }, 1000)
     } else {
@@ -100,8 +153,8 @@ const handleLogin = async (e: GetPhoneNumberEvent) => {
 
 // 刷新CODE
 const freshCode = ref('')
-// 获取参数-邀请码
-const inviterCode = ref('')
+
+// 初始化登录页参数和微信登录凭证
 onLoad(async (options: any) => {
   console.log('入参', options)
   // 进页面就重新获取code，防止过期
@@ -120,15 +173,23 @@ onLoad(async (options: any) => {
     },
   })
 
-  // 先判断分享链接进入
+  const sceneParams = parseSceneParams(options.scene)
+
+  // 原推荐邀请码逻辑保持不变：普通链接优先，其次读取二维码参数。
   if (options.inviterCode) {
     inviterCode.value = options.inviterCode
-  } else {
-    // 再判断二维码扫码进入
-    const scene = decodeURIComponent(options.scene || '')
-    if (scene) {
-      const parts = scene.split('=')
-      inviterCode.value = parts[1] || ''
+  } else if (sceneParams.has('inviterCode')) {
+    inviterCode.value = sceneParams.get('inviterCode') || ''
+  }
+
+  // 代理邀请码仅用于后续领取流程，不参与原推荐关系和登录接口。
+  agentCode.value = options.agentCode || sceneParams.get('agentCode') || ''
+  if (agentCode.value) {
+    savePendingAgentInvite(agentCode.value)
+
+    // 当前开关关闭，不会跳转到尚未创建的领取页。
+    if (userStore.profile.id && userStore.token) {
+      redirectToAgentInviteLanding()
     }
   }
 

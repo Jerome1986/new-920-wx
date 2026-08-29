@@ -25,6 +25,18 @@ const login = () => {
   })
 }
 
+// 查看免费贴膜权益
+const handleFreeFilmBenefit = () => {
+  if (!userStore.profile?.id) {
+    uni.showToast({ icon: 'none', title: '登录后可查看', mask: true })
+    return
+  }
+
+  uni.navigateTo({
+    url: '/pagesMember/freeFilmBenefit/freeFilmBenefit',
+  })
+}
+
 // 更改头像
 const changeAvatar = () => {
   uni.chooseImage({
@@ -153,6 +165,18 @@ onShow(() => {
       <!-- 功能导航 -->
       <NavGrid></NavGrid>
 
+      <!-- 免费贴膜权益入口 -->
+      <view class="free-film-entry" @click="handleFreeFilmBenefit">
+        <view class="free-film-entry__icon">
+          <text class="iconfont icon-zengsong"></text>
+        </view>
+        <view class="free-film-entry__content">
+          <view class="free-film-entry__title">免费贴膜权益</view>
+          <view class="free-film-entry__desc">查看可用次数与权益有效期</view>
+        </view>
+        <view class="free-film-entry__action">查看权益</view>
+      </view>
+
       <!--   报名申请   -->
       <view class="signUp">
         <view class="item" @click="handleForm('hire')">
@@ -249,6 +273,67 @@ onShow(() => {
     padding: 0 24rpx 20rpx 24rpx;
     transform: translateY(-96rpx);
     flex: 1;
+
+    /*免费贴膜权益入口*/
+    .free-film-entry {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      height: 128rpx;
+      margin-top: 24rpx;
+      padding: 0 28rpx;
+      overflow: hidden;
+      border: 1rpx solid #f7dadd;
+      border-radius: 8rpx;
+      background: linear-gradient(100deg, #ffffff 0%, #fff7f7 62%, #ffedef 100%);
+
+      .free-film-entry__icon {
+        display: flex;
+        flex: 0 0 auto;
+        align-items: center;
+        justify-content: center;
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 50%;
+        background-color: #fceeef;
+
+        .iconfont {
+          color: $jel-brandColor;
+          font-size: 40rpx;
+        }
+      }
+
+      .free-film-entry__content {
+        flex: 1;
+        min-width: 0;
+        margin-left: 20rpx;
+
+        .free-film-entry__title {
+          color: $jel-font-title;
+          font-size: 30rpx;
+          font-weight: 600;
+        }
+
+        .free-film-entry__desc {
+          margin-top: 8rpx;
+          overflow: hidden;
+          color: $jel-font-dec2;
+          font-size: 23rpx;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+
+      .free-film-entry__action {
+        flex: 0 0 auto;
+        margin-left: 16rpx;
+        padding: 10rpx 20rpx;
+        border-radius: 28rpx;
+        color: #ffffff;
+        background-color: $jel-brandColor;
+        font-size: 23rpx;
+      }
+    }
 
     /*合作*/
     .signUp {

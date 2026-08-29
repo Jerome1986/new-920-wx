@@ -98,6 +98,7 @@ onLoad(
 .home {
   padding-bottom: 160rpx;
   height: 100%;
+
   /* 滚动区域 */
   .scrollView {
     flex: 1;

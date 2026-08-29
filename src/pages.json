@@ -43,6 +43,14 @@
       }
     },
     {
+      "path": "pages/agentInvite/landing",
+      "style": {
+        "navigationBarTitleText": "免费贴膜福利",
+        "navigationBarBackgroundColor": "#d62731",
+        "navigationBarTextStyle": "white"
+      }
+    },
+    {
       "path": "pages/hireForm/hireForm",
       "style": {
         "navigationBarTitleText": "员工招聘",
@@ -183,6 +191,13 @@
           "path": "myVip/vipOrder",
           "style": {
             "navigationBarTitleText": "会员订单",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "freeFilmBenefit/freeFilmBenefit",
+          "style": {
+            "navigationBarTitleText": "免费贴膜权益",
             "enablePullDownRefresh": false
           }
         },

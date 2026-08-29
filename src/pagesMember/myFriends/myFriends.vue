@@ -107,10 +107,11 @@ onShareAppMessage((res) => {
         <image :src="userStore.profile.myCodeUrl" mode="aspectFit" />
       </view>
     </view>
-    <!-- 头部 -->
+
     <view class="head" v-if="totalFriends">
       <view class="total">我的好友：{{ totalFriends }}个</view>
     </view>
+
     <scroll-view
       class="scroll-view"
       :scroll-y="true"

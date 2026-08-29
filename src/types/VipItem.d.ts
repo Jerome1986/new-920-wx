@@ -51,6 +51,8 @@ export interface CheckVipResponse {
   isVip: boolean
   /** VIP礼品领取状态 */
   vipGift: number
+  /** 可用免费次数 */
+  totalAvailable: number
   /** VIP到期时间 */
   vipEndTime: Date | string
 }

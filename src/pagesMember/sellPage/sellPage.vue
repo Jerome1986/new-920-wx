@@ -62,6 +62,10 @@ let modelSuggestionRequestId = 0
 // 获取当前分类ID
 const currentCateId = () => cateList.value[activeCateIndex.value]?.id
 
+const handleMemberPhoneInput = () => {
+  memberChecked.value = false
+}
+
 // 获取搜索输入值
 const getSearchInputValue = (value: unknown) => {
   if (typeof value === 'string') return value
@@ -426,7 +430,7 @@ const handleConfirmOrder = async () => {
 
   // 校验会员手机号
   if (isMember.value && !memberPhone.value) {
-    await uni.showToast({ title: '请输入会员手机号', icon: 'none' })
+    uni.showToast({ title: '请输入用户手机号', icon: 'none' })
     return
   }
 
@@ -437,26 +441,48 @@ const handleConfirmOrder = async () => {
   }
   const productId = currentProduct.value.productId
 
+  if (isMember.value && memberChecked.value && memberFreeCount.value <= 0) {
+    uni.showToast({
+      title: '当前用户暂无可用免费贴膜权益',
+      icon: 'none',
+    })
+
+    return
+  }
+
   // 如果有会员免费次数---直接跳转会员免费订单页面
   if (memberFreeCount.value > 0 && managerStore.managerStoreInfo?.id && productId) {
-    // 跳转会员免费订单
-    console.log('free')
-    // 1.创建会员订单
-    const res = await giftOrderApi(
-      managerStore.managerStoreInfo.id,
-      productId,
-      currentProduct.value.productName,
-      currentProduct.value.cover,
-      currentProduct.value.skuId,
-      currentProduct.value.skuNo,
-      currentProduct.value.salePrice,
-      orderPrice.value,
-      memberPhone.value,
-    )
+    try {
+      // 跳转会员免费订单
+      console.log('free')
+      // 1.创建会员订单
+      const res = await giftOrderApi(
+        managerStore.managerStoreInfo.id,
+        productId,
+        currentProduct.value.productName,
+        currentProduct.value.cover,
+        currentProduct.value.skuId,
+        currentProduct.value.skuNo,
+        currentProduct.value.salePrice,
+        orderPrice.value,
+        memberPhone.value,
+      )
 
-    // 2.跳转会员免费服务
-    uni.navigateTo({ url: `/pagesMember/quickOrder/giftOrder?outTtradeNo=${res.data.outTradeNo}` })
-    return
+      // 2.跳转会员免费服务
+      uni.navigateTo({
+        url: `/pagesMember/quickOrder/giftOrder?outTtradeNo=${res.data.outTradeNo}`,
+      })
+      return
+    } catch (error) {
+      uni.showToast({
+        title: '当前免费贴膜权益已不可用，请重新查询',
+        icon: 'none',
+      })
+
+      await handleQueryMember(originalPrice.value)
+
+      return
+    }
   }
   console.log(managerStore.managerStoreInfo, productId)
 
@@ -665,36 +691,36 @@ const handleCancelOrder = () => {
         <view class="popup-content">
           <!-- 会员选项 -->
           <view class="form-item">
-            <text class="form-label">是否会员</text>
+            <text class="form-label">使用免费权益</text>
             <view class="member-switch">
               <view
                 class="switch-option"
                 :class="{ active: !isMember }"
                 @click="handleMemberChange(false)"
               >
-                否
+                不使用
               </view>
               <view
                 class="switch-option"
                 :class="{ active: isMember }"
                 @click="handleMemberChange(true)"
               >
-                是
+                使用
               </view>
             </view>
           </view>
 
           <!-- 会员手机号 -->
           <view class="form-item" v-if="isMember">
-            <text class="form-label">会员手机号</text>
+            <text class="form-label">用户手机号</text>
             <view class="phone-input-wrapper">
               <input
                 class="phone-input"
                 type="number"
                 v-model="memberPhone"
-                placeholder="请输入会员手机号"
+                placeholder="请输入用户手机号"
                 :maxlength="11"
-                @input="memberChecked = false"
+                @input="handleMemberPhoneInput"
               />
               <view
                 class="query-btn"
@@ -708,7 +734,7 @@ const handleCancelOrder = () => {
             <!-- 查询结果提示 -->
             <view class="member-result" v-if="memberChecked">
               <view class="result-tag" :class="memberFreeCount > 0 ? 'free' : 'normal'">
-                <text v-if="memberFreeCount > 0">🎉 免费贴膜 ×{{ memberFreeCount }}</text>
+                <text v-if="memberFreeCount > 0">🎉 可用免费权益 ×{{ memberFreeCount }}</text>
                 <text v-else>暂无免费次数</text>
               </view>
             </view>
