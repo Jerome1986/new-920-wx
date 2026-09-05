@@ -253,7 +253,7 @@ export interface offlineOrderResult {
   storeId: string
   /** 用户ID */
   userId: string | null
-  memberPhone?: string
+  memberPhone?: string | null
 }
 
 // 免费贴膜服务订单状态类型
@@ -265,12 +265,22 @@ export type freeOrderStatus =
   | 'CANCELLED'
   | 'REFUNDED'
 
+// 免费贴膜权益来源
+export type FreeBenefitSource = 'VIP' | 'AGENT_INVITE'
+
 // 快速下单数据类型
 export interface QuickOrderResult<TStatus> extends offlineOrderResult {
   status: TStatus
   cancelledAt?: Date
   completedAt?: Date
   refundReason?: string
+}
+
+// 免费贴膜服务订单
+export interface FreeStoreServiceOrder extends QuickOrderResult<freeOrderStatus> {
+  memberPhone: string | null
+  freeBenefitSource: FreeBenefitSource | null
+  agentInviteClaimId: string | null
 }
 
 // 会员免费贴膜服务完成返回数据类型

@@ -50,9 +50,15 @@ export interface CheckVipResponse {
   /** 是否VIP会员 */
   isVip: boolean
   /** VIP礼品领取状态 */
-  vipGift: number
+  vipGift: number | null
+  /** 当前有效的VIP免费次数 */
+  vipAvailable: number
+  /** 当前有效的代理邀请赠送次数 */
+  agentInviteAvailable: 0 | 1
   /** 可用免费次数 */
   totalAvailable: number
   /** VIP到期时间 */
-  vipEndTime: Date | string
+  vipEndTime: string | null
+  /** 所有可用权益中最近的到期时间 */
+  nextExpiringAt: string | null
 }

@@ -1,6 +1,7 @@
 import { request } from '@/utils/http.ts'
 import type {
   freeOrderStatus,
+  FreeStoreServiceOrder,
   offlineOrderResult,
   OrderItem,
   OrderPageResult,
@@ -264,7 +265,7 @@ export const giftOrderApi = (
   actualPayment: string,
   memberPhone: string,
 ) => {
-  return request<QuickOrderResult<freeOrderStatus>>({
+  return request<FreeStoreServiceOrder>({
     method: 'POST',
     url: '/store-service-order/freeAdd',
     data: {
@@ -293,6 +294,17 @@ export const offlineOrderGetApi = (outTradeNo: string) => {
 }
 
 /**
+ * 获取免费贴膜订单详情
+ * @param outTradeNo - 订单号
+ */
+export const freeOrderGetApi = (outTradeNo: string) => {
+  return request<FreeStoreServiceOrder>({
+    method: 'GET',
+    url: `/store-service-order/detail/${outTradeNo}`,
+  })
+}
+
+/**
  * 根据用户手机号码，检查是否是会员，是否还有免费次数
  * @param mobile - 会员手机号码
  */
@@ -308,7 +320,7 @@ export const checkVipApi = (mobile: string) => {
  * 线下贴膜会员免费订单服务完成
  * @param outTradeNo - 订单号
  */
-export const completeGiftOrderApi = (outTradeNo: string, status: freeOrderStatus) => {
+export const completeGiftOrderApi = (outTradeNo: string, status: 'COMPLETED') => {
   return request<QuickOrderGiftVipResult>({
     method: 'POST',
     url: '/store-service-order/freeOrderCompleted',

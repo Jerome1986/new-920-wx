@@ -45,3 +45,38 @@ export interface MyAgentInviteBenefit {
 }
 
 export type MyAgentInviteBenefitResult = MyAgentInviteBenefit | null
+
+export interface AgentInviteRecordsParams {
+  userId: string
+  mobile?: string
+  benefitStatus?: AgentInviteBenefitStatus
+  pageNum?: number
+  pageSize?: number
+}
+
+export interface AgentInviteRecord {
+  claimId: string
+  mobile: string
+  claimedAt: string
+  expiresAt: string
+  benefitStatus: AgentInviteBenefitStatus
+  usedAt: string | null
+}
+
+export interface AgentInviteSummary {
+  totalInvited: number
+  availableCount: number
+  usedCount: number
+  expiredCount: number
+}
+
+export interface AgentInviteRecordsResult {
+  agentCode: string
+  summary: AgentInviteSummary
+  list: AgentInviteRecord[]
+  total: number
+  pageNum: number
+  pageSize: number
+  hasMore: boolean
+  mobileMatched: boolean | null
+}

@@ -43,6 +43,20 @@
       }
     },
     {
+      "path": "pages/agreement/user-agreement/user-agreement",
+      "style": {
+        "navigationBarTitleText": "用户协议",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
+      "path": "pages/agreement/privacy-policy/privacy-policy",
+      "style": {
+        "navigationBarTitleText": "隐私政策",
+        "enablePullDownRefresh": false
+      }
+    },
+    {
       "path": "pages/agentInvite/landing",
       "style": {
         "navigationBarTitleText": "免费贴膜福利",
@@ -191,6 +205,15 @@
           "path": "myVip/vipOrder",
           "style": {
             "navigationBarTitleText": "会员订单",
+            "enablePullDownRefresh": false
+          }
+        },
+        {
+          "path": "agentInviteRecords/agentInviteRecords",
+          "style": {
+            "navigationBarTitleText": "代理邀请记录",
+            "navigationBarBackgroundColor": "#ffffff",
+            "navigationBarTextStyle": "black",
             "enablePullDownRefresh": false
           }
         },

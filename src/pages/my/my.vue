@@ -6,15 +6,50 @@ import { useMemberStore } from '@/stores'
 import { formatRole } from '@/utils/formatTimestamp.ts'
 import { maskMiddle } from '@/utils/maskMiddle.ts'
 import HotProductList from '@/components/HotProductList.vue'
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { checkedHireApi } from '@/api/hire.ts'
 import { cooperateCheckApi } from '@/api/cooperate.ts'
 import type { JelHotProductList } from '@/types/component'
 import { userAvatarChangeApi } from '@/api/user'
-import { onLoad, onShow } from '@dcloudio/uni-app'
+import { getMyAgentProfileApi } from '@/api/agentProfile'
+import type { MyAgentProfileResult } from '@/types/AgentProfile'
+import { onShow } from '@dcloudio/uni-app'
 
 // 定义 store
 const userStore = useMemberStore()
+const agentIdentity = ref<MyAgentProfileResult | null>(null)
+const agentIdentityUserId = ref('')
+let agentRequestId = 0
+const visibleAgentProfile = computed(() => {
+  const identity = agentIdentity.value
+  return userStore.profile?.id &&
+    agentIdentityUserId.value === userStore.profile.id &&
+    identity?.isAgent &&
+    identity.canInvite &&
+    identity.profile?.status === 'ACTIVE'
+    ? identity.profile
+    : null
+})
+
+// 每次进入页面刷新权限；退出或切换账号后立即清除旧身份。
+const refreshAgentIdentity = async () => {
+  const requestId = ++agentRequestId
+  const userId = userStore.profile?.id
+  agentIdentity.value = null
+  agentIdentityUserId.value = ''
+  if (!userId) return
+
+  try {
+    const res = await getMyAgentProfileApi(userId)
+    if (requestId !== agentRequestId || userStore.profile?.id !== userId) return
+    agentIdentity.value = res.data
+    agentIdentityUserId.value = userId
+  } catch (error) {
+    console.warn('查询代理身份失败', error)
+  }
+}
+
+watch(() => userStore.profile?.id, refreshAgentIdentity)
 const defaultAvatar =
   'https://objectstorageapi.gzg.sealos.run/erq1dfin-920/static/defaultAvatar.png'
 
@@ -22,6 +57,16 @@ const defaultAvatar =
 const login = () => {
   uni.navigateTo({
     url: '/pages/login/login',
+  })
+}
+
+// 查看代理邀请记录
+const handleAgentInviteRecords = () => {
+  if (!visibleAgentProfile.value) return
+  uni.navigateTo({
+    url: `/pagesMember/agentInviteRecords/agentInviteRecords?agentCode=${encodeURIComponent(
+      visibleAgentProfile.value.agentCode,
+    )}`,
   })
 }
 
@@ -117,6 +162,7 @@ const handleScrolltolower = async () => {
 }
 
 onShow(() => {
+  refreshAgentIdentity()
   if (userStore.profile?.id) {
     userStore.userInfoGet(userStore.profile?.id as string)
   }
@@ -164,6 +210,25 @@ onShow(() => {
       </navigator>
       <!-- 功能导航 -->
       <NavGrid></NavGrid>
+
+      <!-- 代理邀请记录入口 -->
+      <view v-if="visibleAgentProfile" class="agent-entry" @click="handleAgentInviteRecords">
+        <view class="agent-entry__main">
+          <view class="agent-entry__icon">
+            <text class="iconfont icon-tuijian1"></text>
+          </view>
+          <view class="agent-entry__content">
+            <view class="agent-entry__title">代理邀请记录</view>
+            <view class="agent-entry__desc">查看邀请领取及权益使用情况</view>
+          </view>
+          <view class="agent-entry__badge">代理专属</view>
+        </view>
+        <view class="agent-entry__footer">
+          <text class="agent-entry__label">代理邀请码</text>
+          <text class="agent-entry__code">{{ visibleAgentProfile.agentCode }}</text>
+          <text class="agent-entry__action">查看记录 ›</text>
+        </view>
+      </view>
 
       <!-- 免费贴膜权益入口 -->
       <view class="free-film-entry" @click="handleFreeFilmBenefit">
@@ -273,6 +338,97 @@ onShow(() => {
     padding: 0 24rpx 20rpx 24rpx;
     transform: translateY(-96rpx);
     flex: 1;
+
+    /*代理邀请卡片*/
+    .agent-entry {
+      box-sizing: border-box;
+      width: 100%;
+      margin-top: 24rpx;
+      padding: 28rpx;
+      border: 1rpx solid #f7dadd;
+      border-radius: 8rpx;
+      background: linear-gradient(110deg, #ffffff 0%, #fff7f7 65%, #ffedef 100%);
+
+      &__main {
+        display: flex;
+        align-items: center;
+        gap: 20rpx;
+      }
+
+      &__icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 80rpx;
+        height: 80rpx;
+        border-radius: 50%;
+        background-color: #fceeef;
+        color: $jel-brandColor;
+
+        .iconfont {
+          font-size: 40rpx;
+        }
+      }
+
+      &__content {
+        flex: 1;
+        min-width: 0;
+      }
+
+      &__title {
+        color: $jel-font-title;
+        font-size: 30rpx;
+        font-weight: 600;
+      }
+
+      &__desc {
+        margin-top: 8rpx;
+        color: $jel-font-dec2;
+        font-size: 23rpx;
+        line-height: 1.5;
+      }
+
+      &__badge {
+        flex-shrink: 0;
+        padding: 6rpx 12rpx;
+        border: 1rpx solid #f2ced1;
+        border-radius: 6rpx;
+        color: $jel-brandColor;
+        background-color: #fff7f7;
+        font-size: 20rpx;
+      }
+
+      &__footer {
+        display: flex;
+        align-items: baseline;
+        gap: 20rpx;
+        margin-top: 24rpx;
+        padding-top: 20rpx;
+        border-top: 1rpx solid #f5e3e5;
+        font-size: 24rpx;
+        line-height: 1.5;
+      }
+
+      &__label {
+        flex-shrink: 0;
+        color: $jel-font-dec2;
+      }
+
+      &__code {
+        flex: 1;
+        min-width: 0;
+        color: $jel-brandColor;
+        font-weight: 600;
+        word-break: break-all;
+      }
+
+      &__action {
+        flex-shrink: 0;
+        color: $jel-brandColor;
+        font-size: 23rpx;
+      }
+    }
 
     /*免费贴膜权益入口*/
     .free-film-entry {

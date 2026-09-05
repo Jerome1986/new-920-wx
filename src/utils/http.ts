@@ -16,7 +16,7 @@ import { isArray } from 'wot-design-uni/components/common/util'
  */
 
 // 基地址
-const baseUrl = 'https://40b2ede0.r28.cpolar.top/api'
+const baseUrl = 'https://75053aa5.r28.cpolar.top/api'
 // const baseUrl = 'https://api.920keji.com/api'
 
 /**

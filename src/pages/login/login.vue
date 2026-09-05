@@ -218,11 +218,21 @@ onLoad(async (options: any) => {
             <text class="text">我已阅读并同意</text>
           </label>
         </checkbox-group>
-        <navigator url="/pages/agreement/user-agreement/user-agreement" open-type="navigate">
+        <navigator
+          class="agreement-link"
+          url="/pages/agreement/user-agreement/user-agreement"
+          open-type="navigate"
+          hover-class="agreement-link--active"
+        >
           <text class="link">《用户协议》</text>
         </navigator>
         <text class="text">及</text>
-        <navigator url="/pages/agreement/privacy-policy/privacy-policy" open-type="navigate">
+        <navigator
+          class="agreement-link"
+          url="/pages/agreement/privacy-policy/privacy-policy"
+          open-type="navigate"
+          hover-class="agreement-link--active"
+        >
           <text class="link">《隐私政策》</text>
         </navigator>
       </view>
@@ -332,6 +342,15 @@ onLoad(async (options: any) => {
 
       .link {
         color: $jel-brandColor;
+      }
+
+      .agreement-link {
+        display: inline-flex;
+        align-items: center;
+      }
+
+      .agreement-link--active {
+        opacity: 0.65;
       }
     }
 

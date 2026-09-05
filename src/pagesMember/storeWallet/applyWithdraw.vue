@@ -21,9 +21,6 @@ const form = ref<WalletWithdrawApplyForm>({
   bankName: '',
 })
 
-// 最低提现金额
-const minWithdrawAmount = ref(100)
-
 // 可提现金额
 const availableBalance = ref('0')
 
@@ -42,8 +39,8 @@ const canSubmit = computed(() => {
   return (
     !isSubmitting.value &&
     Boolean(form.value.userId) &&
-    Number(form.value.amount) >= minWithdrawAmount.value &&
-    // Number(form.value.amount) <= Number(availableBalance.value || 0) &&
+    Number(form.value.amount) > 0 &&
+    Number(form.value.amount) <= Number(availableBalance.value || 0) &&
     Boolean(form.value.payeeName.trim()) &&
     Boolean(form.value.payeeAccount.trim()) &&
     Boolean(form.value.bankName.trim())
@@ -103,69 +100,107 @@ onLoad((options) => {
 
 <template>
   <view class="page">
-    <!-- 提现说明 -->
-    <view class="summary">
-      <text class="summary__label">可提现金额</text>
-      <view class="summary__amount">
-        <text class="summary__amount-prefix">¥</text>
-        <text class="summary__amount-value">{{ availableBalanceText }}</text>
-      </view>
-      <text class="summary__hint"
-        >单笔提现金额需大于等于 {{ minWithdrawAmount }} 元，请勿超过可提现金额</text
+    <scroll-view class="page-scroll" scroll-y :show-scrollbar="false">
+      <view
+        class="page-content"
+        :style="{ paddingBottom: `calc(140rpx + ${safeAreaInsets?.bottom || 0}px)` }"
       >
-    </view>
+        <!-- 提现说明 -->
+        <view class="summary">
+          <text class="summary__label">可提现金额</text>
+          <view class="summary__amount">
+            <text class="summary__amount-prefix">¥</text>
+            <text class="summary__amount-value">{{ availableBalanceText }}</text>
+          </view>
+          <text class="summary__hint">提现金额不限起提金额，单笔不得超过可提现金额</text>
+        </view>
 
-    <!-- 提现表单 -->
-    <view class="form-card">
-      <view class="form-item">
-        <text class="form-label">提现金额</text>
-        <view class="form-control">
-          <text class="form-prefix">¥</text>
-          <input
-            class="form-input form-input--amount"
-            type="digit"
-            placeholder="请输入提现金额"
-            v-model="form.amount"
-          />
+        <!-- 提现表单 -->
+        <view class="form-card">
+          <view class="form-item">
+            <text class="form-label">提现金额</text>
+            <view class="form-control">
+              <text class="form-prefix">¥</text>
+              <input
+                class="form-input form-input--amount"
+                type="digit"
+                placeholder="请输入提现金额"
+                v-model="form.amount"
+              />
+            </view>
+          </view>
+
+          <view class="form-item">
+            <text class="form-label">收款人姓名</text>
+            <input
+              class="form-input"
+              v-model="form.payeeName"
+              :maxlength="30"
+              placeholder="请输入收款人姓名"
+            />
+          </view>
+
+          <view class="form-item">
+            <text class="form-label">银行卡号</text>
+            <input
+              class="form-input"
+              v-model="form.payeeAccount"
+              :maxlength="80"
+              placeholder="请输入银行卡号"
+            />
+          </view>
+
+          <view class="form-item">
+            <text class="form-label">开户行</text>
+            <input
+              class="form-input"
+              v-model="form.bankName"
+              :maxlength="80"
+              placeholder="请输入开户行"
+            />
+          </view>
+        </view>
+
+        <!-- 提现规则 -->
+        <view class="rules-card">
+          <view class="rules-title">
+            <view class="rules-title__mark" />
+            <text>提现规则</text>
+          </view>
+          <view class="rules-item">
+            <text class="rules-item__index">1</text>
+            <text class="rules-item__text"
+              >可提现额度：页面展示金额为当前可提现额度，不设最低提现金额，单笔提现不得超过可提现额度。</text
+            >
+          </view>
+          <view class="rules-item">
+            <text class="rules-item__index">2</text>
+            <text class="rules-item__text"
+              >提现次数：每个账户每日最多可提交 3 次提现申请，请合理安排提现次数。</text
+            >
+          </view>
+          <view class="rules-item">
+            <text class="rules-item__index">3</text>
+            <text class="rules-item__text"
+              >提现时间：每日均可提交申请；非工作时间提交的申请，将顺延至下一工作日处理。</text
+            >
+          </view>
+          <view class="rules-item">
+            <text class="rules-item__index">4</text>
+            <text class="rules-item__text"
+              >到账时间：申请审核通过后，预计 1–3
+              个工作日到账，具体时间以收款银行处理进度为准。</text
+            >
+          </view>
+          <view class="rules-item">
+            <text class="rules-item__index">5</text>
+            <text class="rules-item__text"
+              >收款信息：请确保收款人姓名、银行卡号及开户行信息真实准确；因信息错误导致的失败或延迟，由申请人承担。</text
+            >
+          </view>
         </view>
       </view>
-
-      <view class="form-item">
-        <text class="form-label">收款人姓名</text>
-        <input
-          class="form-input"
-          v-model="form.payeeName"
-          :maxlength="30"
-          placeholder="请输入收款人姓名"
-        />
-      </view>
-
-      <view class="form-item">
-        <text class="form-label">银行卡号</text>
-        <input
-          class="form-input"
-          v-model="form.payeeAccount"
-          :maxlength="80"
-          placeholder="请输入银行卡号"
-        />
-      </view>
-
-      <view class="form-item">
-        <text class="form-label">开户行</text>
-        <input
-          class="form-input"
-          v-model="form.bankName"
-          :maxlength="80"
-          placeholder="请输入开户行"
-        />
-      </view>
-    </view>
-
-    <!-- 提交提示 -->
-    <view class="notice">
-      <view class="notice__mark" />
-      <text class="notice__text">提交后平台将进行审核，审核通过后按平台规则打款。</text>
-    </view>
+    </scroll-view>
 
     <!-- 底部提交 -->
     <view class="toolbar" :style="{ paddingBottom: safeAreaInsets?.bottom + 'px' }">
@@ -184,11 +219,19 @@ onLoad((options) => {
 
 <style scoped lang="scss">
 .page {
-  min-height: 100vh;
-  padding: 24rpx;
-  padding-bottom: calc(140rpx + env(safe-area-inset-bottom));
+  height: 100vh;
+  overflow: hidden;
   box-sizing: border-box;
   background: linear-gradient(180deg, #f0f0f0 0%, $jel-pageBackGroundColor 240rpx);
+}
+
+.page-scroll {
+  height: 100%;
+}
+
+.page-content {
+  padding: 24rpx;
+  box-sizing: border-box;
 }
 
 .summary {
@@ -288,30 +331,57 @@ onLoad((options) => {
   color: $jel-brandColor;
 }
 
-.notice {
+.rules-card {
   margin-top: 24rpx;
-  padding: 22rpx 24rpx;
-  border-radius: 12rpx;
-  background: rgba(214, 39, 49, 0.06);
-  display: flex;
-  align-items: flex-start;
-  gap: 12rpx;
+  padding: 26rpx 24rpx;
+  border-radius: 16rpx;
+  background: #ffffff;
+  box-shadow: 0 2rpx 16rpx rgba(0, 0, 0, 0.05);
 }
 
-.notice__mark {
+.rules-title {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20rpx;
+  font-size: 28rpx;
+  font-weight: 600;
+  color: $jel-font-title;
+}
+
+.rules-title__mark {
   width: 6rpx;
-  height: 28rpx;
-  margin-top: 4rpx;
+  height: 30rpx;
+  margin-right: 12rpx;
   flex-shrink: 0;
   border-radius: 4rpx;
   background: $jel-brandColor;
 }
 
-.notice__text {
+.rules-item {
+  display: flex;
+  align-items: flex-start;
+  margin-top: 14rpx;
+}
+
+.rules-item__index {
+  width: 30rpx;
+  height: 30rpx;
+  margin-top: 3rpx;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: rgba(214, 39, 49, 0.1);
+  color: $jel-brandColor;
+  font-size: 20rpx;
+  line-height: 30rpx;
+  text-align: center;
+}
+
+.rules-item__text {
   flex: 1;
   font-size: 24rpx;
-  line-height: 1.5;
-  color: #8a5a5d;
+  line-height: 1.65;
+  color: $jel-font-dec2;
 }
 
 .toolbar {

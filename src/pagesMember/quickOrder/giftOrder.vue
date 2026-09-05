@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { onLoad } from '@dcloudio/uni-app'
-import type { freeOrderStatus, QuickOrderResult } from '@/types/Order'
-import { completeGiftOrderApi, offlineOrderGetApi, updateOfflineOrderApi } from '@/api/order'
+import type { FreeStoreServiceOrder } from '@/types/Order'
+import { completeGiftOrderApi, freeOrderGetApi, updateOfflineOrderApi } from '@/api/order'
 import { formatTimestamp } from '@/utils/formatTimestamp.ts'
 import { quickOrderStatusConfig } from './statusConfig'
 import {
@@ -25,7 +25,7 @@ import {
 import { decrementStoreStockApi } from '@/api/store'
 
 // 订单信息
-const orderInfo = ref<QuickOrderResult<freeOrderStatus>>()
+const orderInfo = ref<FreeStoreServiceOrder>()
 const showBluetoothList = ref(false)
 const bluetoothDevices = ref<
   Array<{
@@ -72,9 +72,20 @@ const canComplete = computed(() => {
   return orderInfo.value?.status === 'IN_SERVICE'
 })
 
+const freeBenefitSourceText = computed(() => {
+  switch (orderInfo.value?.freeBenefitSource) {
+    case 'VIP':
+      return 'VIP免费权益'
+    case 'AGENT_INVITE':
+      return '代理邀请赠送'
+    default:
+      return '免费贴膜'
+  }
+})
+
 // 根据传过来的订单号获取免费订单详情
 const giftOrderGet = async (outTtradeNo: string) => {
-  const res = await offlineOrderGetApi(outTtradeNo)
+  const res = await freeOrderGetApi(outTtradeNo)
   console.log('免费订单详情', res)
   orderInfo.value = res.data
 }
@@ -389,20 +400,24 @@ onLoad((query?: AnyObject) => {
         </view>
       </view>
 
-      <!-- 会员信息卡片 -->
+      <!-- 用户信息卡片 -->
       <view class="member-card">
         <view class="card-title">
           <text class="iconfont icon-huiyuan"></text>
-          <text>会员信息</text>
+          <text>用户信息</text>
         </view>
         <view class="member-info">
           <view class="info-row">
-            <text class="label">会员手机</text>
+            <text class="label">用户手机</text>
             <text class="value">{{ orderInfo?.memberPhone || '--' }}</text>
           </view>
           <view class="info-row">
             <text class="label">服务类型</text>
-            <text class="value highlight">会员免费贴膜</text>
+            <text class="value highlight">免费贴膜</text>
+          </view>
+          <view class="info-row">
+            <text class="label">权益来源</text>
+            <text class="value">{{ freeBenefitSourceText }}</text>
           </view>
         </view>
       </view>
@@ -440,7 +455,7 @@ onLoad((query?: AnyObject) => {
         <view class="order-info">
           <view class="info-row">
             <text class="label">订单类型</text>
-            <text class="value">会员免费贴膜</text>
+            <text class="value">免费贴膜</text>
           </view>
           <view class="info-row">
             <text class="label">订单状态</text>

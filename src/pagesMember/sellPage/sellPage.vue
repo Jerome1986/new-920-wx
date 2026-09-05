@@ -430,7 +430,7 @@ const handleConfirmOrder = async () => {
 
   // 校验会员手机号
   if (isMember.value && !memberPhone.value) {
-    uni.showToast({ title: '请输入用户手机号', icon: 'none' })
+    uni.showToast({ title: '请输入用户注册手机号', icon: 'none' })
     return
   }
 
@@ -718,7 +718,7 @@ const handleCancelOrder = () => {
                 class="phone-input"
                 type="number"
                 v-model="memberPhone"
-                placeholder="请输入用户手机号"
+                placeholder="请输入用户注册手机号"
                 :maxlength="11"
                 @input="handleMemberPhoneInput"
               />
